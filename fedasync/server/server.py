@@ -44,6 +44,12 @@ class Server(ABC):
     def evaluate(self):
         pass
     
+    def event_handler(self):
+        pass
+    
+    def get_message(self):
+        pass
+    
     @abstractmethod
     def is_stop_condition(self):
         return False
