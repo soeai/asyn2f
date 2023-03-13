@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 import json
+from typing import Dict
 
 
 class Message(ABC):
@@ -12,17 +13,17 @@ class Message(ABC):
     Any message will extend this class
     """
     
-    def __init__(self, dict_object: dict = None) -> None:
+    def __init__(self, dict_object: dict) -> None:
         super().__init__()
         
-        if dict_object != None:
-            self.construct_from_json(dict_object)
+        # Set attribute from 
+        for key in dict_object:
+            setattr(self, key, dict_object[key])
             
     
     @abstractmethod
-    def to_dict(self):
-        """
-        """
+    def to_dict(self) -> Dict :
+        return self.__dict__
     
     @abstractmethod
     def construct_from_dict(self):
@@ -32,11 +33,3 @@ class Message(ABC):
     def to_string(self):
         return json.dump(self.to_dict())
     
-    
-    
-# implement from Message.
-class GlobalMessage(Message):
-    def __init__(self, dict_object: dict = None) -> None:
-        super().__init__(dict_object)
-        
-    # Overidde methods ...
