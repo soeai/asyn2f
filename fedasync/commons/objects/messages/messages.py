@@ -1,9 +1,7 @@
 
-
 from abc import ABC, abstractmethod
 import json
 from typing import Dict
-
 
 class Message(ABC):
     """
@@ -15,7 +13,6 @@ class Message(ABC):
     
     def __init__(self, dict_object: dict) -> None:
         super().__init__()
-        
         # Set attribute from 
         for key in dict_object:
             setattr(self, key, dict_object[key])
@@ -26,10 +23,9 @@ class Message(ABC):
         return self.__dict__
     
     @abstractmethod
-    def construct_from_dict(self):
+    def construct_from_dict(self, dict_object: dict):
         """
         """
     
-    def to_string(self):
-        return json.dump(self.to_dict())
-    
+    def to_string(self) -> str:
+        return json.dumps(self.to_dict())
