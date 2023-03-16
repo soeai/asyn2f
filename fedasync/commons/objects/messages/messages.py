@@ -18,7 +18,6 @@ class Message(ABC):
             setattr(self, key, dict_object[key])
             
     
-    @abstractmethod
     def to_dict(self) -> Dict :
         return self.__dict__
     

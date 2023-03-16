@@ -20,19 +20,18 @@ class ClientUpdateLocal(Message):
             "batch_size": batch_size
         })
 
-    # abstract method
-    def to_dict(self) -> Dict:
-        return {
-            "uuid": self.uuid,
-            "latest_global_version": self.latest_global_version,
-            "start": self.start,
-            "finish": self.finish,
-            "training_time": self.training_time,
-            "link": self.link,
-            "acc": self.acc,
-            "loss": self.loss,
-            "batch_size": self.batch_size
-        }
+    # def to_dict(self) -> Dict:
+    #     return {
+    #         "uuid": self.uuid,
+    #         "latest_global_version": self.latest_global_version,
+    #         "start": self.start,
+    #         "finish": self.finish,
+    #         "training_time": self.training_time,
+    #         "link": self.link,
+    #         "acc": self.acc,
+    #         "loss": self.loss,
+    #         "batch_size": self.batch_size
+    #     }
     
     # abstract method
     def construct_from_dict(self, dict_object: dict):

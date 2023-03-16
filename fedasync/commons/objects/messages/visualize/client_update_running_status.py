@@ -7,10 +7,11 @@ class ClientUpdateRunningStatus(Message):
         })
     
     # abstract method
-    def to_dict(self) -> Dict:
-        return {
-            "uuid": self.uuid
-        }
+    # def to_dict(self) -> Dict:
+    #     return {
+    #         "uuid": self.uuid
+    #     }
+    
     # abstract method
     def construct_from_dict(self, dict_object: dict):
         self.uuid = dict_object["uuid"]

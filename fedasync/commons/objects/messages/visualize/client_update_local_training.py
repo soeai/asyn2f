@@ -20,17 +20,19 @@ class ClientUpdateLocalTraining(Message):
             "loss": loss
         })
     
-    # abstract method
-    def to_dict(self) -> Dict:
-        return {
-            'uuid': self.uuid,
-            'start': self.start,
-            'finish': self.finish,
-            'training_time': self.training_time,
-            'batch_number': self.batch_number,
-            'acc': self.acc,
-            'loss': self.loss
-        }  
+    # # abstract method
+    # def to_dict(self) -> Dict:
+    #     return {
+    #         'uuid': self.uuid,
+    #         'start': self.start,
+    #         'finish': self.finish,
+    #         'training_time': self.training_time,
+    #         'batch_number': self.batch_number,
+    #         'acc': self.acc,
+    #         'loss': self.loss
+    #     }  
+    
+    
     # abstract method
     def construct_from_dict(self, dict_object: dict):
         self.uuid = dict_object["uuid"]

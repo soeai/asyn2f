@@ -9,12 +9,12 @@ class ServerReply(Message):
             "storage_key": storage_key
         })
     
-    # abstract method
-    def to_dict(self) -> Dict:
-        return {
-            "uuid": self.uuid,
-            "storage_key": self.storage_key
-        }
+    # # abstract method
+    # def to_dict(self) -> Dict:
+    #     return {
+    #         "uuid": self.uuid,
+    #         "storage_key": self.storage_key
+    #     }
     
     # abstract method
     def construct_from_dict(self, dict_object: dict):
