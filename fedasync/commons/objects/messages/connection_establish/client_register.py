@@ -10,14 +10,16 @@ class ClientRegister(Message):
             "ram": ram
         })
     
-    # abstract method
-    def to_dict(self) -> Dict:
-        return {
-            "dataset_size": self.dataset_size,
-            "cpu": self.cpu,
-            "gpu": self.gpu,
-            "ram": self.ram
-        }
+    # # abstract method
+    # def to_dict(self) -> Dict:
+    #     return {
+    #         "dataset_size": self.dataset_size,
+    #         "cpu": self.cpu,
+    #         "gpu": self.gpu,
+    #         "ram": self.ram
+    #     }
+        
+        
     # abstract method
     def construct_from_dict(self, dict_object: dict):
         self.dataset_size = dict_object["dataset_size"]

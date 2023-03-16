@@ -11,13 +11,13 @@ class ServerUpdateGlobal(Message):
             'link': link
         })
     
-    # abstract method
-    def to_dict(self) -> Dict:
-        return {
-            'chosen_id': self.chosen_id,
-            'update_version': self.update_version,
-            'link': self.link
-        }
+    # # abstract method
+    # def to_dict(self) -> Dict:
+    #     return {
+    #         'chosen_id': self.chosen_id,
+    #         'update_version': self.update_version,
+    #         'link': self.link
+    #     }
     
     # abstract method
     def construct_from_dict(self, dict_object: dict):

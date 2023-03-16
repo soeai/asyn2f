@@ -20,15 +20,16 @@ class ServerUpdateGlobalTraining(Message):
         })
     
 
-    # abstract method
-    def to_dict(self) -> Dict:
-        return {
-            "update_version": self.update_version,
-            "waiting_time": self.waiting_time,
-            "global_acc": self.global_acc,
-            "global_loss": self.global_loss,
-            "client_result": self.client_result
-        }  
+    # # abstract method
+    # def to_dict(self) -> Dict:
+    #     return {
+    #         "update_version": self.update_version,
+    #         "waiting_time": self.waiting_time,
+    #         "global_acc": self.global_acc,
+    #         "global_loss": self.global_loss,
+    #         "client_result": self.client_result
+    #     }  
+    
     # abstract method
     def construct_from_dict(self, dict_object: dict):
         self.update_version = dict_object['update_version']
