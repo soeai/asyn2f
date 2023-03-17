@@ -1,6 +1,6 @@
 from ..messages import Message
 
-class ClientUpdateRunningStatus(Message):
+class ClientSendRunningStatus(Message):
     def __init__(self, uuid: str) -> None:
         super().__init__({
             "uuid": uuid

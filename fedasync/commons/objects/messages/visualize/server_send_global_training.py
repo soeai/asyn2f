@@ -4,7 +4,7 @@ from ..messages import Message
 # per each period of time (in second or microsecond)
 # the reasonable waiting time between each updating period
 # the updating period could be dynamic --> also monitoring this attribute
-class ServerUpdateGlobalTraining(Message):
+class ServerSendGlobalTraining(Message):
     # Add more attributes
     # client_result: dict
         # key: value

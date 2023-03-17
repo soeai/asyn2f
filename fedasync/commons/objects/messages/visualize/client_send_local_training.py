@@ -2,7 +2,7 @@ from ..messages import Message
 
 # Client update info frequently 
 # per each batch in each local training epoch
-class ClientUpdateLocalTraining(Message):
+class ClientSendLocalTraining(Message):
     # date_string = "2022-03-15 12:30:00"
     # date_format = "%Y-%m-%d %H:%M:%S"
     # training_time: in second or microsecond
