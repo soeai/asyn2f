@@ -7,8 +7,23 @@ Please, open it with drawio and contribute to it.
 https://drive.google.com/file/d/1LjL_asVqIZiBMvmlhExUakEMqmKHsQMr/view?usp=sharing
 ```
 
-## Dependencies.
-1. Python=3.9
-2. Pika
-3. Conda environment is recommended.
-4. MinIO, Queue can be run on docker.
+## Prerequisites
+- Python 3.9
+- Docker
+
+## Setting up the development environment
+1. Run the following command to start MinIO and RabbitMQ
+```
+docker-compose up -d
+```
+2. Install dependencies 
+```
+pip3 install -r requirements.txt
+```
+or (if you use Windows)
+```
+pip install -r requirements.txt
+```
+
+
+
