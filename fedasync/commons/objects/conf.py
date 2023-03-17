@@ -15,11 +15,11 @@ class RoutingRules:
 
     # at Monitor Queue
     # From Client
-    CLIENT_UPDATE_LOCAL_TRAINING: str = "client.update.local.training"
-    CLIENT_UPDATE_RUNNING_STATUS: str = "client.update.running.status"
+    CLIENT_SEND_LOCAL_TRAINING: str = "client.send.local.training"
+    CLIENT_SEND_RUNNING_STATUS: str = "client.send.running.status"
 
     # From Server
-    SERVER_UPDATE_GLOBAL_TRAINING: str = "server.update.global.training"
+    SERVER_SEND_GLOBAL_TRAINING: str = "server.send.global.training"
 
 
 class StorageConfig:
