@@ -1,5 +1,7 @@
 {
   "model_id": "",
-  "model_version": "",
-  "timestamp": 134141
+  "global_model_version": "",
+  "global_model_update_data_size": 3424,
+  "timestamp": 134141,
+  "avg_loss": 0.2
 }
