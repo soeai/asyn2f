@@ -1,5 +1,17 @@
 {
-  "client_id": "",
-  "qod": {},
-  "data_size": 1223
+  "sys_info": {
+    "system": "Linux",
+    "node": "TTUAI",
+    "machine": "x86_64",
+    "mac_add": ""
+  },
+  "data_desc": {
+    "name": "",
+    "desc": "use for monitoring later",
+    "data_size": 1223
+  },
+  "qod": {
+    "schema": "https://marketplace.com/qod/tab/v1",
+    "__comment": "metric here depends on schema"
+  }
 }
