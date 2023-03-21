@@ -1,30 +1,24 @@
-
-from pika import BlockingConnection
-from .client import Client
+from client import ClientModel
 
 
-class ClientTensorflow(Client):
-    
-    def __init__(self, queue_connection: BlockingConnection) -> None:
-        super().__init__(queue_connection)
-        
+class ClientTensorflow(ClientModel):
 
-    
-    # All methods below should be implement to work with 
+    def __init__(self, model, x_train, y_train, batch_size, x_test=None, y_test=None):
+        self.model = model
+        self.x_train = x_train
+        self.y_train = y_train
+        self.x_test = x_test
+        self.y_test = y_test
+        self.batch_size = batch_size
+
     def set_weights(self, weights):
         pass
 
     def get_weights(self):
         pass
 
-    def train(self):
+    def train_step(self, return_gradient=False):
         pass
 
     def evaluate(self):
-        pass
-
-    def data_preprocessing(self):
-        pass
-
-    def create_model(self):
         pass
