@@ -1,5 +1,6 @@
 from ..messages import Message
 
+
 class ServerReply(Message):
     # uuid: unique identifer granted for each client from the server when a client joins the network for the first time
     # storage_key: unique key for each client to upload local model to storage service (MinIO)
@@ -8,14 +9,7 @@ class ServerReply(Message):
             "uuid": uuid,
             "storage_key": storage_key
         })
-    
-    # # abstract method
-    # def to_dict(self) -> Dict:
-    #     return {
-    #         "uuid": self.uuid,
-    #         "storage_key": self.storage_key
-    #     }
-    
+
     # abstract method
     def construct_from_dict(self, dict_object: dict):
         self.uuid = dict_object["uuid"]
