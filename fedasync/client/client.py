@@ -3,29 +3,25 @@ from pika import BlockingConnection
 from .queue_connector import QueueConnector
 
 
-
 class Client(ABC):
     """
     - This is the abstract Client class
     - Client can extend to use with Deep frameworks like tensorflow, pytorch by extending this abstract class and 
         implement it's abstract methods. 
     """
+
     def __init__(self, queue_connection: BlockingConnection) -> None:
         super().__init__()
-        
-                
+
         # Dependencies
-        self.queue_connector : QueueConnector = QueueConnector(queue_connection)
-        
-    
+        self.queue_connector: QueueConnector = QueueConnector(queue_connection)
+
     def join_server(self) -> None:
         """
         - Implement the logic for client here.
         """
         pass
-    
-    
-    
+
     # Abstract methods     
     @abstractmethod
     def set_weights(self, weights):
@@ -50,5 +46,3 @@ class Client(ABC):
     @abstractmethod
     def create_model(self):
         pass
-
-
