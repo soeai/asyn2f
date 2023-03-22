@@ -1,5 +1,5 @@
-from client import ClientModel
-
+from model import ClientModel
+import tensorflow as tf
 
 class ClientTensorflow(ClientModel):
 
@@ -10,15 +10,26 @@ class ClientTensorflow(ClientModel):
         self.x_test = x_test
         self.y_test = y_test
         self.batch_size = batch_size
+        self.__flag = False
 
     def set_weights(self, weights):
-        pass
+        self.new_weight = weights
+        self.__flag = True
 
     def get_weights(self):
         pass
 
-    def train_step(self, return_gradient=False):
-        pass
+    def train(self):
+        for b in range(self.batch_size):
+            if self.new_weight:
+                self.__merge()
+            else:
+                pass
+                # train as normal
+
 
     def evaluate(self):
+        pass
+
+    def __merge(self):
         pass
