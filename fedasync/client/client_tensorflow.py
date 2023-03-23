@@ -25,8 +25,9 @@ class ClientTensorflow(ClientModel):
 
     def train(self):
         for b in range(self.batch_size):
-            if self.new_weight:
+            if self.__flag:
                 self.__merge()
+                self.__flag = False
             else:
                 pass
                 # train as normal
