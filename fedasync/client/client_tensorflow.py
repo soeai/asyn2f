@@ -1,6 +1,7 @@
 from model import ClientModel
 import tensorflow as tf
 
+
 class ClientTensorflow(ClientModel):
 
     def __init__(self, model, x_train, y_train, batch_size, x_test=None, y_test=None):
@@ -21,12 +22,12 @@ class ClientTensorflow(ClientModel):
 
     def train(self):
         for b in range(self.batch_size):
-            if self.new_weight:
+            if self.__flag:
                 self.__merge()
+                self.__flag = False
             else:
                 pass
                 # train as normal
-
 
     def evaluate(self):
         pass
