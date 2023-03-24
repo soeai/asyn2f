@@ -1,17 +1,18 @@
-
 from typing import List, Dict
 from abc import ABC, abstractmethod
 from fedasync.server.worker_manager import Client
+
 
 class Strategy(ABC):
     """
     This here the Interface of strategy, follow the strategy design pattern.
     Any new strategy will follow this interface. 
-    """    
+    """
+
     @abstractmethod
     def initialize_parameters(self):
         pass
-    
+
     @abstractmethod
     def select_client(self, all_clients: Dict[str, Client]) -> List[str]:
         """ Implement the client selection logic by 
@@ -39,8 +40,3 @@ class Strategy(ABC):
     @abstractmethod
     def data_preprocessing(self):
         pass
-    
-    
-    
-
-    

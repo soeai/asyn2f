@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
-from queue_connector import AsynRabbitMQConsumer
+
+from pika import BlockingConnection
+
 from model import ClientModel
 import json
 
@@ -10,12 +12,6 @@ class Client(ABC):
     - Client can extend to use with Deep frameworks like tensorflow, pytorch by extending this abstract class and 
         implement it's abstract methods. 
     """
-
-    def __init__(self, queue_connection: BlockingConnection) -> None:
-        super().__init__()
-
-        # Dependencies
-        self.queue_connector: QueueConnector = QueueConnector(queue_connection)
 
     def join_server(self) -> None:
         """
