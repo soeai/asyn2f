@@ -1,31 +1,28 @@
 import functools
-import logging
-from abc import ABC, abstractmethod
+from abc import abstractmethod, ABC
 import pika
-from pika.exchange_type import ExchangeType
+import logging
+
+from fedasync.commons.conf import ClientConfig
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
 LOGGER = logging.getLogger(__name__)
 
 
-class AsynRabbitMQConsumer(ABC):
-    """This is an example consumer that will handle unexpected interactions
-    with RabbitMQ such as channel and connection closures.
-    If RabbitMQ closes the connection, this class will stop and indicate
-    that reconnection is necessary. You should look at the output, as
-    there are limited reasons why the connection may be closed, which
-    usually are tied to permission related issues or socket timeouts.
-    If the channel is closed, it will indicate a problem with one of the
-    commands that were issued and that should surface in the output as well.
+class QueueManager(ABC):
     """
-    EXCHANGE_TYPE = ExchangeType.topic
+    In the queue manager of the client, it should have the following functionalities including
+    1. Establish connection to the queue server.
+    2. Setup queue in the server such as declaring queue, binding routing key, exchange...
+    3. Send and consuming the message in and out the queue.
+    """
 
-    def __init__(self, amqp_url, queuename, routingkey, exchange):
-        """Create a new instance of the consumer class, passing in the AMQP
-        URL used to connect to RabbitMQ.
-        :param str amqp_url: The AMQP url to connect with
-        """
+    def __init__(self):
+        self._consuming = None
+        self.channel = None
+        self._connection = None
+
         self.should_reconnect = False
         self.was_consuming = False
 
@@ -33,15 +30,11 @@ class AsynRabbitMQConsumer(ABC):
         self._channel = None
         self._closing = False
         self._consumer_tag = None
-        self._url = amqp_url
+        self._url = ClientConfig.QUEUE_URL
         self._consuming = False
         # In production, experiment with higher prefetch values
         # for higher consumer throughput
         self._prefetch_count = 1
-
-        self.EXCHANGE = exchange
-        self.QUEUE = queuename
-        self.ROUTING_KEY = routingkey
 
     def connect(self):
         """This method connects to RabbitMQ, returning the connection handle.
@@ -122,7 +115,7 @@ class AsynRabbitMQConsumer(ABC):
         LOGGER.info('Channel opened')
         self._channel = channel
         self.add_on_channel_close_callback()
-        self.setup_exchange(self.EXCHANGE)
+        self.setup_exchange()
 
     def add_on_channel_close_callback(self):
         """This method tells pika to call the on_channel_closed method if
@@ -139,63 +132,22 @@ class AsynRabbitMQConsumer(ABC):
         to shutdown the object.
         :param pika.channel.Channel: The closed channel
         :param Exception reason: why the channel was closed
+        @param reason:
+        @param channel:
         """
         LOGGER.warning('Channel %i was closed: %s', channel, reason)
         self.close_connection()
-
-    def setup_exchange(self, exchange_name):
-        """Setup the exchange on RabbitMQ by invoking the Exchange.Declare RPC
-        command. When it is complete, the on_exchange_declareok method will
-        be invoked by pika.
-        :param str|unicode exchange_name: The name of the exchange to declare
-        """
-        LOGGER.info('Declaring exchange: %s', exchange_name)
-        # Note: using functools.partial is not required, it is demonstrating
-        # how arbitrary data can be passed to the callback when it is called
-        cb = functools.partial(
-            self.on_exchange_declareok, userdata=exchange_name)
-        self._channel.exchange_declare(
-            exchange=exchange_name,
-            exchange_type=self.EXCHANGE_TYPE,
-            callback=cb)
 
     def on_exchange_declareok(self, _unused_frame, userdata):
         """Invoked by pika when RabbitMQ has finished the Exchange.Declare RPC
         command.
         :param pika.Frame.Method unused_frame: Exchange.DeclareOk response frame
         :param str|unicode userdata: Extra user data (exchange name)
+        @param userdata:
+        @param _unused_frame:
         """
         LOGGER.info('Exchange declared: %s', userdata)
-        self.setup_queue(self.QUEUE)
-
-    def setup_queue(self, queue_name):
-        """Setup the queue on RabbitMQ by invoking the Queue.Declare RPC
-        command. When it is complete, the on_queue_declareok method will
-        be invoked by pika.
-        :param str|unicode queue_name: The name of the queue to declare.
-        """
-        LOGGER.info('Declaring queue %s', queue_name)
-        cb = functools.partial(self.on_queue_declareok, userdata=queue_name)
-        self._channel.queue_declare(queue=queue_name, callback=cb)
-
-    def on_queue_declareok(self, _unused_frame, userdata):
-        """Method invoked by pika when the Queue.Declare RPC call made in
-        setup_queue has completed. In this method we will bind the queue
-        and exchange together with the routing key by issuing the Queue.Bind
-        RPC command. When this command is complete, the on_bindok method will
-        be invoked by pika.
-        :param pika.frame.Method _unused_frame: The Queue.DeclareOk frame
-        :param str|unicode userdata: Extra user data (queue name)
-        """
-        queue_name = userdata
-        LOGGER.info('Binding %s to %s with %s', self.EXCHANGE, queue_name,
-                    self.ROUTING_KEY)
-        cb = functools.partial(self.on_bindok, userdata=queue_name)
-        self._channel.queue_bind(
-            queue_name,
-            self.EXCHANGE,
-            routing_key=self.ROUTING_KEY,
-            callback=cb)
+        self.setup_queue()
 
     def on_bindok(self, _unused_frame, userdata):
         """Invoked by pika when the Queue.Bind method has completed. At this
@@ -236,7 +188,7 @@ class AsynRabbitMQConsumer(ABC):
         LOGGER.info('Issuing consumer related RPC commands')
         self.add_on_cancel_callback()
         self._consumer_tag = self._channel.basic_consume(
-            self.QUEUE, self.on_message)
+            ClientConfig.CLIENT_QUEUE, self.on_message)
         self.was_consuming = True
         self._consuming = True
 
@@ -257,24 +209,6 @@ class AsynRabbitMQConsumer(ABC):
                     method_frame)
         if self._channel:
             self._channel.close()
-
-    @abstractmethod
-    def on_message(self, _unused_channel, basic_deliver, properties, body):
-        """Invoked by pika when a message is delivered from RabbitMQ. The
-        channel is passed for your convenience. The basic_deliver object that
-        is passed in carries the exchange, routing key, delivery tag and
-        a redelivered flag for the message. The properties passed in is an
-        instance of BasicProperties with the message properties and the body
-        is the message that was sent.
-        :param pika.channel.Channel _unused_channel: The channel object
-        :param pika.Spec.Basic.Deliver: basic_deliver method
-        :param pika.Spec.BasicProperties: properties
-        :param bytes body: The message body
-        """
-        # LOGGER.info('Received message # %s from %s: %s',
-        #             basic_deliver.delivery_tag, properties.app_id, body)
-        # self.acknowledge_message(basic_deliver.delivery_tag)
-        pass
 
     def acknowledge_message(self, delivery_tag):
         """Acknowledge the message delivery from RabbitMQ by sending a
@@ -341,3 +275,69 @@ class AsynRabbitMQConsumer(ABC):
             else:
                 self._connection.ioloop.stop()
             LOGGER.info('Stopped')
+
+    @abstractmethod
+    def setup_queue(self):
+        """Setup the queue on RabbitMQ by invoking the Queue.Declare RPC
+        command. When it is complete, the on_queue_declareok method will
+        be invoked by pika.
+        :param str|unicode queue_name: The name of the queue to declare.
+        """
+        # LOGGER.info('Declaring queue %s', queue_name)
+        # cb = functools.partial(self.on_queue_declareok, userdata=queue_name)
+        # self._channel.queue_declare(queue=queue_name, callback=cb)
+
+    @abstractmethod
+    def setup_exchange(self):
+        """Setup the exchange on RabbitMQ by invoking the Exchange.Declare RPC
+        command. When it is complete, the on_exchange_declareok method will
+        be invoked by pika.
+        :param str|unicode exchange_name: The name of the exchange to declare
+        """
+        # LOGGER.info('Declaring exchange: %s', exchange_name)
+        # # Note: using functools.partial is not required, it is demonstrating
+        # # how arbitrary data can be passed to the callback when it is called
+        # cb = functools.partial(
+        #     self.on_exchange_declareok, userdata=exchange_name)
+        # self._channel.exchange_declare(
+        #     exchange=exchange_name,
+        #     exchange_type=self.EXCHANGE_TYPE,
+        #     callback=cb)
+
+    @abstractmethod
+    def on_message(self, _unused_channel, basic_deliver, properties, body):
+        """Invoked by pika when a message is delivered from RabbitMQ. The
+        channel is passed for your convenience. The basic_deliver object that
+        is passed in carries the exchange, routing key, delivery tag and
+        a redelivered flag for the message. The properties passed in is an
+        instance of BasicProperties with the message properties and the body
+        is the message that was sent.
+        :param pika.channel.Channel _unused_channel: The channel object
+        :param pika.Spec.Basic.Deliver: basic_deliver method
+        :param pika.Spec.BasicProperties: properties
+        :param bytes body: The message body
+        """
+        # LOGGER.info('Received message # %s from %s: %s',
+        #             basic_deliver.delivery_tag, properties.app_id, body)
+        # self.acknowledge_message(basic_deliver.delivery_tag)
+        pass
+
+    @abstractmethod
+    def on_queue_declareok(self, _unused_frame, userdata):
+        """Method invoked by pika when the Queue.Declare RPC call made in
+        setup_queue has completed. In this method we will bind the queue
+        and exchange together with the routing key by issuing the Queue.Bind
+        RPC command. When this command is complete, the on_bindok method will
+        be invoked by pika.
+        :param pika.frame.Method _unused_frame: The Queue.DeclareOk frame
+        :param str|unicode userdata: Extra user data (queue name)
+        """
+        # queue_name = userdata
+        # LOGGER.info('Binding %s to %s with %s', self.EXCHANGE, queue_name,
+        #             self.ROUTING_KEY)
+        # cb = functools.partial(self.on_bindok, userdata=queue_name)
+        # self._channel.queue_bind(
+        #     queue_name,
+        #     self.EXCHANGE,
+        #     routing_key=self.ROUTING_KEY,
+        #     callback=cb)

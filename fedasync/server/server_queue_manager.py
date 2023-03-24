@@ -2,9 +2,9 @@ import json
 from pika.adapters.blocking_connection import BlockingChannel, BlockingConnection
 
 
-class QueueManager:
+class ServerQueueManager:
 
-    def __init__(self, queue_connection: BlockingConnection) -> None:
+    def __init__(self) -> None:
         # Properties
         self.queue_connection: BlockingConnection
 
