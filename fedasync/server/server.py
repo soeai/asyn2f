@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABC
 from strategies import Strategy
 from worker_manager import WorkerManager
-from server_queue_manager import QueueManager, ServerQueueManager
+from server_queue_manager import ServerQueueManager
 from fedasync.commons.utils import CloudStorageConnector
 from pika.adapters.blocking_connection import BlockingChannel, BlockingConnection
 
@@ -19,7 +19,7 @@ class Server(ABC):
 
         # Server's dependencies
         self.worker_manager: WorkerManager = WorkerManager()
-        self.queue_manager: QueueManager = QueueManager()
+        self.queue_manager: ServerQueueManager = ServerQueueManager()
         self.cloud_storage: CloudStorageConnector = CloudStorageConnector()
         self.strategy: Strategy = strategy
 
