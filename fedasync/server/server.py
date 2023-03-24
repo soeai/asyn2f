@@ -3,7 +3,6 @@ from strategies import Strategy
 from worker_manager import WorkerManager
 from server_queue_manager import ServerQueueManager
 from fedasync.commons.utils import CloudStorageConnector
-from pika.adapters.blocking_connection import BlockingChannel, BlockingConnection
 
 
 class Server(ABC):
