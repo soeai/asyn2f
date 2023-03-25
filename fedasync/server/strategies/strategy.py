@@ -1,6 +1,6 @@
 from typing import List, Dict
 from abc import ABC, abstractmethod
-from fedasync.server.worker_manager import Client
+from fedasync.server.objects.worker import Worker
 
 
 class Strategy(ABC):
@@ -14,12 +14,12 @@ class Strategy(ABC):
         pass
 
     @abstractmethod
-    def select_client(self, all_clients: Dict[str, Client]) -> List[str]:
+    def select_client(self, all_clients: Dict[str, Worker]) -> List[str]:
         """ Implement the client selection logic by 
         """
 
     @abstractmethod
-    def aggregate(self, join_clients: Dict[str, Client]) -> None:
+    def aggregate(self, join_clients: Dict[str, Worker]) -> None:
         """Aggregate algorithm.
         """
 
