@@ -1,9 +1,9 @@
+
 from abc import ABC, abstractmethod
-
 from pika import BlockingConnection
-
 from fedasync.client.client_queue_manager import ClientConsumer, ClientProducer
 from fedasync.commons.utils.consumer import Consumer
+from fedasync.commons.utils.queue_manager import QueueManage
 from model import ClientModel
 import json
 
