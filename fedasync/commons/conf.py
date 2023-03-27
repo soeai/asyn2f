@@ -39,7 +39,6 @@ class ClientConfig:
     TMP_GLOBAL_MODEL_FOLDER = ""
 
 
-
 class StorageConfig:
     """
     storage config here!

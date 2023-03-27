@@ -1,2 +1,2 @@
-from .utils import CloudStorageConnector, numpy_file_helper
+from .utils import CloudStorageConnector
 from . import conf
