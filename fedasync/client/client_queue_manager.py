@@ -1,31 +1,54 @@
-import functools
 import logging
-from abc import ABC, abstractmethod
-import pika
-from pika.exchange_type import ExchangeType
 
-from fedasync.commons.utils.queue_manager import QueueManager
-
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOGGER = logging.getLogger(__name__)
+from fedasync.commons.conf import Config
+from fedasync.commons.utils.consumer import Consumer
+from fedasync.commons.utils.producer import Producer
 
 
-class ClientQueueManager(QueueManager):
+class ClientConsumer(Consumer):
     def __init__(self):
         super().__init__()
 
-    def setup_queue(self):
-        pass
+    def setup(self):
 
-    def setup_exchange(self):
-        pass
+        # declare queue
+        self._channel.queue_declare(queue=Config.QUEUE_NAME)
 
-    def on_message(self, _unused_channel, basic_deliver, properties, body):
-        pass
+        # binding.
+        self._channel.queue_bind(
+            Config.QUEUE_NAME,
+            Config.TRAINING_EXCHANGE,
+            Config.SERVER_INIT_RESPONSE_TO_CLIENT
+        )
 
-    def on_queue_declareok(self, _unused_frame, userdata):
-        pass
+        self._channel.queue_bind(
+            Config.QUEUE_NAME,
+            Config.TRAINING_EXCHANGE,
+            Config.SERVER_NOTIFY_MODEL_TO_CLIENT
+        )
+
+        self.start_consuming()
+
+    def on_message(self, channel, basic_deliver, properties, body):
+        print(body)
+        logging.info(body)
+
+
+class ClientProducer(Producer):
+    def __init__(self):
+        super().__init__()
+
+    def notify_model_to_server(self, message):
+        self.publish_message(
+            Config.CLIENT_NOTIFY_MODEL_TO_SERVER,
+            message
+        )
+
+    def init_connect_to_server(self, message):
+        self.publish_message(
+            Config.CLIENT_INIT_SEND_TO_SERVER,
+            message
+        )
 
 
 

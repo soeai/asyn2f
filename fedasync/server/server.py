@@ -1,8 +1,11 @@
 from abc import abstractmethod, ABC
+
+from fedasync.server.server_queue_manager import ServerConsumer, ServerProducer
 from strategies import Strategy
 from worker_manager import WorkerManager
-from server_queue_manager import ServerQueueManager
 from fedasync.commons.utils import CloudStorageConnector
+import threading
+import os
 
 
 class Server(ABC):
@@ -15,15 +18,23 @@ class Server(ABC):
         # Server variables
         self.t = t
         self.alpha: dict = {}
+        self.n_local_updates = 0
 
         # Server's dependencies
         self.worker_manager: WorkerManager = WorkerManager()
-        self.queue_manager: ServerQueueManager = ServerQueueManager()
+        self.queue_consumer: ServerConsumer = ServerConsumer()
+        self.queue_producer: ServerProducer = ServerProducer()
         self.cloud_storage: CloudStorageConnector = CloudStorageConnector()
         self.strategy: Strategy = strategy
 
-    def start_listening(self):
-        pass
+    def run(self):
+        # create 1 thread to listen on the queue.
+        consuming_thread = threading.Thread(target=self.queue_consumer.run, name="fedasync_server-consuming-thread")
+
+        # run the consuming thread!.
+        consuming_thread.start()
+
+        # the main thread will sleep for a t time.
 
     def stop_listening(self):
         pass
