@@ -1,5 +1,6 @@
 from typing import List, Dict
 from .objects import Worker
+from ..commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 from ..commons.messages.message import Message
 
 
@@ -48,3 +49,6 @@ class WorkerManager:
 
     def get_n_local_update(self, global_model_version):
         return self.total()
+
+    def add_local_update(self, message: ClientNotifyModelToServer):
+        pass

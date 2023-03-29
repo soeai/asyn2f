@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 
 class MinioConnector(ABC):
 
-    def __init__(self, access_key, secret_key, uuid, region='vn') -> None:
+    def __init__(self, access_key = None, secret_key=None, uuid=None, region='vn') -> None:
         self.client = Minio('localhost:9000', access_key=access_key, secret_key=secret_key, secure=False, region=region)
         self.uuid = uuid
         logging.info(f'Connected to Minio server on localhost:9000')
