@@ -1,4 +1,3 @@
-import json
 import uuid
 
 from pika import BasicProperties
@@ -11,7 +10,7 @@ from fedasync.commons.utils.consumer import Consumer
 from fedasync.commons.utils.producer import Producer
 import logging
 from fedasync.commons.conf import Config, RoutingRules
-from fedasync.server import DependenciesContainer
+from fedasync.server.dependencies_container import DependenciesContainer
 from fedasync.server.objects import Worker
 import threading
 
@@ -32,6 +31,7 @@ class ServerConsumer(Consumer):
         if method.routing_key == RoutingRules.CLIENT_INIT_SEND_TO_SERVER:
             # get message and convert it
             client_init_message: ClientInit = ClientInit(body.decode())
+            LOGGER.info(f"client_msg: {client_init_message.__str__()} at {threading.current_thread()}")
 
             # create worker and add worker to manager.
             new_id = str(uuid.uuid4())
@@ -52,6 +52,8 @@ class ServerConsumer(Consumer):
 
             response.access_key = access_key
             response.secret_key = secret_key
+
+            LOGGER.info(f"server response: {response.__str__()} at {threading.current_thread()}")
 
             self._channel.basic_publish(
                 Config.TRAINING_EXCHANGE,
@@ -87,7 +89,7 @@ class ServerConsumer(Consumer):
 
             # download model!
             with lock:
-                self.dependencies.cloud_storage.download(f'{client_noty_message.client_id}/{client_noty_message.link}')
+                # self.container.cloud_storage.download(f'{client_noty_message.client_id}/{client_noty_message.link}')
                 self.dependencies.worker_manager.add_local_update(client_noty_message)
 
             # print out
