@@ -1,5 +1,6 @@
 from typing import List, Dict
 from .objects import Worker
+from ..commons.messages.message import Message
 
 
 class WorkerManager:
@@ -14,16 +15,23 @@ class WorkerManager:
             The history_state attribute is a dictionary that maps epoch numbers
             to dictionaries of Worker objects, keyed by Worker id.
         """
+
+        # all worker information
         self.worker_pools: Dict[str, Worker] = {}
+
+        # save history state by version.
         self.history_state: Dict[int, Dict[str, Worker]] = {}
 
-    def add_worker(self, Worker: Worker) -> None:
+        # save local weights by version
+        self.weight_pool: Dict[int, Dict] = {}
+
+    def add_worker(self, worker: Worker) -> None:
         """Add a Worker to the worker_pools attribute.
         Args:
-            Worker (Worker): The Worker object to add.
+            worker (Worker): The Worker object to add.
         """
 
-    def total(self):
+    def total(self) -> int:
         """Get the total number of Workers.
         Returns:
             int: The number of Workers in the worker_pools attribute.

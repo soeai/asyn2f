@@ -29,6 +29,8 @@ if __name__ == "__main__":
     # print name of main thread
     print("Main thread name: {}".format(threading.current_thread().name))
 
+
+
     # creating threads
     t1 = threading.Thread(target=server_consumer.run, name='t1')
 

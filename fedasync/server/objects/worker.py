@@ -11,7 +11,13 @@ class Worker:
         
         # Properties
         self.id: str = id
-        
+        self.sys_info = {}
+        self.data_desc = {}
+        self.qod = {}
+        self.current_version = 0
+        self.performance = 0.0
+        self.lost = 0.0
+        self.n_update = 0
 
     def reset(self):
         """

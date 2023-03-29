@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABC
+from time import sleep
 
 from fedasync.server.server_queue_manager import ServerConsumer, ServerProducer
 from strategies import Strategy
@@ -28,18 +29,26 @@ class Server(ABC):
         self.strategy: Strategy = strategy
 
     def run(self):
+
         # create 1 thread to listen on the queue.
         consuming_thread = threading.Thread(target=self.queue_consumer.run, name="fedasync_server-consuming-thread")
 
         # run the consuming thread!.
         consuming_thread.start()
 
+        while True:
+            if self.n_local_updates == 0:
+                sleep(self.t)
+            elif self.n_local_updates > 0:
+                self.update()
         # the main thread will sleep for a t time.
 
     def stop_listening(self):
         pass
 
     def update(self):
+        local_weights = self.worker_manager.get_all()
+        self.strategy.aggregate(local_weights)
         pass
 
     def evaluate(self):
