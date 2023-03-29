@@ -2,7 +2,7 @@ from .message import Message
 
 
 class ClientInit(Message):
-    def __init__(self, message):
+    def __init__(self, message: dict = None):
         self.sessionid = ""
         self.sys_info: SysInfo = SysInfo()
         self.data_desc: DataDesc = DataDesc()

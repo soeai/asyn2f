@@ -28,18 +28,19 @@ class Message:
         @param message_dict: is a string message taken from rabbitmq
         @return: return object itself
         """
+        if message_dict is not None:
 
-        # Iterate through keys in the input dictionary
-        for key in message_dict:
-            # If the value associated with the key is not a dictionary,
-            # set the attribute with the key and value
-            if type(message_dict[key]) != dict:
-                setattr(self, key, message_dict[key])
-            # If the value is a dictionary,
-            # recursively call construct_msg on the dictionary
-            # and set the attribute with the resulting object
-            elif type(message_dict[key]) == dict:
-                setattr(self, key, self.__dict__[key].deserialize(message_dict[key]))
+            # Iterate through keys in the input dictionary
+            for key in message_dict:
+                # If the value associated with the key is not a dictionary,
+                # set the attribute with the key and value
+                if type(message_dict[key]) != dict:
+                    setattr(self, key, message_dict[key])
+                # If the value is a dictionary,
+                # recursively call construct_msg on the dictionary
+                # and set the attribute with the resulting object
+                elif type(message_dict[key]) == dict:
+                    setattr(self, key, self.__dict__[key].deserialize(message_dict[key]))
 
         # Return the deserialized object
         return self
@@ -62,5 +63,3 @@ class Message:
                 result[key] = self.__dict__[key].__dict__
         # Return the dictionary as a JSON string
         return json.dumps(result)
-
-
