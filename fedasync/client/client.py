@@ -18,11 +18,10 @@ class Client(ABC):
         self._consumer: ClientConsumer = ClientConsumer()
         self._producer: ClientProducer = ClientProducer()
 
-    def join_server(self) -> None:
+    def run(self) -> None:
         """
         - Implement the logic for client here.
         """
-        pass
 
     # Abstract methods     
     @abstractmethod

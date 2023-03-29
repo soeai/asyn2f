@@ -218,7 +218,7 @@ class Consumer(ABC):
             self._channel.close()
 
     @abstractmethod
-    def on_message(self, channel, basic_deliver, properties, body):
+    def on_message(self, channel, method, properties, body):
         pass
 
     def stop_consuming(self):

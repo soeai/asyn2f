@@ -9,34 +9,33 @@ class Strategy(ABC):
     Any new strategy will follow this interface. 
     """
 
+    def __init__(self):
+        self.current_version = 0
+        self.model_id = 0
+        self.avg_loss = 0.0
+        self.global_model_update_data_size = 0
+
+    @abstractmethod
+    def get_global_model_filename(self):
+        return f"{self.model_id}_v{self.current_version}"
+
     @abstractmethod
     def initialize_parameters(self):
         pass
 
     @abstractmethod
-    def select_client(self, all_clients: Dict[str, Worker]) -> List[str]:
+    def select_client(self, all_clients) -> List[str]:
+
         """ Implement the client selection logic by 
         """
 
     @abstractmethod
-    def aggregate(self, join_clients: Dict[str, Worker]) -> None:
-        """Aggregate algorithm.
-        """
+    def aggregate(self, workers) -> None:
 
-    @abstractmethod
-    def evaluate(self):
-        """Evaluate the current parameters
+        """Aggregate algorithm.
         """
 
     @abstractmethod
     def get_model_weights(self):
         """
         """
-
-    @abstractmethod
-    def set_model_weights(self, weights):
-        pass
-
-    @abstractmethod
-    def data_preprocessing(self):
-        pass
