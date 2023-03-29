@@ -16,6 +16,10 @@ class Strategy(ABC):
         self.global_model_update_data_size = 0
 
     @abstractmethod
+    def get_global_model_filename(self):
+        return f"{self.model_id}_v{self.current_version}"
+
+    @abstractmethod
     def initialize_parameters(self):
         pass
 
@@ -26,7 +30,7 @@ class Strategy(ABC):
         """
 
     @abstractmethod
-    def aggregate(self, weights) -> None:
+    def aggregate(self, workers) -> None:
 
         """Aggregate algorithm.
         """
@@ -35,11 +39,3 @@ class Strategy(ABC):
     def get_model_weights(self):
         """
         """
-
-    @abstractmethod
-    def set_model_weights(self, weights):
-        pass
-
-    @abstractmethod
-    def data_preprocessing(self):
-        pass
