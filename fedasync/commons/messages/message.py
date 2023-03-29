@@ -1,4 +1,5 @@
 import json
+from typing import Optional, Dict, Union
 
 
 class Message:
@@ -23,24 +24,26 @@ class Message:
 
     """
 
-    def deserialize(self, message_dict: dict) -> object:
+    def deserialize(self, message: Union[str, Dict]) -> object:
         """
-        @param message_dict: is a string message taken from rabbitmq
+        @param message: is a string message taken from rabbitmq
         @return: return object itself
         """
-        if message_dict is not None:
+        if message is not None:
+            if type(message) is str:
+                message = json.loads(message)
 
             # Iterate through keys in the input dictionary
-            for key in message_dict:
+            for key in message:
                 # If the value associated with the key is not a dictionary,
                 # set the attribute with the key and value
-                if type(message_dict[key]) != dict:
-                    setattr(self, key, message_dict[key])
+                if type(message[key]) != dict:
+                    setattr(self, key, message[key])
                 # If the value is a dictionary,
                 # recursively call construct_msg on the dictionary
                 # and set the attribute with the resulting object
-                elif type(message_dict[key]) == dict:
-                    setattr(self, key, self.__dict__[key].deserialize(message_dict[key]))
+                elif type(message[key]) == dict:
+                    setattr(self, key, self.__dict__[key].deserialize(message[key]))
 
         # Return the deserialized object
         return self
