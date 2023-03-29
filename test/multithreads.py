@@ -2,44 +2,39 @@
 # of threading
 import threading
 import os
-
-from fedasync.commons.conf import Config
-from fedasync.server.server_queue_manager import ServerConsumer
-
-Config.QUEUE_NAME = "server_queue"
-Config.QUEUE_URL = "amqp://guest:guest@localhost:5672/%2F"
-
-server_consumer = ServerConsumer()
+lock = threading.Lock()
 
 
-def task1():
-    print("Task 1 assigned to thread: {}".format(threading.current_thread().name))
-    print("ID of process running task 1: {}".format(os.getpid()))
+class Tasks:
+    def __init__(self):
+        self.value = 0
 
-
-def task2():
-    print("Task 2 assigned to thread: {}".format(threading.current_thread().name))
-    print("ID of process running task 2: {}".format(os.getpid()))
+    def add(self):
+        lock.acquire()
+        print(f"add 1 at thread: id={threading.current_thread()}")
+        self.value += 1
+        lock.release()
 
 
 if __name__ == "__main__":
+
     # print ID of current process
     print("ID of process running main program: {}".format(os.getpid()))
 
     # print name of main thread
     print("Main thread name: {}".format(threading.current_thread().name))
 
-
+    task = Tasks()
 
     # creating threads
-    t1 = threading.Thread(target=server_consumer.run, name='t1')
-
-
+    t1 = threading.Thread(target=task.add, name='t1')
 
     # starting threads
     t1.start()
-
+    task.add()
     print("Main thread here still running")
 
     # wait until all threads finish
     t1.join()
+
+    print(f"{task.value}")

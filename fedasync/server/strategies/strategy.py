@@ -9,6 +9,12 @@ class Strategy(ABC):
     Any new strategy will follow this interface. 
     """
 
+    def __init__(self):
+        self.current_version = 0
+        self.model_id = 0
+        self.avg_loss = 0.0
+        self.global_model_update_data_size = 0
+
     @abstractmethod
     def initialize_parameters(self):
         pass
@@ -23,11 +29,6 @@ class Strategy(ABC):
     def aggregate(self, weights) -> None:
 
         """Aggregate algorithm.
-        """
-
-    @abstractmethod
-    def evaluate(self):
-        """Evaluate the current parameters
         """
 
     @abstractmethod

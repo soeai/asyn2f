@@ -1,18 +1,14 @@
 from abc import abstractmethod, ABC
 from time import sleep
 
+from fedasync.server import DependenciesContainer
 from fedasync.server.server_queue_manager import ServerConsumer, ServerProducer
 from fedasync.server.strategies import Strategy
 from fedasync.server.worker_manager import WorkerManager
 from fedasync.commons.utils import CloudStorageConnector
 import threading
-import os
 
-
-# class DependenciesContainer:
-#     worker_manager = None
-#     queue_consumer = None
-#     cloud_storage = None
+lock = threading.Lock()
 
 
 class Server(ABC):
@@ -25,38 +21,47 @@ class Server(ABC):
         # Server variables
         self.t = t * 1000
         self.alpha: dict = {}
-        self.current_version = 0
+        self.strategy = strategy
 
-        # Server's dependencies
-        self.cloud_storage: CloudStorageConnector = CloudStorageConnector()
-        self.worker_manager: WorkerManager = WorkerManager()
-        self.queue_consumer: ServerConsumer = ServerConsumer(self.cloud_storage, )
-        self.queue_producer: ServerProducer = ServerProducer()
-        self.strategy: Strategy = strategy
+        # Server's self.dependencies
+        self.dependencies = DependenciesContainer()
+        self.dependencies.cloud_storage = CloudStorageConnector()
+        self.dependencies.worker_manager = WorkerManager()
+        self.dependencies.queue_consumer = ServerConsumer(self.dependencies)
+        self.dependencies.queue_producer = ServerProducer()
+        self.dependencies.server = self
 
     def run(self):
 
+        total_online_worker = self.dependencies.worker_manager.get_all()
+
         # create 1 thread to listen on the queue.
-        consuming_thread = threading.Thread(target=self.queue_consumer.run, name="fedasync_server_consuming_thread")
+        consuming_thread = threading.Thread(target=self.dependencies.queue_consumer.run,
+                                            name="fedasync_server_consuming_thread")
 
         # run the consuming thread!.
         consuming_thread.start()
 
         while True:
-            n_local_updates = self.worker_manager.get_n_local_update(self.current_version)
+            with lock:
+                n_local_updates = self.dependencies.worker_manager.get_n_local_update(self.strategy.current_version)
+
             if n_local_updates == 0:
                 sleep(self.t)
             elif n_local_updates > 0:
                 self.update()
-        # the main thread will sleep for a t time.
+            if self.is_stop_condition():
+                self.stop_listening()
+                break
 
     def stop_listening(self):
-        pass
+        with lock:
+            self.dependencies.queue_consumer.stop()
 
     def update(self):
-        local_weights = self.worker_manager.get_all()
+        with lock:
+            local_weights = self.dependencies.worker_manager.get_all()
         self.strategy.aggregate(local_weights)
-        pass
 
     @abstractmethod
     def is_stop_condition(self):
