@@ -21,7 +21,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ServerConsumer(Consumer):
-    def __init__(self, cloud_storage: CloudStorageConnector = None, worker_manager: WorkerManager = None, minio_connector: MinioConnector = None):
+    def __init__(self, cloud_storage: CloudStorageConnector = None, worker_manager: WorkerManager = None):
         super().__init__()
         self.cloud_storage: CloudStorageConnector = cloud_storage
         self.worker_manager: WorkerManager = worker_manager
@@ -30,7 +30,7 @@ class ServerConsumer(Consumer):
 
         if method.routing_key == RoutingRules.CLIENT_INIT_SEND_TO_SERVER:
             # get message and convert it
-            client_init_message: ClientInit = ClientInit(json.loads(body.decode()))
+            client_init_message: ClientInit = ClientInit(body.decode())
             print(client_init_message.serialize())
 
             # create worker and add worker to manager.
