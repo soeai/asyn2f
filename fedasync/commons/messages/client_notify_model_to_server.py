@@ -3,7 +3,7 @@ from fedasync.commons.messages.message import Message
 
 class ClientNotifyModelToServer(Message):
 
-    def __init__(self, message):
+    def __init__(self, message=None):
         self.client_id = ""
         self.model_id = ""
         self.global_model_version_used = 1
