@@ -13,7 +13,7 @@ class Config:
     Server config here!
     """
     # Queue name
-    QUEUE_URL: str = ""
+    QUEUE_URL: str = "amqp://guest:guest@localhost:5672/%2F"
     QUEUE_NAME: str = ""
     MONITOR_QUEUE: str = ""
 
@@ -21,8 +21,10 @@ class Config:
     TRAINING_EXCHANGE: str = "training_exchange"
 
     # this folder is used to save local models
-    TMP_LOCAL_MODEL_FOLDER = ""
+    TMP_MODEL_FOLDER = "./"
 
+
+class MinioConfig:
     STORAGE_URL: str = ""
     ACCESS_KEY = ""
     PRIVATE_KEY = ""

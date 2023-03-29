@@ -17,7 +17,7 @@ class WorkerManager:
         """
 
         # all worker information
-        self.worker_pools: Dict[str, Worker] = {}
+        self.worker_pool: Dict[str, Worker] = {}
 
         # save history state by version.
         self.history_state: Dict[int, Dict[str, Worker]] = {}
@@ -36,7 +36,7 @@ class WorkerManager:
         Returns:
             int: The number of Workers in the worker_pools attribute.
         """
-        return len(self.worker_pools)
+        return len(self.worker_pool)
 
     def get_all(self) -> Dict[str, Worker]:
         """Get all Workers from the worker_pools attribute.
@@ -44,4 +44,7 @@ class WorkerManager:
            Dict[str, Worker]: A dictionary of all Worker objects in the
                worker_pools attribute, keyed by Worker id.
         """
-        return self.worker_pools
+        return self.worker_pool
+
+    def get_n_local_update(self, global_model_version):
+        return self.total()
