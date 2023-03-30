@@ -63,6 +63,12 @@ class Message:
                 result[key] = self.__dict__[key]
             # If the attribute is an object, add its dictionary representation to the dictionary
             else:
-                result[key] = self.__dict__[key].__dict__
+                try:
+                    result[key] = self.__dict__[key].__dict__
+                except Exception as e:
+                    print(e)
+                    print(self.__dict__[key])
+
+
         # Return the dictionary as a JSON string
         return json.dumps(result)

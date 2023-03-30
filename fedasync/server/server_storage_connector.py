@@ -1,7 +1,5 @@
 import os
-
-from minio import MinioAdmin, Minio
-import json
+from minio import MinioAdmin
 from fedasync.commons.utils.cloud_storage_connector import MinioConnector
 
 
@@ -10,7 +8,7 @@ class ServerStorage(MinioConnector):
         super().__init__(access_key, secret_key)
         self.admin = MinioAdmin(target='minio')
 
-    def generate_key(self, client_id, session_id):
+    def generate_keys(self, client_id, session_id):
         self.client.make_bucket(client_id)
         new_key = self.admin.user_add(client_id, session_id)
 
@@ -27,3 +25,14 @@ class ServerStorage(MinioConnector):
 
         access_key, secret_key = new_key['accessKey'], new_key['secretKey']
         return access_key, secret_key
+
+    def get_newest_global_model(self):
+        # get the newest object in the global-models bucket
+        objects = self.client.list_objects('global-models', recursive=True, start_after='')
+        sorted_objects = sorted(objects, key=lambda obj: obj.last_modified, reverse=True)
+
+        if len(sorted_objects) > 0:
+            return sorted_objects[0].object_name
+        else:
+            print("Bucket is empty.")
+            return None

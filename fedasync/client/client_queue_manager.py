@@ -1,3 +1,4 @@
+import json
 import logging
 
 from fedasync.commons.conf import Config, RoutingRules
@@ -8,6 +9,10 @@ from fedasync.commons.utils.producer import Producer
 class ClientConsumer(Consumer):
     def __init__(self):
         super().__init__()
+        self.storage_access_key = None
+        self.storage_secret_key = None
+        self.global_model_version = None
+
 
     def setup(self):
 
@@ -30,8 +35,17 @@ class ClientConsumer(Consumer):
         self.start_consuming()
 
     def on_message(self, channel, basic_deliver, properties, body):
-        print(body)
-        logging.info(body)
+        # if message come from routing SERVER_INIT_RESPONSE_TO_CLIENT then save the model id.
+        if basic_deliver.routing_key == RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT:
+            decoded = json.loads(bytes.decode(body))
+            print(f'Init connection to the server successfully | access_key: {decoded["access_key"]} | secret_key: {decoded["secret_key"]} | model_url: {decoded["model_url"]}')
+            self.storage_access_key = decoded["access_key"]
+            self.storage_secret_key = decoded["secret_key"]
+            self.global_model_version = decoded["model_url"]
+
+        else:
+            print(body)
+            logging.info(body)
 
 
 class ClientProducer(Producer):
