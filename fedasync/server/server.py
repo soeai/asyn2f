@@ -29,13 +29,16 @@ class Server(ABC):
         self.strategy = strategy
 
         # Server's self.container
+        self.server_access_key = 'minioadmin'
+        self.server_secret_key = 'minioadmin'
         self.dependencies: DependenciesContainer = DependenciesContainer(WorkerManager(),
                                                                          None,
                                                                          ServerProducer(),
-                                                                         ServerStorage('minioadmin', 'minioadmin'),
+                                                                         ServerStorage(access_key=self.server_access_key, secret_key=self.server_secret_key),
                                                                          self,
                                                                          self.strategy)
         self.dependencies.queue_consumer = ServerConsumer(self.dependencies)
+
 
     def run(self):
 
