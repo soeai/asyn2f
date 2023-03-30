@@ -5,6 +5,7 @@ from fedasync.client.client_queue_manager import ClientConsumer, ClientProducer
 from fedasync.client.client_storage_connector import ClientStorage
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit
 import json
+lock = threading.Lock()
 
 
 class Client(ABC):
@@ -27,17 +28,21 @@ class Client(ABC):
 
         # Send a message to server to init connection
         message = ClientInit()
+
         self._producer.init_connect_to_server(
             message.serialize()
         )
-        while not self._consumer.storage_access_key and not self._consumer.storage_secret_key:
-            continue
-        storage_access_key, storage_secret_key = self._consumer.storage_access_key, self._consumer.storage_secret_key
+        with lock:
+            while not self._consumer.storage_access_key and not self._consumer.storage_secret_key:
+                continue
+            storage_access_key, storage_secret_key = self._consumer.storage_access_key, self._consumer.storage_secret_key
+
         self.storage_connector = ClientStorage(storage_access_key, storage_secret_key, storage_access_key)
 
-        if self._consumer.global_model_version and self.is_new_global_model(self._consumer.global_model_version):
-            self.storage_connector.get_model(self._consumer.global_model_version)
-            self.local_version = self._consumer.global_model_version
+        with lock:
+            if self._consumer.global_model_version and self.is_new_global_model(self._consumer.global_model_version):
+                self.storage_connector.get_model(self._consumer.global_model_version)
+                self.local_version = self._consumer.global_model_version
 
     def is_new_global_model(self, global_model_version: str) -> bool:
         '''
