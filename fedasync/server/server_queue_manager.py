@@ -45,10 +45,11 @@ class ServerConsumer(Consumer):
             # Build response message
             response = ServerInitResponseToClient()
             response.session_id = client_init_message.sessionid
-            response.client_id = new_worker.id
+            response.client_id = new_worker.uuid
+            response.model_url = self.dependencies.cloud_storage.get_newest_global_model()
             # generate minio keys
             with lock:
-                access_key, secret_key = self.dependencies.cloud_storage.generate_keys()
+                access_key, secret_key = self.dependencies.cloud_storage.generate_keys(new_id, response.session_id)
 
             response.access_key = access_key
             response.secret_key = secret_key

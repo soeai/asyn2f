@@ -21,11 +21,11 @@ class MinioConnector(ABC):
         except Exception as e:
             logging.error(e)
     
-    def download(self, bucket_name, filename: str, save_location=''):
+    def download(self, bucket_name, filename: str, save_location='.'):
         """Downloads a file from MinIO server"""
 
         try:
-            self.client.fget_object(bucket_name, filename, save_location + '/' + filename)
+            self.client.fget_object(bucket_name, filename, save_location + '/' +filename)
             logging.info(f'Downloaded {filename}')
         except Exception as e:
             logging.error(e)

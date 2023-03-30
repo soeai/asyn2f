@@ -5,6 +5,7 @@ from time import sleep
 from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
 from fedasync.server.dependencies_container import DependenciesContainer
 from fedasync.server.server_queue_manager import ServerConsumer, ServerProducer
+from fedasync.server.server_storage_connector import ServerStorage
 from fedasync.server.strategies import Strategy
 from fedasync.server.worker_manager import WorkerManager
 import threading
@@ -28,13 +29,13 @@ class Server(ABC):
         self.strategy = strategy
 
         # Server's self.container
-        self.dependencies: DependenciesContainer = DependenciesContainer()
-        # self.container.cloud_storage = CloudStorageConnector()
-        self.dependencies.worker_manager = WorkerManager()
+        self.dependencies: DependenciesContainer = DependenciesContainer(WorkerManager(),
+                                                                         None,
+                                                                         ServerProducer(),
+                                                                         ServerStorage('minioadmin', 'minioadmin'),
+                                                                         self,
+                                                                         self.strategy)
         self.dependencies.queue_consumer = ServerConsumer(self.dependencies)
-        self.dependencies.queue_producer = ServerProducer()
-        self.dependencies.server = self
-        self.strategy = self.strategy
 
     def run(self):
 
