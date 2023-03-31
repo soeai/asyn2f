@@ -8,8 +8,16 @@ class B:
         self.a = a
 
 
+class C:
+    def __init__(self):
+        self.a = None
+
+
 a = A()
 b = B(a)
+c = C()
+c.a = b.a
 
 a.value += 10
-print(b.a.value)
+print(c.a.value)
+

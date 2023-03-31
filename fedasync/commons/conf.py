@@ -24,7 +24,7 @@ class Config:
     TMP_MODEL_FOLDER = "./"
 
 
-class MinioConfig:
+class StorageConfig:
     STORAGE_URL: str = ""
     ACCESS_KEY = ""
-    PRIVATE_KEY = ""
+    SECRET_KEY = ""

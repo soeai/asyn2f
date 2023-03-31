@@ -3,9 +3,10 @@ from typing import Optional, Dict, Union
 from .message import Message
 import uuid
 
+
 class ClientInit(Message):
     def __init__(self, message: Union[str, Dict] = None):
-        self.sessionid = str(uuid.uuid4())
+        self.session_id = ""
         self.sys_info: SysInfo = SysInfo()
         self.data_desc: DataDesc = DataDesc()
         self.qod: QoD = QoD()
