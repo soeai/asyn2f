@@ -1,8 +1,8 @@
-from fedasync.client.client import Client
+from fedasync.client.queue_manager import ClientQueueConnector
 from fedasync.client.client_tensorflow import ClientTensorflow
 
 
-class MyClient(Client):
+class MyClient(ClientQueueConnector):
     def set_weights(self, weights):
         pass
 

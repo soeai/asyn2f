@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-# pylint: disable=C0111,C0103,R0205
+
 
 import functools
 import logging
@@ -18,7 +17,7 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 
-class Consumer(ABC):
+class QueueConnector(ABC):
     """This is an example consumer that will handle unexpected interactions
     with RabbitMQ such as channel and connection closures.
 
