@@ -9,8 +9,7 @@ from fedasync.commons.conf import Config, RoutingRules, StorageConfig
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit
 from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
 from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
-from fedasync.commons.utils.consumer import Consumer
-from fedasync.commons.utils.producer import Producer
+from fedasync.commons.utils.queue_connector import QueueConnector
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
@@ -19,15 +18,12 @@ LOGGER = logging.getLogger(__name__)
 lock = threading.Lock()
 
 
-class Client(Consumer):
+class ClientQueueConnector(QueueConnector):
     def __init__(self, client_model: ClientModel):
         super().__init__()
 
         # Dependencies
-        self._producer: ClientProducer = ClientProducer()
         self.client_model: ClientModel = client_model
-        self.client_model._producer = self._producer
-
         self.storage_connector: ClientStorage = None
 
         # variables.
@@ -57,7 +53,7 @@ class Client(Consumer):
         message = ClientInit()
         message.session_id = self.session_id
 
-        self._producer.init_connect_to_server(
+        self.init_connect_to_server(
             # Send a message to server to init connection
             message.serialize()
         )
@@ -102,7 +98,7 @@ class Client(Consumer):
                 self.client_model.global_model_name = msg.global_model_name
                 self.client_model.global_model_version = msg.global_model_version
                 self.client_model.global_model_update_data_size = msg.global_model_update_data_size
-                self.client_model.avg_loss = msg.avg_loss
+                self.client_model.global_avg_loss = msg.avg_loss
 
                 # if local model version is smaller than the global model version and client's id is in the chosen ids
                 if self.client_model.local_version < msg.global_model_version and (
@@ -123,19 +119,16 @@ class Client(Consumer):
                         self.is_training = True
                         training_thread.start()
 
-
-class ClientProducer(Producer):
-    def __init__(self):
-        super().__init__()
-
     def notify_model_to_server(self, message):
-        self.publish_message(
+        self._channel.basic_publish(
+            Config.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER,
             message
         )
 
     def init_connect_to_server(self, message):
-        self.publish_message(
+        self._channel.basic_publish(
+            Config.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_INIT_SEND_TO_SERVER,
             message
         )
