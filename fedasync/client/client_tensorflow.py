@@ -1,18 +1,16 @@
 import logging
 import tensorflow as tf
-from .client_storage_connector import ClientStorage
-from .client_model import ClientModel
-from .queue_manager import ClientQueueConnector
+from .client import Client
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
 LOGGER = logging.getLogger(__name__)
 
 
-class ClientTensorflow(ClientModel):
+class ClientTensorflow(Client):
 
     def __init__(self, model, x_train, y_train, batch_size, x_test=None, y_test=None):
-        super().__init__(model)
+        super().__init__()
 
         # variables
         self.new_weight = None

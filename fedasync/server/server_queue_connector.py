@@ -65,11 +65,7 @@ class ServerQueueConnector(QueueConnector):
 
             LOGGER.info(f"server response: {response.__str__()} at {threading.current_thread()}")
 
-            self._channel.basic_publish(
-                Config.TRAINING_EXCHANGE,
-                routing_key=RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT,
-                body=response.serialize()
-            )
+            self.response_to_client_init_connect(response)
 
             #  add to worker.
             with lock:
@@ -87,11 +83,7 @@ class ServerQueueConnector(QueueConnector):
                 msg.timestamp = 0
                 msg.global_model_update_data_size = self.strategy.global_model_update_data_size
 
-                self._channel.basic_publish(
-                    Config.TRAINING_EXCHANGE,
-                    RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
-                    msg.serialize()
-                )
+                self.notify_global_model_to_client(message=msg)
 
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
             # download local model.
@@ -131,14 +123,14 @@ class ServerQueueConnector(QueueConnector):
         self._channel.basic_publish(
             Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
-            message
+            message.serialize()
         )
 
     def response_to_client_init_connect(self, message):
         self._channel.basic_publish(
             Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT,
-            message
+            message.serialize()
         )
 
 
