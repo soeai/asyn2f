@@ -1,11 +1,13 @@
 import os
 from minio import MinioAdmin
+
+from fedasync.commons.conf import StorageConfig
 from fedasync.commons.utils.cloud_storage_connector import MinioConnector
 
 
 class ServerStorage(MinioConnector):
-    def __init__(self, access_key, secret_key):
-        super().__init__(access_key, secret_key)
+    def __init__(self):
+        super().__init__(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY)
         self.admin = MinioAdmin(target='minio')
 
     def generate_keys(self, client_id, session_id):
