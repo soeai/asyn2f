@@ -56,7 +56,7 @@ class QueueConnector(ABC):
         # for higher consumer throughput
         self._prefetch_count = 1
 
-    def connect(self):
+    def _connect(self):
         """This method connects to RabbitMQ, returning the connection handle.
         When the connection is established, the on_connection_open method
         will be invoked by pika.
@@ -67,11 +67,11 @@ class QueueConnector(ABC):
         LOGGER.info('Connecting to %s', self._url)
         return pika.SelectConnection(
             parameters=pika.URLParameters(self._url),
-            on_open_callback=self.on_connection_open,
-            on_open_error_callback=self.on_connection_open_error,
-            on_close_callback=self.on_connection_closed)
+            on_open_callback=self._on_connection_open,
+            on_open_error_callback=self._on_connection_open_error,
+            on_close_callback=self._on_connection_closed)
 
-    def close_connection(self):
+    def _close_connection(self):
         self._consuming = False
         if self._connection.is_closing or self._connection.is_closed:
             LOGGER.info('Connection is closing or already closed')
@@ -79,7 +79,7 @@ class QueueConnector(ABC):
             LOGGER.info('Closing connection')
             self._connection.close()
 
-    def on_connection_open(self, _unused_connection):
+    def _on_connection_open(self, _unused_connection):
         """This method is called by pika once the connection to RabbitMQ has
         been established. It passes the handle to the connection object in
         case we need it, but in this case, we'll just mark it unused.
@@ -88,9 +88,9 @@ class QueueConnector(ABC):
 
         """
         LOGGER.info('Connection opened')
-        self.open_channel()
+        self._open_channel()
 
-    def on_connection_open_error(self, _unused_connection, err):
+    def _on_connection_open_error(self, _unused_connection, err):
         """This method is called by pika if the connection to RabbitMQ
         can't be established.
 
@@ -99,9 +99,9 @@ class QueueConnector(ABC):
 
         """
         LOGGER.error('Connection open failed: %s', err)
-        self.reconnect()
+        self._reconnect()
 
-    def on_connection_closed(self, _unused_connection, reason):
+    def _on_connection_closed(self, _unused_connection, reason):
         """This method is invoked by pika when the connection to RabbitMQ is
         closed unexpectedly. Since it is unexpected, we will reconnect to
         RabbitMQ if it disconnects.
@@ -116,9 +116,9 @@ class QueueConnector(ABC):
             self._connection.ioloop.stop()
         else:
             LOGGER.warning('Connection closed, reconnect necessary: %s', reason)
-            self.reconnect()
+            self._reconnect()
 
-    def reconnect(self):
+    def _reconnect(self):
         """Will be invoked if the connection can't be opened or is
         closed. Indicates that a reconnect is necessary then stops the
         ioloop.
@@ -127,16 +127,16 @@ class QueueConnector(ABC):
         self.should_reconnect = True
         self.stop()
 
-    def open_channel(self):
+    def _open_channel(self):
         """Open a new channel with RabbitMQ by issuing the Channel.Open RPC
         command. When RabbitMQ responds that the channel is open, the
         on_channel_open callback will be invoked by pika.
 
         """
         LOGGER.info('Creating a new channel')
-        self._connection.channel(on_open_callback=self.on_channel_open)
+        self._connection.channel(on_open_callback=self._on_channel_open)
 
-    def on_channel_open(self, channel):
+    def _on_channel_open(self, channel):
         """This method is invoked by pika when the channel has been opened.
         The channel object is passed in so we can make use of it.
 
@@ -147,18 +147,18 @@ class QueueConnector(ABC):
         """
         LOGGER.info('Channel opened')
         self._channel = channel
-        self.add_on_channel_close_callback()
+        self._add_on_channel_close_callback()
         self.setup()
 
-    def add_on_channel_close_callback(self):
+    def _add_on_channel_close_callback(self):
         """This method tells pika to call the on_channel_closed method if
         RabbitMQ unexpectedly closes the channel.
 
         """
         LOGGER.info('Adding channel close callback')
-        self._channel.add_on_close_callback(self.on_channel_closed)
+        self._channel.add_on_close_callback(self._on_channel_closed)
 
-    def on_channel_closed(self, channel, reason):
+    def _on_channel_closed(self, channel, reason):
         """Invoked by pika when RabbitMQ unexpectedly closes the channel.
         Channels are usually closed if you attempt to do something that
         violates the protocol, such as re-declare an exchange or queue with
@@ -170,7 +170,7 @@ class QueueConnector(ABC):
 
         """
         LOGGER.warning('Channel %i was closed: %s', channel, reason)
-        self.close_connection()
+        self._close_connection()
 
     @abstractmethod
     def setup(self):
@@ -189,22 +189,22 @@ class QueueConnector(ABC):
 
         """
         LOGGER.info('Issuing consumer related RPC commands')
-        self.add_on_cancel_callback()
+        self._add_on_cancel_callback()
         self._consumer_tag = self._channel.basic_consume(
             Config.QUEUE_NAME, self.on_message, auto_ack=True)
         self.was_consuming = True
         self._consuming = True
 
-    def add_on_cancel_callback(self):
+    def _add_on_cancel_callback(self):
         """Add a callback that will be invoked if RabbitMQ cancels the consumer
         for some reason. If RabbitMQ does cancel the consumer,
         on_consumer_cancelled will be invoked by pika.
 
         """
         LOGGER.info('Adding consumer cancellation callback')
-        self._channel.add_on_cancel_callback(self.on_consumer_cancelled)
+        self._channel.add_on_cancel_callback(self._on_consumer_cancelled)
 
-    def on_consumer_cancelled(self, method_frame):
+    def _on_consumer_cancelled(self, method_frame):
         """Invoked by pika when RabbitMQ sends a Basic.Cancel for a consumer
         receiving messages.
 
@@ -220,7 +220,7 @@ class QueueConnector(ABC):
     def on_message(self, channel, method, properties, body):
         pass
 
-    def stop_consuming(self):
+    def _stop_consuming(self):
         """Tell RabbitMQ that you would like to stop consuming by sending the
         Basic.Cancel RPC command.
 
@@ -228,10 +228,10 @@ class QueueConnector(ABC):
         if self._channel:
             LOGGER.info('Sending a Basic.Cancel RPC command to RabbitMQ')
             cb = functools.partial(
-                self.on_cancelok, userdata=self._consumer_tag)
+                self._on_cancelok, userdata=self._consumer_tag)
             self._channel.basic_cancel(self._consumer_tag, cb)
 
-    def on_cancelok(self, _unused_frame, userdata):
+    def _on_cancelok(self, _unused_frame, userdata):
         """This method is invoked by pika when RabbitMQ acknowledges the
         cancellation of a consumer. At this point we will close the channel.
         This will invoke the on_channel_closed method once the channel has been
@@ -245,9 +245,9 @@ class QueueConnector(ABC):
         LOGGER.info(
             'RabbitMQ acknowledged the cancellation of the consumer: %s',
             userdata)
-        self.close_channel()
+        self._close_channel()
 
-    def close_channel(self):
+    def _close_channel(self):
         """Call to close the channel with RabbitMQ cleanly by issuing the
         Channel.Close RPC command.
 
@@ -260,7 +260,7 @@ class QueueConnector(ABC):
         starting the IOLoop to block and allow the SelectConnection to operate.
 
         """
-        self._connection = self.connect()
+        self._connection = self._connect()
         self._connection.ioloop.start()
 
     def stop(self):
@@ -278,7 +278,7 @@ class QueueConnector(ABC):
             self._closing = True
             LOGGER.info('Stopping')
             if self._consuming:
-                self.stop_consuming()
+                self._stop_consuming()
                 self._connection.ioloop.start()
             else:
                 self._connection.ioloop.stop()
