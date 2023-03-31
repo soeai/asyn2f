@@ -1,5 +1,5 @@
 class RoutingRules:
-    # at Client Queue
+    # at ClientModel Queue
     CLIENT_INIT_SEND_TO_SERVER: str = "client.init.send.to.server"
     CLIENT_NOTIFY_MODEL_TO_SERVER: str = "client.notify.update"
 

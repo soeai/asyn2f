@@ -1,17 +1,19 @@
 import uuid
 
 from pika import BasicProperties
-
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit
 from fedasync.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
 from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
-from fedasync.commons.utils.consumer import Consumer
-from fedasync.commons.utils.producer import Producer
+from fedasync.commons.utils.queue_connector import QueueConnector
 import logging
 from fedasync.commons.conf import Config, RoutingRules
 from fedasync.server.objects import Worker
 import threading
+
+from fedasync.server.server_storage_connector import ServerStorage
+from fedasync.server.strategies import Strategy
+from fedasync.server.worker_manager import WorkerManager
 
 lock = threading.Lock()
 
@@ -20,12 +22,16 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 
-class ServerConsumer(Consumer):
-    def __init__(self, strategy, cloud_storage, worker_manager):
+class ServerQueueConnector(QueueConnector):
+    def __init__(self, strategy: Strategy, cloud_storage: ServerStorage, worker_manager: WorkerManager):
         super().__init__()
-        self.strategy = strategy
-        self.cloud_storage = cloud_storage
-        self.worker_manager = worker_manager
+
+        # Dependencies
+        self.strategy: Strategy = strategy
+        self.cloud_storage: ServerStorage = cloud_storage
+        self.worker_manager: WorkerManager = worker_manager
+
+        # variables
         self.is_downloading = False
 
     def on_message(self, channel, method, properties: BasicProperties, body):
@@ -121,19 +127,18 @@ class ServerConsumer(Consumer):
 
         self.start_consuming()
 
-
-class ServerProducer(Producer):
-    def __init__(self):
-        super().__init__()
-
     def notify_global_model_to_client(self, message):
-        self.publish_message(
+        self._channel.basic_publish(
+            Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
             message
         )
 
     def response_to_client_init_connect(self, message):
-        self.publish_message(
+        self._channel.basic_publish(
+            Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT,
             message
         )
+
+

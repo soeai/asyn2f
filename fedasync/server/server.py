@@ -4,7 +4,7 @@ from time import sleep
 
 from fedasync.commons.conf import StorageConfig
 from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
-from fedasync.server.server_queue_manager import ServerConsumer, ServerProducer
+from fedasync.server.server_queue_connector import ServerQueueConnector
 from fedasync.server.server_storage_connector import ServerStorage
 from fedasync.server.strategies import Strategy
 from fedasync.server.worker_manager import WorkerManager
@@ -36,10 +36,10 @@ class Server(ABC):
             StorageConfig.ACCESS_KEY = self.server_access_key
             StorageConfig.SECRET_KEY = self.server_secret_key
 
-        self.worker_manager = WorkerManager()
-        self.server_producer = ServerProducer()
-        self.server_storage = ServerStorage()
-        self.server_consumer = ServerConsumer(
+        # Get dependencies via DIContainer
+        self.worker_manager: WorkerManager = WorkerManager()
+        self.server_storage: ServerStorage = ServerStorage()
+        self.server_queue_connector: ServerQueueConnector = ServerQueueConnector(
             strategy=self.strategy,
             cloud_storage=self.server_storage,
             worker_manager=self.worker_manager
@@ -48,7 +48,7 @@ class Server(ABC):
     def run(self):
 
         # create 1 thread to listen on the queue.
-        consuming_thread = threading.Thread(target=self.server_consumer.run,
+        consuming_thread = threading.Thread(target=self.server_queue_connector.run,
                                             name="fedasync_server_consuming_thread")
 
         # run the consuming thread!.
@@ -70,12 +70,12 @@ class Server(ABC):
 
     def stop_listening(self):
         with lock:
-            self.server_consumer.stop()
+            self.server_queue_connector.stop()
 
     def update(self):
         with lock:
             local_weights = self.worker_manager.get_all()
-        self.strategy.aggregate(local_weights)
+            self.strategy.aggregate(local_weights)
 
     @abstractmethod
     def is_stop_condition(self):
@@ -92,4 +92,5 @@ class Server(ABC):
         msg.global_model_update_data_size = self.strategy.global_model_update_data_size
 
         # Send message
-        self.server_producer.notify_global_model_to_client(msg.serialize())
+        with lock:
+            self.server_queue_connector.notify_global_model_to_client(msg.serialize())
