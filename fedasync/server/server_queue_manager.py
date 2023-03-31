@@ -10,7 +10,6 @@ from fedasync.commons.utils.consumer import Consumer
 from fedasync.commons.utils.producer import Producer
 import logging
 from fedasync.commons.conf import Config, RoutingRules
-from fedasync.server.dependencies_container import DependenciesContainer
 from fedasync.server.objects import Worker
 import threading
 
@@ -22,13 +21,17 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ServerConsumer(Consumer):
-    def __init__(self, dependencies: DependenciesContainer):
+    def __init__(self, strategy, cloud_storage, worker_manager):
         super().__init__()
-        self.dependencies = dependencies
+        self.strategy = strategy
+        self.cloud_storage = cloud_storage
+        self.worker_manager = worker_manager
+        self.is_downloading = False
 
     def on_message(self, channel, method, properties: BasicProperties, body):
 
         if method.routing_key == RoutingRules.CLIENT_INIT_SEND_TO_SERVER:
+
             # get message and convert it
             client_init_message: ClientInit = ClientInit(body.decode())
             LOGGER.info(f"client_msg: {client_init_message.__str__()} at {threading.current_thread()}")
@@ -44,12 +47,12 @@ class ServerConsumer(Consumer):
 
             # Build response message
             response = ServerInitResponseToClient()
-            response.session_id = client_init_message.sessionid
+            response.session_id = client_init_message.session_id
             response.client_id = new_worker.uuid
-            response.model_url = self.dependencies.cloud_storage.get_newest_global_model()
+            response.model_url = self.cloud_storage.get_newest_global_model()
             # generate minio keys
             with lock:
-                access_key, secret_key = self.dependencies.cloud_storage.generate_keys(new_id, response.session_id)
+                access_key, secret_key = self.cloud_storage.generate_keys(new_id, response.session_id)
 
             response.access_key = access_key
             response.secret_key = secret_key
@@ -64,19 +67,19 @@ class ServerConsumer(Consumer):
 
             #  add to worker.
             with lock:
-                self.dependencies.worker_manager.add_worker(new_worker)
-                number_of_online_workers = self.dependencies.worker_manager.total()
+                self.worker_manager.add_worker(new_worker)
+                number_of_online_workers = self.worker_manager.total()
 
             if number_of_online_workers > 1:
                 # construct message.
                 msg = ServerNotifyModelToClient()
-                msg.model_id = self.dependencies.server.strategy.model_id
+                msg.model_id = self.strategy.model_id
                 msg.chosen_id = []
-                msg.global_model_link = f"global_model_{self.dependencies.server.strategy.current_version}"
+                msg.global_model_name = f"global_model_{self.strategy.current_version}"
                 msg.global_model_version = msg.model_id
-                msg.avg_loss = self.dependencies.server.strategy.avg_loss
+                msg.avg_loss = self.strategy.avg_loss
                 msg.timestamp = 0
-                msg.global_model_update_data_size = self.dependencies.server.strategy.global_model_update_data_size
+                msg.global_model_update_data_size = self.strategy.global_model_update_data_size
 
                 self._channel.basic_publish(
                     Config.TRAINING_EXCHANGE,
@@ -91,7 +94,7 @@ class ServerConsumer(Consumer):
             # download model!
             with lock:
                 # self.container.cloud_storage.download(f'{client_noty_message.client_id}/{client_noty_message.link}')
-                self.dependencies.worker_manager.add_local_update(client_noty_message)
+                self.worker_manager.add_local_update(client_noty_message)
 
             # print out
             LOGGER.info(f"New model from {client_noty_message.client_id} is successfully downloaded! ")

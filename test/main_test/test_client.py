@@ -1,4 +1,6 @@
 from fedasync.client.client import Client
+from fedasync.client.client_tensorflow import ClientTensorflow
+
 
 class MyClient(Client):
     def set_weights(self, weights):
@@ -19,5 +21,7 @@ class MyClient(Client):
     def create_model(self):
         pass
 
+
+tf_client = ClientTensorflow()
 client = MyClient()
 client.run()
