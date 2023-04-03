@@ -22,6 +22,5 @@ class MyClient(Client):
         pass
 
 
-tf_client = ClientTensorflow()
-client = MyClient()
-client.run()
+tf_client = ClientTensorflow(None, None, None, None)
+tf_client.run()

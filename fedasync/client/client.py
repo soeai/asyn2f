@@ -16,14 +16,14 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 lock = threading.Lock()
-
+# Config.QUEUE_NAME = 'client_queue'
 
 class Client(QueueConnector):
     def __init__(self):
         super().__init__()
 
         # Dependencies
-        self.local_version = None
+        self.local_version = 0
         self.global_avg_loss = None
         self.global_model_update_data_size = None
         self.global_model_version = None
@@ -33,7 +33,7 @@ class Client(QueueConnector):
         # variables.
         self.client_id = ""
         self.is_training = False
-        self.session_id = uuid.uuid4()
+        self.session_id = str(uuid.uuid4())
         self._new_model_flag = False
         self._is_registration = False
 
@@ -54,7 +54,7 @@ class Client(QueueConnector):
             Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT
         )
-
+        self.publish_init_message()
         self.start_consuming()
 
     def on_message(self, channel, basic_deliver, properties, body):
@@ -63,12 +63,11 @@ class Client(QueueConnector):
         if basic_deliver.routing_key == RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT:
             decoded = json.loads(bytes.decode(body))
             message = ServerInitResponseToClient(decoded)
-
             # get only the message that server reply to it base on the session_id
             if self.session_id == message.session_id:
                 # set client property from message
                 self.client_id = message.client_id
-                self.client_id.global_model_name = message.model_url
+                self.global_model_name = message.model_url
 
                 LOGGER.info(
                     f'Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}')
@@ -143,3 +142,8 @@ class Client(QueueConnector):
     @abstractmethod
     def evaluate(self):
         pass
+
+    def publish_init_message(self):
+        message = ClientInit()
+        message.session_id = self.session_id
+        self.init_connect_to_server(message.serialize())

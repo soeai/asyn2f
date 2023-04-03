@@ -11,6 +11,7 @@ class ClientTensorflow(Client):
 
     def __init__(self, model, x_train, y_train, batch_size, x_test=None, y_test=None):
         super().__init__()
+        self.model = model
 
         # variables
         self.new_weight = None
