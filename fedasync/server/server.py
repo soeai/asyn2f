@@ -74,8 +74,8 @@ class Server(ABC):
 
     def update(self):
         with lock:
-            local_weights = self.worker_manager.get_all()
-            self.strategy.aggregate(local_weights)
+            workers = self.worker_manager.get_all()
+            self.strategy.aggregate(workers)
 
     @abstractmethod
     def is_stop_condition(self):
