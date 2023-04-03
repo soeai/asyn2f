@@ -8,9 +8,6 @@ Config.QUEUE_URL = "amqp://guest:guest@localhost:5672/%2F"
 Config.TRAINING_EXCHANGE = "training_exchange"
 Config.TMP_MODEL_FOLDER = "./tmp_folder"
 
-strategy = AsyncFL()
-strategy.current_version = 0
-
 
 class FedAsyncServer(Server):
     def __init__(self, strategy: Strategy):
@@ -19,6 +16,9 @@ class FedAsyncServer(Server):
     def is_stop_condition(self):
         return False
 
+
+strategy = AsyncFL()
+strategy.current_version = 0
 
 fedasync_server = FedAsyncServer(strategy)
 fedasync_server.run()
