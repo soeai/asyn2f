@@ -59,7 +59,7 @@ class Message:
         for key in self.__dict__:
             # If the attribute is a basic data type (str, list, dict, int, tuple, set),
             # add it to the dictionary with its key
-            if type(self.__dict__[key]) in [str, list, dict, int, tuple, set]:
+            if type(self.__dict__[key]) in [str, list, dict, int, tuple, set, float]:
                 result[key] = self.__dict__[key]
             # If the attribute is an object, add its dictionary representation to the dictionary
             else:

@@ -61,6 +61,7 @@ class Server(ABC):
             if n_local_updates == 0:
                 sleep(self.t)
             elif n_local_updates > 0:
+                print('publish global model')
                 self.update()
                 self.publish_global_model()
 
@@ -93,4 +94,4 @@ class Server(ABC):
 
         # Send message
         with lock:
-            self.server_queue_connector.notify_global_model_to_client(msg.serialize())
+            self.server_queue_connector.notify_global_model_to_client(msg)

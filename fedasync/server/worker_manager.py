@@ -51,7 +51,7 @@ class WorkerManager:
 
     def get_n_local_update(self, global_model_version):
         LOGGER.info("Get n local updates")
-        return self.total()
+        return len(self.weight_pool)
 
     def add_local_update(self, message: ClientNotifyModelToServer):
         pass
