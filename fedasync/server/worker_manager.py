@@ -2,17 +2,13 @@ import logging
 from typing import List, Dict
 from .objects import Worker
 from ..commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
-from ..commons.messages.message import Message
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
 LOGGER = logging.getLogger(__name__)
 
-class WorkerManager:
-    """
-    Implement methods that manage Workers here!
-    """
 
+class WorkerManager:
     def __init__(self) -> None:
         """
             Initialize a WorkerManager object.
@@ -35,7 +31,8 @@ class WorkerManager:
         Args:
             worker (Worker): The Worker object to add.
         """
-        LOGGER.info("Add worker")
+        LOGGER.info(f"New worker added, ID: {worker.uuid}")
+        self.worker_pool[worker.uuid] = worker
 
     def total(self) -> int:
         """Get the total number of Workers.
@@ -54,7 +51,7 @@ class WorkerManager:
 
     def get_n_local_update(self, global_model_version):
         LOGGER.info("Get n local updates")
-        return self.total()
+        return len(self.weight_pool)
 
     def add_local_update(self, message: ClientNotifyModelToServer):
         pass

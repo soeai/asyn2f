@@ -2,9 +2,10 @@ import logging
 from abc import abstractmethod, ABC
 from time import sleep
 
+from fedasync.commons.conf import StorageConfig
 from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
-from fedasync.server.dependencies_container import DependenciesContainer
-from fedasync.server.server_queue_manager import ServerConsumer, ServerProducer
+from fedasync.server.server_queue_connector import ServerQueueConnector
+from fedasync.server.server_storage_connector import ServerStorage
 from fedasync.server.strategies import Strategy
 from fedasync.server.worker_manager import WorkerManager
 import threading
@@ -28,20 +29,26 @@ class Server(ABC):
         self.strategy = strategy
 
         # Server's self.container
-        self.dependencies: DependenciesContainer = DependenciesContainer()
-        # self.container.cloud_storage = CloudStorageConnector()
-        self.dependencies.worker_manager = WorkerManager()
-        self.dependencies.queue_consumer = ServerConsumer(self.dependencies)
-        self.dependencies.queue_producer = ServerProducer()
-        self.dependencies.server = self
-        self.strategy = self.strategy
+        self.server_access_key = 'minioadmin'
+        self.server_secret_key = 'minioadmin'
+
+        if StorageConfig.ACCESS_KEY == "" or StorageConfig.SECRET_KEY == "":
+            StorageConfig.ACCESS_KEY = self.server_access_key
+            StorageConfig.SECRET_KEY = self.server_secret_key
+
+        # Get dependencies via DIContainer
+        self.worker_manager: WorkerManager = WorkerManager()
+        self.server_storage: ServerStorage = ServerStorage()
+        self.server_queue_connector: ServerQueueConnector = ServerQueueConnector(
+            strategy=self.strategy,
+            cloud_storage=self.server_storage,
+            worker_manager=self.worker_manager
+        )
 
     def run(self):
 
-        total_online_worker = self.dependencies.worker_manager.get_all()
-
         # create 1 thread to listen on the queue.
-        consuming_thread = threading.Thread(target=self.dependencies.queue_consumer.run,
+        consuming_thread = threading.Thread(target=self.server_queue_connector.run,
                                             name="fedasync_server_consuming_thread")
 
         # run the consuming thread!.
@@ -49,11 +56,12 @@ class Server(ABC):
 
         while True:
             with lock:
-                n_local_updates = self.dependencies.worker_manager.get_n_local_update(self.strategy.current_version)
+                n_local_updates = self.worker_manager.get_n_local_update(self.strategy.current_version)
                 LOGGER.info(f"Check, n_local_update = {n_local_updates}")
             if n_local_updates == 0:
                 sleep(self.t)
             elif n_local_updates > 0:
+                print('publish global model')
                 self.update()
                 self.publish_global_model()
 
@@ -63,12 +71,12 @@ class Server(ABC):
 
     def stop_listening(self):
         with lock:
-            self.dependencies.queue_consumer.stop()
+            self.server_queue_connector.stop()
 
     def update(self):
         with lock:
-            local_weights = self.dependencies.worker_manager.get_all()
-        self.strategy.aggregate(local_weights)
+            local_weights = self.worker_manager.get_all()
+            self.strategy.aggregate(local_weights)
 
     @abstractmethod
     def is_stop_condition(self):
@@ -78,11 +86,12 @@ class Server(ABC):
         # Construct message
         msg = ServerNotifyModelToClient()
         msg.model_id = self.strategy.model_id
-        msg.global_model_link = self.strategy.get_global_model_filename()
+        msg.global_model_name = self.strategy.get_global_model_filename()
         msg.global_model_version = self.strategy.current_version
         msg.avg_loss = self.strategy.avg_loss
         msg.chosen_id = []
         msg.global_model_update_data_size = self.strategy.global_model_update_data_size
 
         # Send message
-        self.dependencies.queue_producer.notify_global_model_to_client(msg.serialize())
+        with lock:
+            self.server_queue_connector.notify_global_model_to_client(msg)
