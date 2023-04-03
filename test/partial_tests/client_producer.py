@@ -1,4 +1,4 @@
-from fedasync.client.client_queue_manager import ClientProducer
+from fedasync.client.client import ClientProducer
 from fedasync.commons.conf import Config
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit
 

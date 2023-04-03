@@ -9,6 +9,7 @@ Config.TRAINING_EXCHANGE = "training_exchange"
 Config.TMP_MODEL_FOLDER = "./tmp_folder"
 
 strategy = AsyncFL()
+strategy.current_version = 0
 
 
 class FedAsyncServer(Server):
