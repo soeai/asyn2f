@@ -9,6 +9,10 @@ class ServerStorage(MinioConnector):
     def __init__(self):
         super().__init__(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY)
         self.admin = MinioAdmin(target='minio')
+        # check if bucket global-models is existing or not, if not then create one
+        if not self.client.bucket_exists('global-models'):
+            self.client.make_bucket('global-models')
+
 
     def generate_keys(self, client_id, session_id):
         self.client.make_bucket(client_id)

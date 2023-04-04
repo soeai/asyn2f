@@ -32,10 +32,10 @@ class ClientTensorflow(Client):
         LOGGER.info("ClientModel Start Training")
 
         for b in range(self.batch_size):
-            if self.__new_model_flag:
-                LOGGER.info(f"New model ? - {self.__new_model_flag}")
+            if self._new_model_flag:
+                LOGGER.info(f"New model ? - {self._new_model_flag}")
                 self.__merge()
-                self.__new_model_flag = False
+                self._new_model_flag = False
             else:
                 LOGGER.info("training as normal")
                 pass
