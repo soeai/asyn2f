@@ -13,7 +13,6 @@ class ServerStorage(MinioConnector):
         if not self.client.bucket_exists('global-models'):
             self.client.make_bucket('global-models')
 
-
     def generate_keys(self, client_id, session_id):
         self.client.make_bucket(client_id)
         new_key = self.admin.user_add(client_id, session_id)

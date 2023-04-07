@@ -23,4 +23,4 @@ class MyClient(Client):
 
 
 tf_client = ClientTensorflow(None, None, None, None)
-tf_client.run()
+tf_client.run_queue()

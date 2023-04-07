@@ -28,3 +28,4 @@ class StorageConfig:
     STORAGE_URL: str = ""
     ACCESS_KEY = ""
     SECRET_KEY = ""
+    BUCKET_NAME = ""
