@@ -21,4 +21,4 @@ strategy = AsyncFL()
 strategy.current_version = 0
 
 fedasync_server = FedAsyncServer(strategy)
-fedasync_server.run()
+fedasync_server.run_queue()
