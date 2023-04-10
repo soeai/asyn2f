@@ -18,7 +18,7 @@ Config.TRAINING_EXCHANGE = "training_exchange"
 Config.TMP_GlOBAL_MODEL_FOLDER = "./tmp_folder"
 
 strategy = AsyncFL()
-strategy.current_version = 0
+strategy.current_version = 1
 
 fedasync_server = FedAsyncServer(strategy)
 fedasync_server.run()
