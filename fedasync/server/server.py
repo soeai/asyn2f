@@ -31,15 +31,15 @@ class Server(QueueConnector):
         # Server variables
         super().__init__()
         self.t = t
-        self.alpha: dict = {}
         self.strategy = strategy
         # variables
         self.is_downloading = False
 
-        # Server
+        # Server account for minio by default.
         self.server_access_key = 'minioadmin'
         self.server_secret_key = 'minioadmin'
 
+        # if there is no key assign by the user => set default key for the storage config.
         if StorageConfig.ACCESS_KEY == "" or StorageConfig.SECRET_KEY == "":
             StorageConfig.ACCESS_KEY = self.server_access_key
             StorageConfig.SECRET_KEY = self.server_secret_key
@@ -72,10 +72,8 @@ class Server(QueueConnector):
             response.model_url = self.cloud_storage.get_newest_global_model()
             # generate minio keys
             with lock:
-                access_key, secret_key = self.cloud_storage.generate_keys(new_id, response.session_id)
-
-            response.access_key = access_key
-            response.secret_key = secret_key
+                response.access_key, response.secret_key = self.cloud_storage.generate_keys(new_id, response.session_id)
+                LOGGER.info("Failed here")
 
             LOGGER.info(f"server response: {response.__str__()} at {threading.current_thread()}")
 
@@ -105,7 +103,7 @@ class Server(QueueConnector):
 
             # download model!
             with lock:
-                # self.container.cloud_storage.download(f'{client_noty_message.client_id}/{client_noty_message.link}')
+                self.cloud_storage.download(f'{client_noty_message.client_id}/{client_noty_message.weight_file}')
                 self.worker_manager.add_local_update(client_noty_message)
 
             # print out
@@ -165,16 +163,20 @@ class Server(QueueConnector):
             elif n_local_updates > 0:
                 print('publish global model')
                 self.update()
-                self.publish_global_model()
 
-            if self.is_stop_condition():
-                self.stop()
-                break
+                if self.is_stop_condition():
+                    self.stop()
+                    break
+
+                self.publish_global_model()
+                # clear worker queue after aggregation.
+                self.worker_manager.worker_update_queue.clear()
 
     def update(self):
         with lock:
             workers = self.worker_manager.get_all()
-            self.strategy.aggregate(workers)
+
+        self.strategy.aggregate(workers, self.worker_manager.worker_update_queue)
 
     @abstractmethod
     def is_stop_condition(self):

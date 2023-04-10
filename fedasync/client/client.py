@@ -16,6 +16,8 @@ LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
 LOGGER = logging.getLogger(__name__)
 
 lock = threading.Lock()
+
+
 # Config.QUEUE_NAME = 'client_queue'
 
 class Client(QueueConnector):
@@ -36,6 +38,10 @@ class Client(QueueConnector):
         self.session_id = str(uuid.uuid4())
         self._new_model_flag = False
         self._is_registration = False
+
+    # Run the client
+    def run(self):
+        self.run_queue()
 
     def setup(self):
 

@@ -9,9 +9,10 @@ class ClientNotifyModelToServer(Message):
         self.global_model_version_used = 1
         self.timestamp = 1213214
         self.loss_value = 1.42
-        self.link = "minio/model1"
-        self.performance = ""
-        self.batch_size = ""
+        self.weight_file = "local_version_v1.pickle"
+        self.performance = 0.0
+        self.batch_size = 0.0
+        self.alpha = 0.0
 
         # Run deserialize message function.
         self.deserialize(message)
