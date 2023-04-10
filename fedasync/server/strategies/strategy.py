@@ -1,3 +1,4 @@
+import uuid
 from typing import List, Dict
 from abc import ABC, abstractmethod
 from fedasync.server.objects.worker import Worker
@@ -11,7 +12,7 @@ class Strategy(ABC):
 
     def __init__(self):
         self.current_version = 0
-        self.model_id = 0
+        self.model_id = str(uuid.uuid4())
         self.avg_loss = 0.0
         self.global_model_update_data_size = 0
 
@@ -20,22 +21,16 @@ class Strategy(ABC):
         return f"{self.model_id}_v{self.current_version}"
 
     @abstractmethod
-    def initialize_parameters(self):
-        pass
-
-    @abstractmethod
     def select_client(self, all_clients) -> List[str]:
-
-        """ Implement the client selection logic by 
+        """ Implement the client selection logic by
         """
 
     @abstractmethod
-    def aggregate(self, workers) -> None:
-
+    def aggregate(self, all_workers, completed_workers) -> None:
         """Aggregate algorithm.
         """
 
     @abstractmethod
-    def get_model_weights(self):
+    def get_model_weights(self, file_path):
         """
         """

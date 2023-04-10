@@ -20,11 +20,11 @@ class WorkerManager:
         # all worker information
         self.worker_pool: Dict[str, Worker] = {}
 
+        # workers that send local update model to queue
+        self.worker_update_queue: Dict[str, Worker] = {}
+
         # save history state by version.
         self.history_state: Dict[int, Dict[str, Worker]] = {}
-
-        # save local weights by version
-        self.weight_pool: Dict[int, Dict] = {}
 
     def add_worker(self, worker: Worker) -> None:
         """Add a Worker to the worker_pools attribute.
@@ -51,7 +51,23 @@ class WorkerManager:
 
     def get_n_local_update(self, global_model_version):
         LOGGER.info("Get n local updates")
-        return len(self.weight_pool)
+        return len(self.worker_update_queue)
 
     def add_local_update(self, message: ClientNotifyModelToServer):
-        pass
+        # update worker states with information from local worker.
+        client_id = message.client_id
+        self.worker_pool[client_id].loss = message.loss_value
+        self.worker_pool[client_id].current_version = message.global_model_version_used
+        self.worker_pool[client_id].weight_file = message.weight_file
+        self.worker_pool[client_id].batch_size = message.batch_size
+        self.worker_pool[client_id].alpha = message.alpha
+
+        self.worker_update_queue[client_id] = self.worker_pool[client_id]
+
+    def get_worker_update_by_version(self, version):
+        workers = {}
+        for w_id in self.worker_pool:
+            if self.worker_pool[w_id].current_version == version:
+                workers[w_id] = self.worker_pool[w_id]
+
+        return workers
