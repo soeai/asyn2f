@@ -1,3 +1,4 @@
+from copy import copy
 from typing import List, Dict
 
 import numpy as np
@@ -17,9 +18,6 @@ class AsyncFL(Strategy):
         super().__init__()
         self.alpha: Dict = {}
 
-    def calculate_beta(self):
-        pass
-
     def get_global_model_filename(self):
         return f"{self.model_id}_v{self.current_version}.npy"
 
@@ -28,38 +26,33 @@ class AsyncFL(Strategy):
 
     def aggregate(self, workers: dict[str, Worker], completed_workers: dict[str, Worker]) -> None:
         print("Aggregate_______________________")
-        total_weight: ndarray = None
 
         # Get all workers that has the weight version with server
         completed_workers: dict[str, Worker] = completed_workers
         self.current_version += 1
-        beta = {}
-        total_beta = 0
 
-        if len(completed_workers) > 0:
+        total_beta = sum([completed_workers[w_id].alpha for w_id in completed_workers])
+        beta = {w_id: completed_workers[w_id].alpha / total_beta for w_id in completed_workers}
 
-            for w_id in completed_workers:
-                total_beta += completed_workers[w_id].alpha
+        # Create a new weight with the same shape and type as a given weight.
+        merged_weight = None
+        for cli_id in completed_workers:
+            weight_file = completed_workers[cli_id].get_weight_file_path()
 
-            for w_id in completed_workers:
-                beta[w_id] = completed_workers[w_id].alpha / total_beta
+            # Load the array from the specified file using the numpy.load function
+            weight = self.get_model_weights(weight_file)
 
-            for cli_id in completed_workers:
-                weight_file = completed_workers[cli_id].get_weight_file_path()
-
-                # Load the array from the specified file using the numpy.load function
-                weight = self.get_model_weights(weight_file)
-
-                # if total weight is not set
-                if total_weight is None:
-                    total_weight = weight
-                else:
-                    for layers in range(len(weight)):
-                        total_weight[layers] += 1 / len(completed_workers) * (
-                                beta[cli_id] / (self.current_version - completed_workers[cli_id].current_version)) * \
-                                        weight[layers]
+            if merged_weight is None:
+                merged_weight = copy(weight)
+            else:
+                for layers in range(len(weight)):
+                    merged_weight[layers] += 1 / len(completed_workers) * (
+                            beta[cli_id] / (self.current_version - completed_workers[cli_id].current_version)) * \
+                                             weight[layers]
 
         # save weight file.
+        np.save(Config.TMP_GLOBAL_MODEL_FOLDER + self.get_global_model_filename(), merged_weight)
+        print(merged_weight)
 
     def get_model_weights(self, file_path) -> ndarray:
         return np.load(file_path, allow_pickle=True)

@@ -6,6 +6,7 @@ class ServerInitResponseToClient(Message):
         self.session_id = ""
         self.client_id = ""
         self.model_url = ""
+        self.model_version = ""
         self.access_key = ""
         self.secret_key = ""
 

@@ -27,17 +27,18 @@ class Server(QueueConnector):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, t: int = 30) -> None:
+    def __init__(self, strategy: Strategy, t: int = 30, server_access_key='minioadmin', server_secret_key='minioadmin') -> None:
         # Server variables
         super().__init__()
         self.t = t
         self.strategy = strategy
         # variables
         self.is_downloading = False
+        self.is_new_global_model = False
 
         # Server account for minio by default.
-        self.server_access_key = 'minioadmin'
-        self.server_secret_key = 'minioadmin'
+        self.server_access_key = server_access_key
+        self.server_secret_key = server_secret_key
 
         # if there is no key assign by the user => set default key for the storage config.
         if StorageConfig.ACCESS_KEY == "" or StorageConfig.SECRET_KEY == "":
@@ -70,6 +71,7 @@ class Server(QueueConnector):
             response.session_id = client_init_message.session_id
             response.client_id = new_worker.uuid
             response.model_url = self.cloud_storage.get_newest_global_model()
+            response.model_version = self.strategy.current_version
             # generate minio keys
             with lock:
                 response.access_key, response.secret_key = self.cloud_storage.generate_keys(new_id, response.session_id)
@@ -169,7 +171,7 @@ class Server(QueueConnector):
                     break
 
                 self.publish_global_model()
-                # clear worker queue after aggregation.
+                # Clear worker queue after aggregation.
                 self.worker_manager.worker_update_queue.clear()
 
     def update(self):

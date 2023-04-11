@@ -74,6 +74,7 @@ class Client(QueueConnector):
                 # set client property from message
                 self.client_id = message.client_id
                 self.global_model_name = message.model_url
+                self.global_model_version = message.model_version
 
                 LOGGER.info(
                     f'Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}')
@@ -81,10 +82,23 @@ class Client(QueueConnector):
                 StorageConfig.SECRET_KEY = message.secret_key
 
                 self.storage_connector = ClientStorage(self.client_id)
+                # if local model version is smaller than the global model version and client's id is in the chosen ids
+                if self.local_version < self.global_model_version:
+                    LOGGER.info("Found new model.")
+                    # download model
+                    self.storage_connector.get_model(self.global_model_name)
 
-                # download model.
-                self.storage_connector.get_model(self.global_model_name)
-                self._new_model_flag = True
+                    # change the flag to true.
+                    self._new_model_flag = True
+
+                    # start 1 thread to train model.
+                    if not self.is_training:
+                        training_thread = threading.Thread(
+                            target=self.train,
+                            name="client_training_thread")
+
+                        self.is_training = True
+                        training_thread.start()
 
         elif basic_deliver.routing_key == RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT:
             # download model.
