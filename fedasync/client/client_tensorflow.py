@@ -30,7 +30,7 @@ class ClientTensorflow(Client):
     def train(self):
 
         LOGGER.info("ClientModel Start Training")
-
+        return
         for b in range(self.batch_size):
             if self._new_model_flag:
                 LOGGER.info(f"New model ? - {self._new_model_flag}")
@@ -40,7 +40,9 @@ class ClientTensorflow(Client):
                 LOGGER.info("training as normal")
                 pass
 
+
                 # train as normal
+        return self.get_weights()
 
     def evaluate(self):
         pass

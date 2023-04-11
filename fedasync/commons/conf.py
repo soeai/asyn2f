@@ -21,7 +21,7 @@ class Config:
     TRAINING_EXCHANGE: str = "training_exchange"
 
     # this folder is used to save local models
-    TMP_GlOBAL_MODEL_FOLDER = "./data/global_weights"
+    TMP_GLOBAL_MODEL_FOLDER = "./data/global_weights"
     TMP_LOCAL_MODEL_FOLDER = "./data/local_weights"
 
 
