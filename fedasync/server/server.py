@@ -27,7 +27,7 @@ class Server(QueueConnector):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, t: int = 30, server_access_key='minioadmin', server_secret_key='minioadmin') -> None:
+    def __init__(self, strategy: Strategy, t: int = 30) -> None:
         # Server variables
         super().__init__()
         self.t = t
@@ -37,9 +37,10 @@ class Server(QueueConnector):
         self.is_new_global_model = False
 
         # Server account for minio by default.
-        self.server_access_key = server_access_key
-        self.server_secret_key = server_secret_key
+        self.server_access_key = 'minioadmin'
+        self.server_secret_key = 'minioadmin'
 
+        # NOTE: Any worker/server is forced to declare config attributes before running.
         # if there is no key assign by the user => set default key for the storage config.
         if StorageConfig.ACCESS_KEY == "" or StorageConfig.SECRET_KEY == "":
             StorageConfig.ACCESS_KEY = self.server_access_key
@@ -61,7 +62,7 @@ class Server(QueueConnector):
             # Create worker and add to Worker Manager.
             new_id = str(uuid.uuid4())
             new_worker = Worker(
-                uuid=str(uuid.uuid4()),
+                worker_id=str(uuid.uuid4()),
                 sys_info=client_init_message.sys_info,
                 data_desc=client_init_message.data_desc,
                 qod=client_init_message.qod
@@ -74,7 +75,7 @@ class Server(QueueConnector):
             # Build response message
             response = ServerInitResponseToClient(
                 session_id=client_init_message.session_id,
-                client_id=new_worker.uuid,
+                client_id=new_worker.worker_id,
                 model_url=self.cloud_storage.get_newest_global_model(),
                 model_version=self.strategy.current_version,
                 access_key=access_key,
@@ -87,7 +88,6 @@ class Server(QueueConnector):
             # Add worker to Worker Manager.
             with lock:
                 self.worker_manager.add_worker(new_worker)
-                number_of_online_workers = self.worker_manager.total()
 
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
             client_noty_message = ClientNotifyModelToServer()
@@ -95,7 +95,9 @@ class Server(QueueConnector):
 
             # Download model!
             with lock:
-                self.cloud_storage.download(f'{client_noty_message.client_id}/{client_noty_message.weight_file}')
+                self.cloud_storage.download(client_noty_message.client_id,
+                                            f'{client_noty_message.client_id}/{client_noty_message.weight_file}',
+                                            Config.TMP_LOCAL_MODEL_FOLDER)
                 self.worker_manager.add_local_update(client_noty_message)
             LOGGER.info(f"New model from {client_noty_message.client_id} is successfully downloaded! ")
 
@@ -142,7 +144,7 @@ class Server(QueueConnector):
 
         while True:
             with lock:
-                n_local_updates = self.worker_manager.get_n_local_update(self.strategy.current_version)
+                n_local_updates = len(self.worker_manager.get_completed_workers())
                 LOGGER.info(f"Check, n_local_update = {n_local_updates}")
             if n_local_updates == 0:
                 sleep(self.t)
@@ -155,14 +157,12 @@ class Server(QueueConnector):
                     break
 
                 self.publish_global_model()
+
                 # Clear worker queue after aggregation.
-                self.worker_manager.worker_update_queue.clear()
+                self.worker_manager.update_worker_after_training()
 
     def update(self):
-        with lock:
-            workers = self.worker_manager.get_all()
-
-        self.strategy.aggregate(workers, self.worker_manager.worker_update_queue)
+        self.strategy.aggregate(self.worker_manager)
 
     @abstractmethod
     def is_stop_condition(self):
@@ -180,5 +180,4 @@ class Server(QueueConnector):
             global_model_update_data_size=self.strategy.global_model_update_data_size
         )
         # Send message
-        with lock:
-            self.notify_global_model_to_client(msg)
+        self.notify_global_model_to_client(msg)
