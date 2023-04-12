@@ -1,7 +1,6 @@
 import uuid
 from typing import List, Dict
 from abc import ABC, abstractmethod
-from fedasync.server.objects.worker import Worker
 
 
 class Strategy(ABC):
