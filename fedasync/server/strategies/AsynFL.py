@@ -13,7 +13,7 @@ from fedasync.server.strategies import Strategy
 from fedasync.server.worker_manager import WorkerManager
 
 
-class AsyncFL(Strategy):
+class AsynFL(Strategy):
     def __init__(self):
         super().__init__()
         self.alpha: Dict = {}
@@ -31,8 +31,8 @@ class AsyncFL(Strategy):
         completed_workers: dict[str, Worker] = completed_workers
         self.current_version += 1
 
-        total_beta = sum([completed_workers[w_id].alpha for w_id in completed_workers])
-        beta = {w_id: completed_workers[w_id].alpha / total_beta for w_id in completed_workers}
+        sum_alpha = sum([completed_workers[w_id].alpha for w_id in completed_workers])
+        alpha = {w_id: completed_workers[w_id].alpha / sum_alpha for w_id in completed_workers}
 
         # Create a new weight with the same shape and type as a given weight.
         merged_weight = None
@@ -47,7 +47,7 @@ class AsyncFL(Strategy):
             else:
                 for layers in range(len(weight)):
                     merged_weight[layers] += 1 / len(completed_workers) * (
-                            beta[cli_id] / (self.current_version - completed_workers[cli_id].current_version)) * \
+                            alpha[cli_id] / (self.current_version - completed_workers[cli_id].current_version)) * \
                                              weight[layers]
 
         # save weight file.

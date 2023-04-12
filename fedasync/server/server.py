@@ -53,87 +53,70 @@ class Server(QueueConnector):
 
         if method.routing_key == RoutingRules.CLIENT_INIT_SEND_TO_SERVER:
 
-            # get message and convert it
-            client_init_message: ClientInit = ClientInit(body.decode())
+            # Get message from Client
+            client_init_message: ClientInit = ClientInit()
+            client_init_message.deserialize(body.decode())
             LOGGER.info(f"client_msg: {client_init_message.__str__()} at {threading.current_thread()}")
 
-            # create worker and add worker to manager.
+            # Create worker and add to Worker Manager.
             new_id = str(uuid.uuid4())
             new_worker = Worker(
-                new_id,
-                client_init_message.sys_info,
-                client_init_message.data_desc,
-                client_init_message.qod
+                uuid=str(uuid.uuid4()),
+                sys_info=client_init_message.sys_info,
+                data_desc=client_init_message.data_desc,
+                qod=client_init_message.qod
             )
 
-            # Build response message
-            response = ServerInitResponseToClient()
-            response.session_id = client_init_message.session_id
-            response.client_id = new_worker.uuid
-            response.model_url = self.cloud_storage.get_newest_global_model()
-            response.model_version = self.strategy.current_version
-            # generate minio keys
+            # Generate minio keys
             with lock:
-                response.access_key, response.secret_key = self.cloud_storage.generate_keys(new_id, response.session_id)
-                LOGGER.info("Failed here")
+                access_key, secret_key = self.cloud_storage.generate_keys(new_id, client_init_message.session_id)
 
+            # Build response message
+            response = ServerInitResponseToClient(
+                session_id=client_init_message.session_id,
+                client_id=new_worker.uuid,
+                model_url=self.cloud_storage.get_newest_global_model(),
+                model_version=self.strategy.current_version,
+                access_key=access_key,
+                secret_key=secret_key
+
+            )
             LOGGER.info(f"server response: {response.__str__()} at {threading.current_thread()}")
-
             self.response_to_client_init_connect(response)
 
-            #  add to worker.
+            # Add worker to Worker Manager.
             with lock:
                 self.worker_manager.add_worker(new_worker)
                 number_of_online_workers = self.worker_manager.total()
 
-            if number_of_online_workers > 1:
-                # construct message.
-                msg = ServerNotifyModelToClient()
-                msg.model_id = self.strategy.model_id
-                msg.chosen_id = []
-                msg.global_model_name = f"global_model_{self.strategy.current_version}"
-                msg.global_model_version = msg.model_id
-                msg.avg_loss = self.strategy.avg_loss
-                msg.timestamp = 0
-                msg.global_model_update_data_size = self.strategy.global_model_update_data_size
-
-                self.notify_global_model_to_client(message=msg)
-
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
-            # download local model.
-            client_noty_message = ClientNotifyModelToServer(body.decode())
+            client_noty_message = ClientNotifyModelToServer()
+            client_noty_message.deserialize(body.decode())
 
-            # download model!
+            # Download model!
             with lock:
                 self.cloud_storage.download(f'{client_noty_message.client_id}/{client_noty_message.weight_file}')
                 self.worker_manager.add_local_update(client_noty_message)
-
-            # print out
             LOGGER.info(f"New model from {client_noty_message.client_id} is successfully downloaded! ")
 
     def setup(self):
-        # declare exchange.
+        # Declare exchange, queue, binding.
         self._channel.exchange_declare(exchange=Config.TRAINING_EXCHANGE, exchange_type=self.EXCHANGE_TYPE)
-
-        # declare queue
         self._channel.queue_declare(queue=Config.QUEUE_NAME)
-
-        # binding.
         self._channel.queue_bind(
             Config.QUEUE_NAME,
             Config.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER
         )
-
         self._channel.queue_bind(
             Config.QUEUE_NAME,
             Config.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_INIT_SEND_TO_SERVER
         )
-
         self.start_consuming()
 
     def notify_global_model_to_client(self, message):
+        # Send notify message to client.
         self._channel.basic_publish(
             Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
@@ -141,6 +124,7 @@ class Server(QueueConnector):
         )
 
     def response_to_client_init_connect(self, message):
+        # Send response message to client.
         self._channel.basic_publish(
             Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT,
@@ -185,15 +169,16 @@ class Server(QueueConnector):
         return False
 
     def publish_global_model(self):
+        print('Publish global model (sv notify model to client)')
         # Construct message
-        msg = ServerNotifyModelToClient()
-        msg.model_id = self.strategy.model_id
-        msg.global_model_name = self.strategy.get_global_model_filename()
-        msg.global_model_version = self.strategy.current_version
-        msg.avg_loss = self.strategy.avg_loss
-        msg.chosen_id = []
-        msg.global_model_update_data_size = self.strategy.global_model_update_data_size
-
+        msg = ServerNotifyModelToClient(
+            model_id=self.strategy.model_id,
+            chosen_id=[],
+            global_model_name=f"global_model_{self.strategy.current_version}",
+            global_model_version=self.strategy.current_version,
+            avg_loss=self.strategy.avg_loss,
+            global_model_update_data_size=self.strategy.global_model_update_data_size
+        )
         # Send message
         with lock:
             self.notify_global_model_to_client(msg)

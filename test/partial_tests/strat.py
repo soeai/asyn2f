@@ -1,17 +1,13 @@
 import uuid
-
-import numpy as np
-
 from fedasync.commons.conf import Config
-from fedasync.server.strategies.AsyncFL import AsyncFL
-
+from fedasync.server.strategies.AsynFL import AsynFL
 from fedasync.server.worker_manager import WorkerManager
-
 from fedasync.server.objects.worker import Worker
 
-strat = AsyncFL()
+strat = AsynFL()
 strat.current_version = 1
 Config.TMP_LOCAL_MODEL_FOLDER = './'
+Config.TMP_GLOBAL_MODEL_FOLDER = './'
 worker_manager = WorkerManager()
 for i in range(2):
     worker = Worker("worker" + str(i), "", "")

@@ -1,7 +1,7 @@
 from fedasync.commons.conf import Config
 from fedasync.server.server import Server
 from fedasync.server.strategies import Strategy
-from fedasync.server.strategies.AsyncFL import AsyncFL
+from fedasync.server.strategies.AsynFL import AsynFL
 
 
 class FedAsyncServer(Server):
@@ -17,7 +17,7 @@ Config.QUEUE_URL = "amqp://guest:guest@localhost:5672/%2F"
 Config.TRAINING_EXCHANGE = "training_exchange"
 Config.TMP_GlOBAL_MODEL_FOLDER = "./tmp_folder"
 
-strategy = AsyncFL()
+strategy = AsynFL()
 strategy.current_version = 1
 
 fedasync_server = FedAsyncServer(strategy)

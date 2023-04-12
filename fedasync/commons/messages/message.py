@@ -23,7 +23,6 @@ class Message:
 
 
     """
-
     def deserialize(self, message: Union[str, Dict]) -> object:
         """
         @param message: is a string message taken from rabbitmq

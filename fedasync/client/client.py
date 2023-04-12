@@ -6,7 +6,7 @@ from abc import abstractmethod
 
 from fedasync.client.client_storage_connector import ClientStorage
 from fedasync.commons.conf import Config, RoutingRules, StorageConfig
-from fedasync.commons.messages.client_init_connect_to_server import ClientInit
+from fedasync.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
 from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
 from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
 from fedasync.commons.utils.queue_connector import QueueConnector
@@ -37,7 +37,7 @@ class Client(QueueConnector):
         self.is_training = False
         self.session_id = str(uuid.uuid4())
         self._new_model_flag = False
-        self._is_registration = False
+        self.is_registered = False
 
     # Run the client
     def run(self):
@@ -64,12 +64,13 @@ class Client(QueueConnector):
         self.start_consuming()
 
     def on_message(self, channel, basic_deliver, properties, body):
-
-        # if message come from routing SERVER_INIT_RESPONSE_TO_CLIENT then save the model id.
+        # If message come from routing SERVER_INIT_RESPONSE_TO_CLIENT then save the model id.
         if basic_deliver.routing_key == RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT:
+            message = ServerInitResponseToClient()
             decoded = json.loads(bytes.decode(body))
-            message = ServerInitResponseToClient(decoded)
-            # get only the message that server reply to it base on the session_id
+            message.deserialize(decoded)
+
+            # Get only the message that server reply to it base on the session_id
             if self.session_id == message.session_id:
                 # set client property from message
                 self.client_id = message.client_id
@@ -82,11 +83,13 @@ class Client(QueueConnector):
                 StorageConfig.SECRET_KEY = message.secret_key
 
                 self.storage_connector = ClientStorage(self.client_id)
+                self._is_registered = True
                 # if local model version is smaller than the global model version and client's id is in the chosen ids
                 if self.local_version < self.global_model_version:
                     LOGGER.info("Found new model.")
                     # download model
                     self.storage_connector.get_model(self.global_model_name)
+
 
                     # change the flag to true.
                     self._new_model_flag = True
@@ -100,10 +103,12 @@ class Client(QueueConnector):
                         self.is_training = True
                         training_thread.start()
 
-        elif basic_deliver.routing_key == RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT:
+        elif basic_deliver.routing_key == RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT and self._is_registered:
             # download model.
             decoded = json.loads(bytes.decode(body))
-            msg = ServerNotifyModelToClient(decoded)
+            msg = ServerNotifyModelToClient()
+            msg.deserialize(decoded)
+            print(msg)
 
             LOGGER.info("Receive global model notify.")
 
@@ -164,6 +169,10 @@ class Client(QueueConnector):
         pass
 
     def publish_init_message(self):
-        message = ClientInit()
-        message.session_id = self.session_id
+        message = ClientInit(
+            session_id=self.session_id,
+            sys_info=SysInfo(),
+            data_desc=DataDesc(),
+            qod=QoD(),
+        )
         self.init_connect_to_server(message.serialize())
