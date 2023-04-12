@@ -1,5 +1,4 @@
 import logging
-import tensorflow as tf
 from .client import Client
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
@@ -30,7 +29,7 @@ class ClientTensorflow(Client):
     def train(self):
 
         LOGGER.info("ClientModel Start Training")
-        return
+        # return
         for b in range(self.batch_size):
             if self._new_model_flag:
                 LOGGER.info(f"New model ? - {self._new_model_flag}")
@@ -39,7 +38,6 @@ class ClientTensorflow(Client):
             else:
                 LOGGER.info("training as normal")
                 pass
-
 
                 # train as normal
         return self.get_weights()

@@ -41,3 +41,4 @@ class ServerStorage(MinioConnector):
         else:
             print("Bucket is empty.")
             return None
+

@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict
+from typing import Dict
 from .objects import Worker
 from ..commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 
@@ -20,9 +20,6 @@ class WorkerManager:
         # all worker information
         self.worker_pool: Dict[str, Worker] = {}
 
-        # workers that send local update model to queue
-        self.worker_update_queue: Dict[str, Worker] = {}
-
         # save history state by version.
         self.history_state: Dict[int, Dict[str, Worker]] = {}
 
@@ -31,8 +28,8 @@ class WorkerManager:
         Args:
             worker (Worker): The Worker object to add.
         """
-        LOGGER.info(f"New worker added, ID: {worker.uuid}")
-        self.worker_pool[worker.uuid] = worker
+        LOGGER.info(f"New worker added, ID: {worker.worker_id}")
+        self.worker_pool[worker.worker_id] = worker
 
     def total(self) -> int:
         """Get the total number of Workers.
@@ -49,10 +46,6 @@ class WorkerManager:
         """
         return self.worker_pool
 
-    def get_n_local_update(self, global_model_version):
-        LOGGER.info("Get n local updates")
-        return len(self.worker_update_queue)
-
     def add_local_update(self, message: ClientNotifyModelToServer):
         # update worker states with information from local worker.
         client_id = message.client_id
@@ -61,13 +54,11 @@ class WorkerManager:
         self.worker_pool[client_id].weight_file = message.weight_file
         self.worker_pool[client_id].batch_size = message.batch_size
         self.worker_pool[client_id].alpha = message.alpha
+        self.worker_pool[client_id].is_completed = True
 
-        self.worker_update_queue[client_id] = self.worker_pool[client_id]
+    def update_worker_after_training(self):
+        for worker in self.worker_pool:
+            self.worker_pool[worker].is_completed = False
 
-    def get_worker_update_by_version(self, version):
-        workers = {}
-        for w_id in self.worker_pool:
-            if self.worker_pool[w_id].current_version == version:
-                workers[w_id] = self.worker_pool[w_id]
-
-        return workers
+    def get_completed_workers(self) -> Dict:
+        return {worker_id: self.worker_pool[worker_id] for worker_id in self.worker_pool if self.worker_pool[worker_id].is_completed == True}

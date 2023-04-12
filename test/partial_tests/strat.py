@@ -13,10 +13,10 @@ for i in range(2):
     worker = Worker("worker" + str(i), "", "")
     worker.weight_file = "weights.npy"
     worker.alpha = 1
-    worker.uuid = str(uuid.uuid4())
+    worker.worker_id = str(uuid.uuid4())
     worker.current_version = 1
     worker_manager.add_worker(worker)
-    worker_manager.worker_update_queue[worker.uuid] = worker
+    worker_manager.worker_update_queue[worker.worker_id] = worker
 
 # test strat.aggregate function
 strat.aggregate(worker_manager.worker_pool, worker_manager.worker_update_queue)

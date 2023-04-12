@@ -1,5 +1,3 @@
-from typing import List, Dict
-
 from fedasync.commons.conf import Config
 from fedasync.commons.messages.client_init_connect_to_server import SysInfo, DataDesc, QoD
 
@@ -10,9 +8,9 @@ class Worker:
     - Add more properties to this class.
     """
 
-    def __init__(self, uuid: str, sys_info: SysInfo = None, data_desc: DataDesc = None, qod: QoD = None) -> None:
+    def __init__(self, worker_id: str, sys_info: SysInfo = None, data_desc: DataDesc = None, qod: QoD = None) -> None:
         # Properties
-        self.uuid = uuid
+        self.worker_id = worker_id
         self.sys_info = sys_info
         self.data_desc = data_desc
         self.qod = qod
@@ -23,6 +21,7 @@ class Worker:
         self.batch_size = 0
         self.performance = 0.0
         self.loss = 0.0
+        self.is_completed = False
 
     def get_weight_file_path(self):
         return f'{Config.TMP_LOCAL_MODEL_FOLDER}{self.weight_file}'
@@ -33,13 +32,14 @@ class Worker:
         """
         self.n_update = 0
         self.current_version = 0
-        self.alpha = {}
-        self.performance = {}
-        self.loss = {}
+        self.alpha = 0.0
+        self.performance = 0.0
+        self.loss = 0.0
+        self.is_completed = False
 
     def __str__(self):
         """
         Implement toString function here!
         """
-        return f"Worker: {self.uuid} | n_update: {self.n_update} | current_version: {self.current_version} | alpha: {self.alpha} | performance: {self.performance} | loss: {self.loss}"
+        return f"Worker: {self.worker_id} | n_update: {self.n_update} | current_version: {self.current_version} | alpha: {self.alpha} | performance: {self.performance} | loss: {self.loss}"
 

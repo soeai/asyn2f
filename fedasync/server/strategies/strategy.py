@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Dict
+from typing import List
 from abc import ABC, abstractmethod
 
 
@@ -14,6 +14,7 @@ class Strategy(ABC):
         self.model_id = str(uuid.uuid4())
         self.avg_loss = 0.0
         self.global_model_update_data_size = 0
+        self.total_qod = 0
 
     @abstractmethod
     def get_global_model_filename(self):
@@ -25,7 +26,7 @@ class Strategy(ABC):
         """
 
     @abstractmethod
-    def aggregate(self, all_workers, completed_workers) -> None:
+    def aggregate(self, all_workers) -> None:
         """Aggregate algorithm.
         """
 

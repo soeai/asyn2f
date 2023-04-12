@@ -3,8 +3,6 @@ from typing import List, Dict
 
 import numpy as np
 from numpy import ndarray
-from tensorflow import Tensor
-import tensorflow as tf
 
 from fedasync.commons.conf import Config
 from fedasync.server.objects import Worker
@@ -24,15 +22,24 @@ class AsynFL(Strategy):
     def select_client(self, all_clients) -> List[str]:
         return all_clients
 
-    def aggregate(self, workers: dict[str, Worker], completed_workers: dict[str, Worker]) -> None:
+    def compute_alpha(self, worker: Worker) -> float:
+        pass
+
+    def aggregate(self, worker_manager: WorkerManager):
         print("Aggregate_______________________")
 
         # Get all workers that has the weight version with server
-        completed_workers: dict[str, Worker] = completed_workers
+        completed_workers: dict[str, Worker] = worker_manager.get_completed_workers()
         self.current_version += 1
 
         sum_alpha = sum([completed_workers[w_id].alpha for w_id in completed_workers])
-        alpha = {w_id: completed_workers[w_id].alpha / sum_alpha for w_id in completed_workers}
+
+        alpha = {}
+        for w_id in completed_workers:
+            alpha[w_id] = self.compute_alpha(completed_workers[w_id]) / sum_alpha
+            self.total_qod += completed_workers[w_id].qod.value
+            self.global_model_update_data_size += completed_workers[w_id].batch_size
+            self.avg_loss += completed_workers[w_id].loss / len(completed_workers)
 
         # Create a new weight with the same shape and type as a given weight.
         merged_weight = None

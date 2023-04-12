@@ -3,7 +3,6 @@ import logging
 import threading
 import uuid
 from abc import abstractmethod
-
 from fedasync.client.client_storage_connector import ClientStorage
 from fedasync.commons.conf import Config, RoutingRules, StorageConfig
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
@@ -37,7 +36,7 @@ class Client(QueueConnector):
         self.is_training = False
         self.session_id = str(uuid.uuid4())
         self._new_model_flag = False
-        self.is_registered = False
+        self._is_registered = False
 
     # Run the client
     def run(self):
@@ -89,7 +88,6 @@ class Client(QueueConnector):
                     LOGGER.info("Found new model.")
                     # download model
                     self.storage_connector.get_model(self.global_model_name)
-
 
                     # change the flag to true.
                     self._new_model_flag = True
