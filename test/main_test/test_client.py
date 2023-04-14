@@ -1,26 +1,15 @@
-from fedasync.client.client import Client
 from fedasync.client.client_tensorflow import ClientTensorflow
+import numpy as np
+import tensorflow as tf
+from tensorflow import keras
 
-
-class MyClient(Client):
-    def set_weights(self, weights):
-        pass
-
-    def get_weights(self):
-        pass
-
-    def train(self):
-        pass
-
-    def evaluate(self):
-        pass
-
-    def data_preprocessing(self):
-        pass
-
-    def create_model(self):
-        pass
-
-
-tf_client = ClientTensorflow(None, None, None, None)
+# Define a simple tensorflow model
+model = tf.keras.Sequential([
+    keras.layers.Dense(512, activation='relu', input_shape=(784,)),
+    keras.layers.Dropout(0.2),
+    keras.layers.Dense(10)
+])
+# Sample X_train
+x_train = np.random.rand(320, 32, 32)
+tf_client = ClientTensorflow(model=model, x_train=x_train, y_train=None, batch_size=32)
 tf_client.run()
