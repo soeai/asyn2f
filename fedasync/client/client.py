@@ -81,7 +81,7 @@ class Client(QueueConnector):
                 StorageConfig.ACCESS_KEY = message.access_key
                 StorageConfig.SECRET_KEY = message.secret_key
 
-                self.storage_connector = ClientStorage(self.client_id)
+                self.storage_connector = ClientStorage(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY, self.client_id)
                 self._is_registered = True
                 # if local model version is smaller than the global model version and client's id is in the chosen ids
                 if self.local_version < self.global_model_version:
@@ -89,24 +89,15 @@ class Client(QueueConnector):
                     # download model
                     self.storage_connector.get_model(self.global_model_name)
 
-                    # change the flag to true.
-                    self._new_model_flag = True
 
                     # start 1 thread to train model.
-                    if not self.is_training:
-                        training_thread = threading.Thread(
-                            target=self.train,
-                            name="client_training_thread")
-
-                        self.is_training = True
-                        training_thread.start()
+                    self.start_training_thread()
 
         elif basic_deliver.routing_key == RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT and self._is_registered:
             # download model.
             decoded = json.loads(bytes.decode(body))
             msg = ServerNotifyModelToClient()
             msg.deserialize(decoded)
-            print(msg)
 
             LOGGER.info("Receive global model notify.")
 
@@ -116,23 +107,10 @@ class Client(QueueConnector):
                 self.global_model_update_data_size = msg.global_model_update_data_size
                 self.global_avg_loss = msg.avg_loss
 
-                # if local model version is smaller than the global model version and client's id is in the chosen ids
-                if self.local_version < msg.global_model_version and (
-                        len(msg.chosen_id) == 0 or self.client_id in msg.chosen_id):
-                    # download model
-                    self.storage_connector.get_model(self.global_model_name)
+                self.storage_connector.get_model(f'{msg.model_id}_v{msg.global_model_version}.npy')
 
-                    # change the flag to true.
-                    self._new_model_flag = True
-
-                    # start 1 thread to train model.
-                    if not self.is_training:
-                        training_thread = threading.Thread(
-                            target=self.train,
-                            name="client_training_thread")
-
-                        self.is_training = True
-                        training_thread.start()
+                # change the flag to true.
+                self._new_model_flag = True
 
     def notify_model_to_server(self, message):
         self._channel.basic_publish(
@@ -174,3 +152,13 @@ class Client(QueueConnector):
             qod=QoD(),
         )
         self.init_connect_to_server(message.serialize())
+
+    def start_training_thread(self):
+        if not self.is_training:
+            LOGGER.info("Start training thread.")
+            training_thread = threading.Thread(
+                target=self.train,
+                name="client_training_thread")
+
+            self.is_training = True
+            training_thread.start()

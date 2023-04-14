@@ -62,7 +62,7 @@ class Server(QueueConnector):
             # Create worker and add to Worker Manager.
             new_id = str(uuid.uuid4())
             new_worker = Worker(
-                worker_id=str(uuid.uuid4()),
+                worker_id=new_id,
                 sys_info=client_init_message.sys_info,
                 data_desc=client_init_message.data_desc,
                 qod=client_init_message.qod
@@ -72,6 +72,9 @@ class Server(QueueConnector):
             with lock:
                 access_key, secret_key = self.cloud_storage.generate_keys(new_id, client_init_message.session_id)
 
+            model_name= self.cloud_storage.get_newest_global_model().split('.')[0]
+            model_version = model_name.split('_')[1][1:]
+            self.strategy.current_version = int(model_version)
             # Build response message
             response = ServerInitResponseToClient(
                 session_id=client_init_message.session_id,
@@ -90,16 +93,16 @@ class Server(QueueConnector):
                 self.worker_manager.add_worker(new_worker)
 
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
-            client_noty_message = ClientNotifyModelToServer()
-            client_noty_message.deserialize(body.decode())
+            client_notify_message = ClientNotifyModelToServer()
+            client_notify_message.deserialize(body.decode())
+            print(f'Receive new model from client [{client_notify_message.client_id}]!')
 
             # Download model!
             with lock:
-                self.cloud_storage.download(client_noty_message.client_id,
-                                            f'{client_noty_message.client_id}/{client_noty_message.weight_file}',
-                                            Config.TMP_LOCAL_MODEL_FOLDER)
-                self.worker_manager.add_local_update(client_noty_message)
-            LOGGER.info(f"New model from {client_noty_message.client_id} is successfully downloaded! ")
+                self.cloud_storage.download(bucket_name=client_notify_message.client_id,
+                                            filename=client_notify_message.weight_file,
+                                            save_location=Config.TMP_LOCAL_MODEL_FOLDER)
+                self.worker_manager.add_local_update(client_notify_message)
 
     def setup(self):
         # Declare exchange, queue, binding.
@@ -142,24 +145,23 @@ class Server(QueueConnector):
         # run the consuming thread!.
         consuming_thread.start()
 
-        while True:
+        while not self.is_stop_condition():
             with lock:
                 n_local_updates = len(self.worker_manager.get_completed_workers())
-                LOGGER.info(f"Check, n_local_update = {n_local_updates}")
             if n_local_updates == 0:
+                print(f'No local update found, sleep for {self.t} seconds...')
+                # Sleep for t seconds.
                 sleep(self.t)
             elif n_local_updates > 0:
-                print('publish global model')
+                print(f'Found {n_local_updates} local update(s)')
+                print('Start update global model')
                 self.update()
-
-                if self.is_stop_condition():
-                    self.stop()
-                    break
-
                 self.publish_global_model()
 
                 # Clear worker queue after aggregation.
                 self.worker_manager.update_worker_after_training()
+
+        self.stop()
 
     def update(self):
         self.strategy.aggregate(self.worker_manager)
@@ -170,6 +172,7 @@ class Server(QueueConnector):
 
     def publish_global_model(self):
         print('Publish global model (sv notify model to client)')
+        self.cloud_storage.upload('global-models', f'{Config.TMP_GLOBAL_MODEL_FOLDER}{self.strategy.model_id}_v{self.strategy.current_version}.npy',)
         # Construct message
         msg = ServerNotifyModelToClient(
             model_id=self.strategy.model_id,

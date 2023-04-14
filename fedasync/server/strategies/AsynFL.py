@@ -1,3 +1,4 @@
+import os.path
 from copy import copy
 from typing import List, Dict
 
@@ -23,11 +24,9 @@ class AsynFL(Strategy):
         return all_clients
 
     def compute_alpha(self, worker: Worker) -> float:
-        pass
+        return 1
 
     def aggregate(self, worker_manager: WorkerManager):
-        print("Aggregate_______________________")
-
         # Get all workers that has the weight version with server
         completed_workers: dict[str, Worker] = worker_manager.get_completed_workers()
         self.current_version += 1
@@ -58,8 +57,13 @@ class AsynFL(Strategy):
                                              weight[layers]
 
         # save weight file.
-        np.save(Config.TMP_GLOBAL_MODEL_FOLDER + self.get_global_model_filename(), merged_weight)
-        print(merged_weight)
+        save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self.get_global_model_filename()
+        np.save(save_location, merged_weight)
+        # print(merged_weight)
 
     def get_model_weights(self, file_path) -> ndarray:
-        return np.load(file_path, allow_pickle=True)
+        if os.path.isfile(file_path) is False:
+            raise Exception("File not found")
+        else:
+            # return np.load(filepath, allow_pickle=True)
+            return np.load('weights.npy', allow_pickle=True)
