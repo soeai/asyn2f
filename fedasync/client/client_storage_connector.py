@@ -3,8 +3,8 @@ from fedasync.commons.utils.cloud_storage_connector import MinioConnector
 
 
 class ClientStorage(MinioConnector):
-    def __init__(self, client_id):
-        super().__init__(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY, client_id)
+    def __init__(self, access_key, secret_key, client_id):
+        super().__init__(access_key, secret_key)
         self.client_id = client_id
 
     def get_model(self, model_version: str):

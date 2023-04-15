@@ -3,15 +3,23 @@ from fedasync.commons.messages.message import Message
 
 class ClientNotifyModelToServer(Message):
 
-    def __init__(self, message=None):
-        self.client_id = ""
-        self.model_id = ""
-        self.global_model_version_used = 1
-        self.timestamp = 1213214
-        self.loss_value = 1.42
-        self.link = "minio/model1"
-        self.performance = ""
-        self.batch_size = ""
-
-        # Run deserialize message function.
-        self.deserialize(message)
+    def __init__(self,
+                 client_id=None,
+                 model_id=None,
+                 global_model_version_used=None,
+                 timestamp=None,
+                 loss_value=None,
+                 weight_file=None,
+                 performance=None,
+                 batch_size=32,
+                 alpha=1):
+        super().__init__()
+        self.client_id = client_id
+        self.model_id = model_id
+        self.global_model_version_used = global_model_version_used
+        self.timestamp = timestamp
+        self.loss_value = loss_value
+        self.weight_file = weight_file
+        self.performance = performance
+        self.batch_size = batch_size
+        self.alpha = alpha

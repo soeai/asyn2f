@@ -25,7 +25,7 @@ class MinioConnector(ABC):
         """Downloads a file from MinIO server"""
 
         try:
-            self.client.fget_object(bucket_name, filename, save_location + '/' +filename)
+            self.client.fget_object(bucket_name, filename, save_location + filename)
             logging.info(f'Downloaded {filename}')
         except Exception as e:
             logging.error(e)

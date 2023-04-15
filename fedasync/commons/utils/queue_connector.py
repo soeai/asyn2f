@@ -255,7 +255,7 @@ class QueueConnector(ABC):
         LOGGER.info('Closing the channel')
         self._channel.close()
 
-    def run(self):
+    def run_queue(self):
         """Run the example consumer by connecting to RabbitMQ and then
         starting the IOLoop to block and allow the SelectConnection to operate.
 

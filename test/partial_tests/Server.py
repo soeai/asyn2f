@@ -6,4 +6,4 @@ Config.QUEUE_NAME = "server_queue"
 
 test_Server = ServerQueueConnector()
 
-test_Server.run()
+test_Server.run_queue()
