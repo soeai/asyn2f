@@ -4,6 +4,7 @@ from typing import List, Dict
 
 import numpy as np
 from numpy import ndarray
+import pickle
 
 from fedasync.commons.conf import Config
 from fedasync.server.objects import Worker
@@ -18,7 +19,7 @@ class AsynFL(Strategy):
         self.alpha: Dict = {}
 
     def get_global_model_filename(self):
-        return f"{self.model_id}_v{self.current_version}.npy"
+        return f"{self.model_id}_v{self.current_version}.pkl"
 
     def select_client(self, all_clients) -> List[str]:
         return all_clients
@@ -58,7 +59,8 @@ class AsynFL(Strategy):
 
         # save weight file.
         save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self.get_global_model_filename()
-        np.save(save_location, merged_weight)
+        with open(save_location, "wb") as f:
+            pickle.dump(merged_weight, save_location)
         # print(merged_weight)
 
     def get_model_weights(self, file_path) -> ndarray:
@@ -66,4 +68,6 @@ class AsynFL(Strategy):
             raise Exception("File not found")
         else:
             # return np.load(filepath, allow_pickle=True)
-            return np.load('weights.npy', allow_pickle=True)
+            with open(file_path, "rb") as f:
+                weights = pickle.load(f)
+            return weights

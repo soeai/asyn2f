@@ -24,10 +24,13 @@ class Client(QueueConnector):
         super().__init__()
 
         # Dependencies
-        self.local_version = 0
+        self.local_data_size = 0
+        self.previous_local_version = 0
+        self.current_local_version = 0
+        self.global_model_version = None
+
         self.global_avg_loss = None
         self.global_model_update_data_size = None
-        self.global_model_version = None
         self.global_model_name = None
         self.storage_connector: ClientStorage = None
 
@@ -84,11 +87,10 @@ class Client(QueueConnector):
                 self.storage_connector = ClientStorage(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY, self.client_id)
                 self._is_registered = True
                 # if local model version is smaller than the global model version and client's id is in the chosen ids
-                if self.local_version < self.global_model_version:
+                if self.current_local_version < self.global_model_version:
                     LOGGER.info("Found new model.")
                     # download model
                     self.storage_connector.get_model(self.global_model_name)
-
 
                     # start 1 thread to train model.
                     self.start_training_thread()
@@ -104,10 +106,15 @@ class Client(QueueConnector):
             with lock:
                 self.global_model_name = msg.global_model_name
                 self.global_model_version = msg.global_model_version
+
+                # save the previous local version of the global model to log it to file
+                self.previous_local_version = self.current_local_version
+                # update local version (the latest global model that the client have)
+                self.current_local_version = self.global_model_version
                 self.global_model_update_data_size = msg.global_model_update_data_size
                 self.global_avg_loss = msg.avg_loss
 
-                self.storage_connector.get_model(f'{msg.model_id}_v{msg.global_model_version}.npy')
+                self.storage_connector.get_model(f'{msg.model_id}_v{msg.global_model_version}.pkl')
 
                 # change the flag to true.
                 self._new_model_flag = True
