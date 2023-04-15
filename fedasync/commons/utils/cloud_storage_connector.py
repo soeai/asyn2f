@@ -1,6 +1,8 @@
 from abc import ABC
 from minio import Minio
 import logging
+
+from fedasync.commons.conf import Config
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
@@ -21,11 +23,11 @@ class MinioConnector(ABC):
         except Exception as e:
             logging.error(e)
     
-    def download(self, bucket_name, filename: str, save_location='.'):
+    def download(self, bucket_name, filename: str):
         """Downloads a file from MinIO server"""
 
         try:
-            self.client.fget_object(bucket_name, filename, save_location + filename)
+            self.client.fget_object(bucket_name, filename, Config.TMP_GLOBAL_MODEL_FOLDER + filename)
             logging.info(f'Downloaded {filename}')
         except Exception as e:
             logging.error(e)

@@ -11,7 +11,7 @@ Config.TMP_GLOBAL_MODEL_FOLDER = './'
 worker_manager = WorkerManager()
 for i in range(2):
     worker = Worker("worker" + str(i), "", "")
-    worker.weight_file = "weights.npy"
+    worker.weight_file = "weights.pkl"
     worker.alpha = 1
     worker.worker_id = str(uuid.uuid4())
     worker.current_version = 1

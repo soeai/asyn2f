@@ -1,3 +1,8 @@
+import sys
+print('Python %s on %s' % (sys.version, sys.platform))
+sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL'])
+
+
 import logging
 import uuid
 from abc import abstractmethod
@@ -172,7 +177,7 @@ class Server(QueueConnector):
 
     def publish_global_model(self):
         print('Publish global model (sv notify model to client)')
-        self.cloud_storage.upload('global-models', f'{Config.TMP_GLOBAL_MODEL_FOLDER}{self.strategy.model_id}_v{self.strategy.current_version}.npy',)
+        self.cloud_storage.upload('global-models', f'{Config.TMP_GLOBAL_MODEL_FOLDER}{self.strategy.model_id}_v{self.strategy.current_version}.pkl',)
         # Construct message
         msg = ServerNotifyModelToClient(
             model_id=self.strategy.model_id,
