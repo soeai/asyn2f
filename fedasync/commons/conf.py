@@ -21,10 +21,12 @@ class Config:
     TRAINING_EXCHANGE: str = "training_exchange"
 
     # this folder is used to save local models
-    TMP_MODEL_FOLDER = "./"
+    TMP_GLOBAL_MODEL_FOLDER = "./data/global_weights/"
+    TMP_LOCAL_MODEL_FOLDER = "./data/local_weights/"
 
 
 class StorageConfig:
     STORAGE_URL: str = ""
     ACCESS_KEY = ""
     SECRET_KEY = ""
+    BUCKET_NAME = ""

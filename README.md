@@ -1,9 +1,8 @@
 # AsynFL
 We develop an asynchronous federated learning framework ...
 
-Here is the link to Fedasync Diagrams.
-Please, open it with drawio and contribute to it.
-```txt
+Link to AsynFed Diagrams.
+```
 https://drive.google.com/file/d/1LjL_asVqIZiBMvmlhExUakEMqmKHsQMr/view?usp=sharing
 ```
 
@@ -20,10 +19,9 @@ docker-compose up -d
 ```
 pip3 install -r requirements.txt
 ```
-or (if you use Windows)
+3. Install `mc` for working with MinIO (https://min.io/docs/minio/linux/reference/minio-mc.html). After installing `mc`, run the following command to configure it:
 ```
-pip install -r requirements.txt
+mc alias set minio http://localhost:9000 minioadmin minioadmin
 ```
-
 
 
