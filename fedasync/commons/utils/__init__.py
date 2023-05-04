@@ -1,1 +1,0 @@
-from .cloud_storage_connector import MinioConnector as CloudStorageConnector
