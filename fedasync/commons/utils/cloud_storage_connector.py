@@ -8,8 +8,9 @@ class AWSConnector(ABC):
     """Class for connecting to AWS S3"""
 
     def __init__(self, access_key, secret_key) -> None:
-        self.s3 = boto3.client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+        self.s3 = boto3.client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name='ap-southeast-2')
         logging.info(f'Connected to AWS server')
+        self.access_key = None
 
     def upload(self, local_file_path: str, remote_file_path: str, bucket_name: str):
         """Uploads new global model to AWS"""
@@ -30,4 +31,5 @@ class AWSConnector(ABC):
             logging.info(f'Downloaded {filename}')
         except Exception as e:
             logging.error(e)
+
 

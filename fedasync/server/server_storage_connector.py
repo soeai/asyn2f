@@ -6,16 +6,19 @@ from fedasync.commons.utils.cloud_storage_connector import AWSConnector
 
 class ServerStorage(AWSConnector):
 
-    def __init__(self, access_key, secret_key, region_name='ap-southeast-2'):
-        super().__init__(access_key, secret_key, region_name)
-        self.iam = boto3.client('iam', aws_access_key_id=access_key, aws_secret_access_key=secret_key,
-                                region_name=region_name)
+    def __init__(self, access_key, secret_key):
+        super().__init__(access_key, secret_key)
+        self.iam = boto3.client('iam', aws_access_key_id=access_key, aws_secret_access_key=secret_key)
 
     def generate_keys(self, session_id):
-        # Create a new user with the session ID as the username
-        username = session_id
-        self.create_folder(username)
-        self.iam.create_user(UserName=username)
+        # Generate an access key and secret key for the user
+        self.iam.create_user(UserName=session_id)
+        access_key = self.iam.create_access_key(UserName=session_id)['AccessKey']
+        self.access_key = access_key['AccessKeyId']
+
+        # Create a new user
+        self.create_folder(self.access_key)
+
 
         # Define the custom policy that allows read/write access to a specific S3 bucket
 
@@ -25,7 +28,18 @@ class ServerStorage(AWSConnector):
                 {
                     "Effect": "Allow",
                     "Action": [
+                        "s3:ListBucket",
+                    ],
+                    "Resource": [
+                        "arn:aws:s3:::fedasyn",
+                        "arn:aws:s3:::fedasyn/*",
+                    ]
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
                         "s3:GetObject",
+                        "s3:GetObjectACL",
                     ],
                     "Resource": [
                         "arn:aws:s3:::fedasyn/global-models/*",
@@ -35,37 +49,38 @@ class ServerStorage(AWSConnector):
                     "Effect": "Allow",
                     "Action": [
                         "s3:PutObject",
+                        "s3:PutObjectACL",
                     ],
                     "Resource": [
-                        f"arn:aws:s3:::fedasyn/{username}/*",
+                        f"arn:aws:s3:::fedasyn/{self.access_key}/*",
                     ]
                 },
             ]
         }
 
         # Create the self.s3 policy and get the ARN
-        policy_arn = self.s3.create_policy(
-            PolicyName=f"{username}-s3-policy",
+        policy_arn = self.iam.create_policy(
+            PolicyName=f"{self.access_key}-s3-policy",
             PolicyDocument=json.dumps(policy)
         )['Policy']['Arn']
 
         # Attach the policy to the user
-        self.s3.attach_user_policy(
-            UserName=username,
+        self.iam.attach_user_policy(
+            UserName=session_id,
             PolicyArn=policy_arn
         )
 
-        # Generate an access key and secret key for the user
-        access_key = self.s3.create_access_key(UserName=username)['AccessKey']
-
         # Print the access key ID and secret access key
-        print(f"Access key ID: {access_key['AccessKeyId']}")
-        print(f"Secret access key: {access_key['SecretAccessKey']}")
+        print(f"session: {session_id} - access key: {access_key['AccessKeyId']} - secret key: {access_key['SecretAccessKey']}")
         return access_key['AccessKeyId'], access_key['SecretAccessKey']
 
-    def get_newest_global_model(self):
+
+    def create_folder(self, folder_name):
+        self.s3.put_object(Bucket='fedasyn', Key=(folder_name + '/'))
+
+    def get_newest_global_model(self) -> str:
         # get the newest object in the global-models bucket
-        objects = self.s3.list_objects_v2(Bucket='fedasyn-global-models')['Contents']
+        objects = self.s3.list_objects_v2(Bucket='fedasyn', Prefix='global-models/', Delimiter='/')['Contents']
         # Sort the list of objects by LastModified in descending order
         sorted_objects = sorted(objects, key=lambda x: x['LastModified'], reverse=True)
 
@@ -73,7 +88,3 @@ class ServerStorage(AWSConnector):
             return sorted_objects[0]['Key']
         else:
             print("Bucket is empty.")
-            return None
-
-    def create_folder(self, folder_name):
-        self.s3.put_object(Bucket='fedasyn', Key=(folder_name + '/'))
