@@ -37,8 +37,8 @@ class Server(QueueConnector):
         self.is_new_global_model = False
 
         # Server account for minio by default.
-        self.server_access_key = 'minioadmin'
-        self.server_secret_key = 'minioadmin'
+        self.server_access_key = 'AKIA2X4RVJV3Y3CRXXGK'
+        self.server_secret_key = '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'
 
         # NOTE: Any worker/server is forced to declare config attributes before running.
         # if there is no key assign by the user => set default key for the storage config.
@@ -48,7 +48,7 @@ class Server(QueueConnector):
 
         # Dependencies
         self.worker_manager: WorkerManager = WorkerManager()
-        self.cloud_storage: ServerStorage = ServerStorage()
+        self.cloud_storage: ServerStorage = ServerStorage(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY)
 
     def on_message(self, channel, method, properties: BasicProperties, body):
 
@@ -70,11 +70,16 @@ class Server(QueueConnector):
 
             # Generate minio keys
             with lock:
-                access_key, secret_key = self.cloud_storage.generate_keys(new_id, client_init_message.session_id)
+                access_key, secret_key = self.cloud_storage.generate_keys(client_init_message.session_id)
 
             model_name= self.cloud_storage.get_newest_global_model().split('.')[0]
             model_version = model_name.split('_')[1][1:]
-            self.strategy.current_version = int(model_version)
+            try:
+                self.strategy.current_version = int(model_version)
+            except Exception as e:
+                logging.error(e)
+                self.strategy.current_version = 0
+
             # Build response message
             response = ServerInitResponseToClient(
                 session_id=client_init_message.session_id,
@@ -100,8 +105,8 @@ class Server(QueueConnector):
             # Download model!
             with lock:
                 self.cloud_storage.download(bucket_name=client_notify_message.client_id,
-                                            filename=client_notify_message.weight_file,
-                                            save_location=Config.TMP_LOCAL_MODEL_FOLDER)
+                                            remote_file_path=client_notify_message.weight_file,
+                                            local_file_path=Config.TMP_LOCAL_MODEL_FOLDER)
                 self.worker_manager.add_local_update(client_notify_message)
 
     def setup(self):
