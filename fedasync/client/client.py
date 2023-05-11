@@ -26,7 +26,7 @@ class Client(QueueConnector):
         # Dependencies
         self.local_data_size = 0
         self.previous_local_version = 0
-        self.current_local_version = 0
+        self.current_local_version = -1
         self.global_model_version = None
 
         self.global_avg_loss = None
@@ -40,6 +40,7 @@ class Client(QueueConnector):
         self.session_id = str(uuid.uuid4())
         self._new_model_flag = False
         self._is_registered = False
+        self.access_key_id = None
 
     # Run the client
     def run(self):
@@ -78,6 +79,7 @@ class Client(QueueConnector):
                 self.client_id = message.client_id
                 self.global_model_name = message.model_url
                 self.global_model_version = message.model_version
+                self.access_key_id = message.access_key
 
                 LOGGER.info(
                     f'Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}')

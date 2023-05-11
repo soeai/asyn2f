@@ -19,8 +19,11 @@ class AWSConnector(ABC):
         try:
             self.s3.upload_file(local_file_path, bucket_name, remote_file_path)
             logging.info(f'Successfully uploaded {filename} to {remote_file_path}')
+            return True
         except Exception as e:
             logging.error(e)
+            return False
+
     
     def download(self, bucket_name, remote_file_path, local_file_path):
         """Downloads a file from AWS"""
@@ -29,7 +32,9 @@ class AWSConnector(ABC):
         try:
             self.s3.download_file(bucket_name, remote_file_path, local_file_path)
             logging.info(f'Downloaded {filename}')
+            return True
         except Exception as e:
             logging.error(e)
+            return False
 
 

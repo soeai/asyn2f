@@ -22,6 +22,7 @@ class Worker:
         self.performance = 0.0
         self.loss = 0.0
         self.is_completed = False
+        self.access_key_id = None
 
     def get_weight_file_path(self):
         return f'{Config.TMP_LOCAL_MODEL_FOLDER}{self.weight_file}'
