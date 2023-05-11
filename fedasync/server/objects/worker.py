@@ -1,4 +1,4 @@
-from fedasync.commons.conf import Config
+from fedasync.commons.conf import ServerConfig
 from fedasync.commons.messages.client_init_connect_to_server import SysInfo, DataDesc, QoD
 
 
@@ -22,9 +22,11 @@ class Worker:
         self.performance = 0.0
         self.loss = 0.0
         self.is_completed = False
+        self.access_key_id = None
 
     def get_weight_file_path(self):
-        return f'{Config.TMP_LOCAL_MODEL_FOLDER}{self.weight_file}'
+        filename = self.weight_file.split('/')[-1]
+        return f'{ServerConfig.TMP_LOCAL_MODEL_FOLDER}{filename}'
 
     def reset(self):
         """
