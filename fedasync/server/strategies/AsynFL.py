@@ -6,7 +6,7 @@ import numpy as np
 from numpy import ndarray
 import pickle
 
-from fedasync.commons.conf import Config
+from fedasync.commons.conf   import ServerConfig
 from fedasync.server.objects import Worker
 from fedasync.server.strategies import Strategy
 
@@ -58,12 +58,18 @@ class AsynFL(Strategy):
                                              weight[layers]
 
         # save weight file.
-        save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self.get_global_model_filename()
+        save_location = ServerConfig.TMP_GLOBAL_MODEL_FOLDER + self.get_global_model_filename()
+        print(save_location)
+        print('='*20)
         with open(save_location, "wb") as f:
-            pickle.dump(merged_weight, save_location)
+            pickle.dump(merged_weight, f)
         # print(merged_weight)
 
     def get_model_weights(self, file_path) -> ndarray:
+        print("*"*10)
+        print(file_path)
+        print("*"*10)
+
         if os.path.isfile(file_path) is False:
             raise Exception("File not found")
         else:

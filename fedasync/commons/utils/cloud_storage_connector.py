@@ -1,34 +1,40 @@
 from abc import ABC
-from minio import Minio
 import logging
-
-from fedasync.commons.conf import Config
+import boto3
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
-class MinioConnector(ABC):
+class AWSConnector(ABC):
+    """Class for connecting to AWS S3"""
 
-    def __init__(self, access_key, secret_key, region='vn') -> None:
-        self.client = Minio('localhost:9000', access_key=access_key, secret_key=secret_key, secure=False, region=region)
-        logging.info(f'Connected to Minio server on localhost:9000')
+    def __init__(self, access_key, secret_key) -> None:
+        self.s3 = boto3.client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name='ap-southeast-2')
+        logging.info(f'Connected to AWS server')
+        self.access_key = None
 
-    def upload(self, bucket_name: str, file_path: str):
-        """Uploads new global model to MinIO server"""
-        filename = file_path.split('/')[-1]
+    def upload(self, local_file_path: str, remote_file_path: str, bucket_name: str):
+        """Uploads new global model to AWS"""
+        filename = local_file_path.split('/')[-1]
 
         try:
-            self.client.fput_object(bucket_name, filename, file_path)
-            # add logging when put successful
-            logging.info(f'Successfully uploaded {filename} to {bucket_name}/{filename}')
+            self.s3.upload_file(local_file_path, bucket_name, remote_file_path)
+            logging.info(f'Successfully uploaded {filename} to {remote_file_path}')
+            return True
         except Exception as e:
             logging.error(e)
+            return False
+
     
-    def download(self, bucket_name, filename: str):
-        """Downloads a file from MinIO server"""
+    def download(self, bucket_name, remote_file_path, local_file_path):
+        """Downloads a file from AWS"""
 
+        filename = remote_file_path.split('/')[-1]
         try:
-            self.client.fget_object(bucket_name, filename, Config.TMP_GLOBAL_MODEL_FOLDER + filename)
+            self.s3.download_file(bucket_name, remote_file_path, local_file_path)
             logging.info(f'Downloaded {filename}')
+            return True
         except Exception as e:
             logging.error(e)
+            return False
+
 
