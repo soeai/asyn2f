@@ -1,44 +1,90 @@
-import os
-from minio import MinioAdmin
-
+import json
+import boto3
 from fedasync.commons.conf import StorageConfig
-from fedasync.commons.utils.cloud_storage_connector import MinioConnector
+from fedasync.commons.utils.cloud_storage_connector import AWSConnector
 
 
-class ServerStorage(MinioConnector):
-    def __init__(self):
-        super().__init__(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY)
-        self.admin = MinioAdmin(target='minio')
-        # check if bucket global-models is existing or not, if not then create one
-        if not self.client.bucket_exists('global-models'):
-            self.client.make_bucket('global-models')
+class ServerStorage(AWSConnector):
 
-    def generate_keys(self, client_id, session_id):
-        self.client.make_bucket(client_id)
-        new_key = self.admin.user_add(client_id, session_id)
+    def __init__(self, access_key, secret_key):
+        super().__init__(access_key, secret_key)
+        self.iam = boto3.client('iam', aws_access_key_id=access_key, aws_secret_access_key=secret_key)
 
-        # # Add permissions for the new user
-        # with open('worker_policy.json', 'w') as f:
-        #     upload_policy = '{"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": ["s3:PutObject"], ' \
-        #                     '"Resource": ["arn:aws:s3:::%s/*"]},{"Effect": "Allow","Action": [ "s3:GetObject", ' \
-        #                     '"s3:GetBucketLocation"],"Resource": [ "arn:aws:s3:::global-models/*"]}]}' % (
-        #                         client_id)
-        #     f.write(upload_policy)
-        # self.admin.policy_add(client_id, 'worker_policy.json')
-        # self.admin.policy_set(client_id, client_id)
-        # os.remove('worker_policy.json')
+    def generate_keys(self, session_id):
+        # Generate an access key and secret key for the user
+        self.iam.create_user(UserName=session_id)
+        access_key = self.iam.create_access_key(UserName=session_id)['AccessKey']
+        self.access_key = access_key['AccessKeyId']
 
-        access_key, secret_key = new_key['accessKey'], new_key['secretKey']
-        return access_key, secret_key
+        # Create a new user
+        self.create_folder(self.access_key)
 
-    def get_newest_global_model(self):
+
+        # Define the custom policy that allows read/write access to a specific S3 bucket
+
+        policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:ListBucket",
+                    ],
+                    "Resource": [
+                        "arn:aws:s3:::fedasyn",
+                        "arn:aws:s3:::fedasyn/*",
+                    ]
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:GetObject",
+                        "s3:GetObjectACL",
+                    ],
+                    "Resource": [
+                        "arn:aws:s3:::fedasyn/global-models/*",
+                    ]
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:PutObject",
+                        "s3:PutObjectACL",
+                    ],
+                    "Resource": [
+                        f"arn:aws:s3:::fedasyn/{self.access_key}/*",
+                    ]
+                },
+            ]
+        }
+
+        # Create the self.s3 policy and get the ARN
+        policy_arn = self.iam.create_policy(
+            PolicyName=f"{self.access_key}-s3-policy",
+            PolicyDocument=json.dumps(policy)
+        )['Policy']['Arn']
+
+        # Attach the policy to the user
+        self.iam.attach_user_policy(
+            UserName=session_id,
+            PolicyArn=policy_arn
+        )
+
+        # Print the access key ID and secret access key
+        print(f"session: {session_id} - access key: {access_key['AccessKeyId']} - secret key: {access_key['SecretAccessKey']}")
+        return access_key['AccessKeyId'], access_key['SecretAccessKey']
+
+
+    def create_folder(self, folder_name):
+        self.s3.put_object(Bucket='fedasyn', Key=(folder_name + '/'))
+
+    def get_newest_global_model(self) -> str:
         # get the newest object in the global-models bucket
-        objects = self.client.list_objects('global-models', recursive=True, start_after='')
-        sorted_objects = sorted(objects, key=lambda obj: obj.last_modified, reverse=True)
+        objects = self.s3.list_objects_v2(Bucket='fedasyn', Prefix='global-models/', Delimiter='/')['Contents']
+        # Sort the list of objects by LastModified in descending order
+        sorted_objects = sorted(objects, key=lambda x: x['LastModified'], reverse=True)
 
         if len(sorted_objects) > 0:
-            return sorted_objects[0].object_name
+            return sorted_objects[0]['Key']
         else:
             print("Bucket is empty.")
-            return None
-
