@@ -8,6 +8,9 @@ from fedasync.server.server import Server
 from fedasync.server.strategies import Strategy
 from fedasync.server.strategies.AsynFL import AsynFL
 
+# sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL/fedasync'])
+
+
 Config.QUEUE_NAME = "server_queue"
 Config.QUEUE_URL = "amqp://guest:guest@localhost:5672/%2F"
 Config.TRAINING_EXCHANGE = "training_exchange"
