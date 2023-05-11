@@ -1,4 +1,7 @@
+import os
 import sys
+from dotenv import load_dotenv
+load_dotenv()
 print('Python %s on %s' % (sys.version, sys.platform))
 sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL'])
 
@@ -42,8 +45,9 @@ class Server(QueueConnector):
         self.is_new_global_model = False
 
         # Server account for minio by default.
-        self.server_access_key = 'AKIA2X4RVJV36KLB3BXF'
-        self.server_secret_key = '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'
+        # read access_key and secret_key from file .env
+        self.server_access_key = os.getenv('access_key')
+        self.server_secret_key = os.getenv('secret_key')
 
         # NOTE: Any worker/server is forced to declare config attributes before running.
         # if there is no key assign by the user => set default key for the storage config.
@@ -74,7 +78,6 @@ class Server(QueueConnector):
             )
 
             # Generate minio keys
-            print(client_init_message.session_id)
             with lock:
                 access_key, secret_key = self.cloud_storage.generate_keys(str(client_init_message.session_id))
 
@@ -101,6 +104,7 @@ class Server(QueueConnector):
 
             # Add worker to Worker Manager.
             with lock:
+                new_worker.access_key_id = access_key
                 self.worker_manager.add_worker(new_worker)
 
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
@@ -110,9 +114,9 @@ class Server(QueueConnector):
 
             # Download model!
             with lock:
-                self.cloud_storage.download(bucket_name=client_notify_message.client_id,
+                self.cloud_storage.download(bucket_name='fedasyn',
                                             remote_file_path=client_notify_message.weight_file,
-                                            local_file_path=Config.TMP_LOCAL_MODEL_FOLDER)
+                                            local_file_path=Config.TMP_LOCAL_MODEL_FOLDER+client_notify_message.model_id)
                 self.worker_manager.add_local_update(client_notify_message)
 
     def setup(self):
