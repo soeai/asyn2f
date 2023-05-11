@@ -84,13 +84,13 @@ class Client(QueueConnector):
                 StorageConfig.ACCESS_KEY = message.access_key
                 StorageConfig.SECRET_KEY = message.secret_key
 
-                self.storage_connector = ClientStorage(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY, self.client_id)
+                self.storage_connector = ClientStorage(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY)
                 self._is_registered = True
                 # if local model version is smaller than the global model version and client's id is in the chosen ids
                 if self.current_local_version < self.global_model_version:
                     LOGGER.info("Found new model.")
                     # download model
-                    self.storage_connector.get_model(self.global_model_name)
+                    self.storage_connector.download('fedasyn', self.global_model_name, f'./{self.global_model_name}')
 
                     # start 1 thread to train model.
                     self.start_training_thread()
@@ -114,7 +114,9 @@ class Client(QueueConnector):
                 self.global_model_update_data_size = msg.global_model_update_data_size
                 self.global_avg_loss = msg.avg_loss
 
-                self.storage_connector.get_model(f'{msg.model_id}_v{msg.global_model_version}.pkl')
+                self.storage_connector.download('fedasyn',
+                                                f'global-models/{msg.model_id}_v{msg.global_model_version}.npy',
+                                                f'./{msg.model_id}_v{msg.global_model_version}.npy')
 
                 # change the flag to true.
                 self._new_model_flag = True

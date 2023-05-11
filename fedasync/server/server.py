@@ -42,8 +42,8 @@ class Server(QueueConnector):
         self.is_new_global_model = False
 
         # Server account for minio by default.
-        self.server_access_key = 'AKIA2X4RVJV34CZGNZ67'
-        self.server_secret_key = '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'
+        self.server_access_key = 'AKIA2X4RVJV36KLB3BXF'
+        self.server_secret_key = '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'
 
         # NOTE: Any worker/server is forced to declare config attributes before running.
         # if there is no key assign by the user => set default key for the storage config.
