@@ -4,7 +4,7 @@ import threading
 import uuid
 from abc import abstractmethod
 from fedasync.client.client_storage_connector import ClientStorage
-from fedasync.commons.conf import Config, RoutingRules, StorageConfig
+from fedasync.commons.conf import ClientConfig, RoutingRules, StorageConfig
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
 from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
 from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
@@ -17,7 +17,7 @@ LOGGER = logging.getLogger(__name__)
 lock = threading.Lock()
 
 
-# Config.QUEUE_NAME = 'client_queue'
+# ClientConfig.QUEUE_NAME = 'client_queue'
 
 class Client(QueueConnector):
     def __init__(self):
@@ -28,6 +28,8 @@ class Client(QueueConnector):
         self.previous_local_version = 0
         self.current_local_version = -1
         self.global_model_version = None
+
+        self.local_epoch = 0
 
         self.global_avg_loss = None
         self.global_model_update_data_size = None
@@ -49,18 +51,18 @@ class Client(QueueConnector):
     def setup(self):
 
         # declare queue
-        self._channel.queue_declare(queue=Config.QUEUE_NAME)
+        self._channel.queue_declare(queue=ClientConfig.QUEUE_NAME)
 
         # binding.
         self._channel.queue_bind(
-            Config.QUEUE_NAME,
-            Config.TRAINING_EXCHANGE,
+            ClientConfig.QUEUE_NAME,
+            ClientConfig.TRAINING_EXCHANGE,
             RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT
         )
 
         self._channel.queue_bind(
-            Config.QUEUE_NAME,
-            Config.TRAINING_EXCHANGE,
+            ClientConfig.QUEUE_NAME,
+            ClientConfig.TRAINING_EXCHANGE,
             RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT
         )
         self.publish_init_message()
@@ -80,6 +82,7 @@ class Client(QueueConnector):
                 self.global_model_name = message.model_url
                 self.global_model_version = message.model_version
                 self.access_key_id = message.access_key
+
 
                 LOGGER.info(
                     f'Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}')
@@ -107,6 +110,7 @@ class Client(QueueConnector):
 
             with lock:
                 self.global_model_name = msg.global_model_name
+                
                 self.global_model_version = msg.global_model_version
 
                 # save the previous local version of the global model to log it to file
@@ -116,23 +120,29 @@ class Client(QueueConnector):
                 self.global_model_update_data_size = msg.global_model_update_data_size
                 self.global_avg_loss = msg.avg_loss
 
-                self.storage_connector.download('fedasyn',
-                                                f'global-models/{msg.model_id}_v{msg.global_model_version}.npy',
-                                                f'./{msg.model_id}_v{msg.global_model_version}.npy')
+
+                remote_path = f'global-models/{msg.model_id}_v{msg.global_model_version}.pkl'
+                local_path = f'{ClientConfig.TMP_GLOBAL_MODEL_FOLDER}{msg.model_id}_v{msg.global_model_version}.pkl'
+                print("*" * 10)
+                print(remote_path)
+                print(local_path)
+                print("*" * 10)
+
+                self.storage_connector.download('fedasyn',remote_path, local_path)
 
                 # change the flag to true.
                 self._new_model_flag = True
 
     def notify_model_to_server(self, message):
         self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
+            ClientConfig.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER,
             message
         )
 
     def init_connect_to_server(self, message):
         self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
+            ClientConfig.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_INIT_SEND_TO_SERVER,
             message
         )

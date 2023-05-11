@@ -11,7 +11,7 @@ import uuid
 from abc import abstractmethod
 from time import sleep
 from pika import BasicProperties
-from fedasync.commons.conf import StorageConfig, RoutingRules, Config
+from fedasync.commons.conf import StorageConfig, RoutingRules, ServerConfig
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit
 from fedasync.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
@@ -35,7 +35,7 @@ class Server(QueueConnector):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, t: int = 30) -> None:
+    def __init__(self, strategy: Strategy, t: int = 15) -> None:
         # Server variables
         super().__init__()
         self.t = t
@@ -49,8 +49,8 @@ class Server(QueueConnector):
         self.server_access_key = os.getenv('access_key')
         self.server_secret_key = os.getenv('secret_key')
 
-        # NOTE: Any worker/server is forced to declare config attributes before running.
-        # if there is no key assign by the user => set default key for the storage config.
+        # NOTE: Any worker/server is forced to declare ServerConfig attributes before running.
+        # if there is no key assign by the user => set default key for the storage ServerConfig.
         if StorageConfig.ACCESS_KEY == "" or StorageConfig.SECRET_KEY == "":
             StorageConfig.ACCESS_KEY = self.server_access_key
             StorageConfig.SECRET_KEY = self.server_secret_key
@@ -116,21 +116,21 @@ class Server(QueueConnector):
             with lock:
                 self.cloud_storage.download(bucket_name='fedasyn',
                                             remote_file_path=client_notify_message.weight_file,
-                                            local_file_path=Config.TMP_LOCAL_MODEL_FOLDER+client_notify_message.model_id)
+                                            local_file_path=ServerConfig.TMP_LOCAL_MODEL_FOLDER+client_notify_message.model_id)
                 self.worker_manager.add_local_update(client_notify_message)
 
     def setup(self):
         # Declare exchange, queue, binding.
-        self._channel.exchange_declare(exchange=Config.TRAINING_EXCHANGE, exchange_type=self.EXCHANGE_TYPE)
-        self._channel.queue_declare(queue=Config.QUEUE_NAME)
+        self._channel.exchange_declare(exchange=ServerConfig.TRAINING_EXCHANGE, exchange_type=self.EXCHANGE_TYPE)
+        self._channel.queue_declare(queue=ServerConfig.QUEUE_NAME)
         self._channel.queue_bind(
-            Config.QUEUE_NAME,
-            Config.TRAINING_EXCHANGE,
+            ServerConfig.QUEUE_NAME,
+            ServerConfig.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER
         )
         self._channel.queue_bind(
-            Config.QUEUE_NAME,
-            Config.TRAINING_EXCHANGE,
+            ServerConfig.QUEUE_NAME,
+            ServerConfig.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_INIT_SEND_TO_SERVER
         )
         self.start_consuming()
@@ -138,7 +138,7 @@ class Server(QueueConnector):
     def notify_global_model_to_client(self, message):
         # Send notify message to client.
         self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
+            ServerConfig.TRAINING_EXCHANGE,
             RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
             message.serialize()
         )
@@ -146,7 +146,7 @@ class Server(QueueConnector):
     def response_to_client_init_connect(self, message):
         # Send response message to client.
         self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
+            ServerConfig.TRAINING_EXCHANGE,
             RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT,
             message.serialize()
         )
@@ -187,12 +187,14 @@ class Server(QueueConnector):
 
     def publish_global_model(self):
         print('Publish global model (sv notify model to client)')
-        self.cloud_storage.upload('global-models', f'{Config.TMP_GLOBAL_MODEL_FOLDER}{self.strategy.model_id}_v{self.strategy.current_version}.pkl',)
+        local_filename = f'{ServerConfig.TMP_GLOBAL_MODEL_FOLDER}{self.strategy.model_id}_v{self.strategy.current_version}.pkl'
+        remote_filename = f'global-models/{self.strategy.model_id}_v{self.strategy.current_version}.pkl'
+        self.cloud_storage.upload(local_filename, remote_filename, 'fedasyn')
         # Construct message
         msg = ServerNotifyModelToClient(
             model_id=self.strategy.model_id,
             chosen_id=[],
-            global_model_name=f"global_model_{self.strategy.current_version}",
+            global_model_name=f'{self.strategy.model_id}_v{self.strategy.current_version}.pkl',
             global_model_version=self.strategy.current_version,
             avg_loss=self.strategy.avg_loss,
             global_model_update_data_size=self.strategy.global_model_update_data_size

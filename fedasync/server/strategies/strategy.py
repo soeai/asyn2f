@@ -18,7 +18,7 @@ class Strategy(ABC):
 
     @abstractmethod
     def get_global_model_filename(self):
-        return f"{self.model_id}_v{self.current_version}"
+        return f"{self.model_id}_v{self.current_version}.pkl"
 
     @abstractmethod
     def select_client(self, all_clients) -> List[str]:

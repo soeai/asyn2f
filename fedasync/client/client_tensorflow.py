@@ -9,7 +9,7 @@ import pickle
 # from tensorflow_examples.mnist.lenet_model import LeNet
 from fedasync.client.tensorflow_examples.mnist.lenet_model import LeNet
 from .client import Client
-from ..commons.conf import Config
+from ..commons.conf import ClientConfig
 from ..commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
@@ -62,12 +62,15 @@ class ClientTensorflow(Client):
     def train(self):
         # training nonstop until the server command to do so
         # or the client attempt to quit
-        epoch_num = 0
+        self.local_epoch = 0
         while True:
-            epoch_num += 1
+            self.local_epoch += 1
             # for epoch in range(EPOCHS):
             LOGGER.info("ClientModel Start Training")
             batch_num = 0
+
+            sleep(3)
+
             for images, labels in self.train_ds:
                 batch_num += 1
                 # Reset the metrics at the start of the next epoch
@@ -87,13 +90,23 @@ class ClientTensorflow(Client):
                     # previous, current and global weights are used in the merged process
                     self.model.current_weights = self.model.get_weights()
                     # load global weights from file
-                    global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + self.global_model_name
-                    with open(global_model_path, "wb") as f:
+                    global_model_path = ClientConfig.TMP_GLOBAL_MODEL_FOLDER + self.global_model_name
+
+                    print("0" * 20)
+                    print(global_model_path)
+                    print("0" * 20)
+
+                    with open(global_model_path, "rb") as f:
                         self.model.global_weights = pickle.load(f)
+
+                    print("0" * 20)
+                    print(self.model.global_weights)
+                    print("0" * 20)
+
 
                     LOGGER.info(f"New model ? - {self._new_model_flag}")
                     LOGGER.info(
-                        f"Merging process happens at epoch {epoch_num}, batch {batch_num} when receiving the global version {self.current_local_version}, current global version {self.previous_local_version}")
+                        f"Merging process happens at epoch {self.local_epoch}, batch {batch_num} when receiving the global version {self.current_local_version}, current global version {self.previous_local_version}")
 
                     self.__merge()
                     self.model.merged_weights = self.model.get_weights()
@@ -104,7 +117,7 @@ class ClientTensorflow(Client):
                     self.model.test_step(test_images, test_labels)
 
             LOGGER.info(
-                f'Epoch {epoch_num}, '
+                f'Epoch {self.local_epoch}, '
                 f'Loss: {self.model.train_loss.result()}, '
                 f'Accuracy: {self.model.train_accuracy.result() * 100}, '
                 f'Test Loss: {self.model.test_loss.result()}, '
@@ -114,8 +127,8 @@ class ClientTensorflow(Client):
             # Save weights after training
             # filename = self.client_id + "_" + str(self.current_local_version) + ".pkl"
             # save weights to local location in pickle format
-            filename = 'weights2.pkl'
-            save_location = Config.TMP_LOCAL_MODEL_FOLDER + filename
+            filename = f'{self.client_id}_{self.local_epoch}.pkl'
+            save_location = ClientConfig.TMP_LOCAL_MODEL_FOLDER + filename
             remote_file_path = self.access_key_id + '/' + filename
             with open(save_location, 'wb') as f:
                 pickle.dump(self.model.get_weights(), f)

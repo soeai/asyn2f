@@ -1,8 +1,8 @@
-from fedasync.commons.conf import Config
+from fedasync.commons.conf import ServerConfig
 from fedasync.server.server import Server
 from fedasync.server.server_queue_connector import ServerQueueConnector
 
-Config.QUEUE_NAME = "server_queue"
+ServerConfig.QUEUE_NAME = "server_queue"
 
 test_Server = ServerQueueConnector()
 
