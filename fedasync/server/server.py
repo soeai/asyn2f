@@ -37,8 +37,8 @@ class Server(QueueConnector):
         self.is_new_global_model = False
 
         # Server account for minio by default.
-        self.server_access_key = 'AKIA2X4RVJV3Y3CRXXGK'
-        self.server_secret_key = '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'
+        self.server_access_key = 'AKIA2X4RVJV34CZGNZ67'
+        self.server_secret_key = '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'
 
         # NOTE: Any worker/server is forced to declare config attributes before running.
         # if there is no key assign by the user => set default key for the storage config.
@@ -69,8 +69,9 @@ class Server(QueueConnector):
             )
 
             # Generate minio keys
+            print(client_init_message.session_id)
             with lock:
-                access_key, secret_key = self.cloud_storage.generate_keys(client_init_message.session_id)
+                access_key, secret_key = self.cloud_storage.generate_keys(str(client_init_message.session_id))
 
             model_name= self.cloud_storage.get_newest_global_model().split('.')[0]
             model_version = model_name.split('_')[1][1:]

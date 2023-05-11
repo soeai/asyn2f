@@ -5,12 +5,12 @@ from fedasync.client.client_storage_connector import ClientStorage
 from fedasync.commons.utils.cloud_storage_connector import AWSConnector
 from fedasync.server.server_storage_connector import ServerStorage
 
-access_key_id = 'AKIA2X4RVJV3Y3CRXXGK'
-secret_access_key = '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'
+access_key_id = 'AKIA2X4RVJV34CZGNZ67'
+secret_access_key = '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'
 bucket_name = 'fedasyn'
 conn = ServerStorage(access_key_id, secret_access_key)
-# conn.generate_keys(session_id='test9')
-conn.get_newest_global_model()
+conn.generate_keys(session_id='test101')
+# print(conn.get_newest_global_model())
 
 # access_key_id = 'AKIA2X4RVJV3ZGTUSFOR'
 # secret_access_key = '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'
