@@ -28,6 +28,6 @@ class FedAsyncServer(Server):
 strategy = AsynFL()
 
 fedasync_server = FedAsyncServer(strategy)
-fedasync_server.server_access_key = 'AKIA2X4RVJV34CZGNZ67'
-fedasync_server.server_secret_key = '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'
+fedasync_server.server_access_key = 'AKIA2X4RVJV36KLB3BXF'
+fedasync_server.server_secret_key = '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'
 fedasync_server.run()
