@@ -42,6 +42,7 @@ class ServerStorage(AWSConnector):
                         "s3:GetObjectACL",
                     ],
                     "Resource": [
+                        "arn:aws:s3:::fedasyn/global-models",
                         "arn:aws:s3:::fedasyn/global-models/*",
                     ]
                 },

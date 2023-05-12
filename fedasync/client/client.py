@@ -10,6 +10,8 @@ from fedasync.commons.messages.server_init_response_to_client import ServerInitR
 from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
 from fedasync.commons.utils.queue_connector import QueueConnector
 
+import time
+
 LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
               '-35s %(lineno) -5d: %(message)s')
 LOGGER = logging.getLogger(__name__)
@@ -25,8 +27,10 @@ class Client(QueueConnector):
 
         # Dependencies
         self.local_data_size = 0
+
         self.previous_local_version = 0
         self.current_local_version = -1
+
         self.global_model_version = None
 
         self.local_epoch = 0
@@ -34,7 +38,7 @@ class Client(QueueConnector):
         self.global_avg_loss = None
         self.global_model_update_data_size = None
         self.global_model_name = None
-        self.storage_connector: ClientStorage = None
+        self.storage_connector = None
 
         # variables.
         self.client_id = ""
@@ -89,14 +93,25 @@ class Client(QueueConnector):
                 StorageConfig.ACCESS_KEY = message.access_key
                 StorageConfig.SECRET_KEY = message.secret_key
 
-                self.storage_connector = ClientStorage(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY)
+                # client_access_key="AKIA2X4RVJV36O2WYXE2"
+                # client_secret_key="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"
+
+                # self.storage_connector = ClientStorage(client_access_key, client_secret_key)
+                self.storage_connector = ClientStorage(message.access_key,message.secret_key)
+                # sleep(5)
                 self._is_registered = True
                 # if local model version is smaller than the global model version and client's id is in the chosen ids
                 if self.current_local_version < self.global_model_version:
                     LOGGER.info("Found new model.")
-                    # download model
-                    self.storage_connector.download('fedasyn', self.global_model_name, f'./{self.global_model_name}')
 
+                    filename = self.global_model_name.split('/')[-1]
+                    local_path = f'{ClientConfig.TMP_GLOBAL_MODEL_FOLDER}{filename}'
+
+                    while True:
+                        time.sleep(5)
+                        if self.storage_connector.download('fedasyn', self.global_model_name, local_path):
+                            break
+    
                     # start 1 thread to train model.
                     self.start_training_thread()
 
@@ -128,7 +143,7 @@ class Client(QueueConnector):
                 print(local_path)
                 print("*" * 10)
 
-                self.storage_connector.download('fedasyn',remote_path, local_path)
+                self.storage_connector.download(bucket_name='fedasyn', remote_file_path=remote_path, local_file_path = local_path)
 
                 # change the flag to true.
                 self._new_model_flag = True
