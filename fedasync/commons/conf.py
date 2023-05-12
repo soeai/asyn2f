@@ -10,10 +10,13 @@ class RoutingRules:
 
 class ClientConfig:
     """
-    Server config here!
+    Client config here!
     """
     # Queue name
     QUEUE_URL: str = "amqp://guest:guest@localhost:5672/%2F"
+    # QUEUE_URL: str = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf/%2F"
+    # QUEUE_URL: str = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf"
+
     QUEUE_NAME: str = ""
     MONITOR_QUEUE: str = ""
 
@@ -30,6 +33,7 @@ class ServerConfig:
     """
     # Queue name
     QUEUE_URL: str = "amqp://guest:guest@localhost:5672/%2F"
+    # QUEUE_URL: str = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf"
     QUEUE_NAME: str = ""
     MONITOR_QUEUE: str = ""
 
