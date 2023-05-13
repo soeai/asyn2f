@@ -3,7 +3,7 @@ import sys
 
 sys.path.extend(['/Users/tleq/PycharmProjects/AsynFL'])
 
-
+import os
 from fedasync.commons.conf import ClientConfig
 from fedasync.client.client_tensorflow import ClientTensorflow
 from fedasync.client.tensorflow_examples.mnist.lenet_model import LeNet
@@ -20,15 +20,19 @@ train_labels_path = '../data/mnist_data/train-labels-idx1-ubyte.gz'
 test_images_path = '../data/mnist_data/t10k-images-idx3-ubyte.gz'
 test_labels_path = '../data/mnist_data/t10k-labels-idx1-ubyte.gz'
 
-ClientConfig.TMP_LOCAL_MODEL_FOLDER = 'data/client/local_weights/'
-ClientConfig.TMP_GLOBAL_MODEL_FOLDER = 'data/client/global_weights/'
+config = ClientConfig()
+config.TMP_LOCAL_MODEL_FOLDER = 'data/client/local_weights/'
+config.TMP_GLOBAL_MODEL_FOLDER = 'data/client/global_weights/'
+
+if not os.path.exists(config.TMP_LOCAL_MODEL_FOLDER):
+    os.makedirs(config.TMP_LOCAL_MODEL_FOLDER)
+if not os.path.exists(config.TMP_GLOBAL_MODEL_FOLDER):
+    os.makedirs(config.TMP_GLOBAL_MODEL_FOLDER)
+
 
 
 # preprocessing data to be ready for low level tensorflow training process
 data_preprocessing = TensorflowDataPreprocessing(train_images_path = train_images_path, train_labels_path= train_labels_path, batch_size= 64, split= True, fract= 0.2, evaluate_images_path= test_images_path, evaluate_labels_path= test_labels_path)
-print(type(data_preprocessing.train_ds))
-print(type(data_preprocessing.test_ds))
-print(type(data_preprocessing.evaluate_ds))
 
 # define dataset
 train_ds = data_preprocessing.train_ds

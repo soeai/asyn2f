@@ -2,7 +2,7 @@ import sys
 print('Python %s on %s' % (sys.version, sys.platform))
 sys.path.extend(['/Users/tleq/PycharmProjects/AsynFL'])
 
-
+import os
 from fedasync.commons.conf import ServerConfig
 from fedasync.server.server import Server
 from fedasync.server.strategies import Strategy
@@ -25,6 +25,11 @@ class FedAsyncServer(Server):
 
 
 strategy = AsynFL()
+if not os.path.exists(ServerConfig.TMP_GLOBAL_MODEL_FOLDER):
+    os.makedirs(ServerConfig.TMP_GLOBAL_MODEL_FOLDER)
+if not os.path.exists(ServerConfig.TMP_LOCAL_MODEL_FOLDER):
+    os.makedirs(ServerConfig.TMP_LOCAL_MODEL_FOLDER)
+
 
 fedasync_server = FedAsyncServer(strategy)
 fedasync_server.server_access_key = 'AKIA2X4RVJV36KLB3BXF'

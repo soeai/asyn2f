@@ -129,7 +129,7 @@ class ClientTensorflow(Client):
             # save weights to local location in pickle format
             filename = f'{self.client_id}_v{self.local_epoch}.pkl'
             save_location = ClientConfig.TMP_LOCAL_MODEL_FOLDER + filename
-            remote_file_path = self.access_key_id + '/' + filename
+            remote_file_path = 'clients/' + str(self.client_id) + '/' + filename
             with open(save_location, 'wb') as f:
                 pickle.dump(self.model.get_weights(), f)
             # Print the weight location
