@@ -1,6 +1,6 @@
 import sys
 print('Python %s on %s' % (sys.version, sys.platform))
-sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL'])
+sys.path.extend(['/Users/tleq/PycharmProjects/AsynFL'])
 
 
 from fedasync.commons.conf import ServerConfig

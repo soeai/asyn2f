@@ -1,9 +1,6 @@
 import os
-import sys
 from dotenv import load_dotenv
 load_dotenv()
-print('Python %s on %s' % (sys.version, sys.platform))
-sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL'])
 
 
 import logging
@@ -49,15 +46,17 @@ class Server(QueueConnector):
         self.server_access_key = os.getenv('access_key')
         self.server_secret_key = os.getenv('secret_key')
 
+        self.server_storage_config = StorageConfig()
+
         # NOTE: Any worker/server is forced to declare ServerConfig attributes before running.
         # if there is no key assign by the user => set default key for the storage ServerConfig.
-        if StorageConfig.ACCESS_KEY == "" or StorageConfig.SECRET_KEY == "":
-            StorageConfig.ACCESS_KEY = self.server_access_key
-            StorageConfig.SECRET_KEY = self.server_secret_key
+        if self.server_storage_config.ACCESS_KEY == "" or self.server_storage_config.SECRET_KEY == "":
+            self.server_storage_config.ACCESS_KEY = self.server_access_key
+            self.server_storage_config.SECRET_KEY = self.server_secret_key
 
         # Dependencies
         self.worker_manager: WorkerManager = WorkerManager()
-        self.cloud_storage: ServerStorage = ServerStorage(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY)
+        self.cloud_storage: ServerStorage = ServerStorage(self.server_storage_config.ACCESS_KEY, self.server_storage_config.SECRET_KEY)
 
     def on_message(self, channel, method, properties: BasicProperties, body):
 

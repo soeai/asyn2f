@@ -127,7 +127,7 @@ class ClientTensorflow(Client):
             # Save weights after training
             # filename = self.client_id + "_" + str(self.current_local_version) + ".pkl"
             # save weights to local location in pickle format
-            filename = f'{self.client_id}_{self.local_epoch}.pkl'
+            filename = f'{self.client_id}_v{self.local_epoch}.pkl'
             save_location = ClientConfig.TMP_LOCAL_MODEL_FOLDER + filename
             remote_file_path = self.access_key_id + '/' + filename
             with open(save_location, 'wb') as f:
