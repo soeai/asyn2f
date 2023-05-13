@@ -1,6 +1,6 @@
 from fedasync.client.client import Client
-from fedasync.commons.conf import ClientConfig
+from fedasync.commons.conf import GlobalConfig
 
-ClientConfig.QUEUE_NAME = "client_queue"
+GlobalConfig.QUEUE_NAME = "client_queue"
 client_consumer = Client()
 client_consumer.run_queue()

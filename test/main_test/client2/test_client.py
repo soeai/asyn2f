@@ -4,7 +4,7 @@ import sys
 sys.path.extend(['/Users/tleq/PycharmProjects/AsynFL'])
 
 import os
-from fedasync.commons.conf import ClientConfig
+from fedasync.commons.conf import GlobalConfig
 from fedasync.client.client_tensorflow import ClientTensorflow
 from fedasync.client.tensorflow_examples.mnist.lenet_model import LeNet
 from fedasync.client.tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
@@ -20,7 +20,7 @@ train_labels_path = '../data/mnist_data/train-labels-idx1-ubyte.gz'
 test_images_path = '../data/mnist_data/t10k-images-idx3-ubyte.gz'
 test_labels_path = '../data/mnist_data/t10k-labels-idx1-ubyte.gz'
 
-config = ClientConfig()
+config = GlobalConfig()
 config.TMP_LOCAL_MODEL_FOLDER = 'data/client/local_weights/'
 config.TMP_GLOBAL_MODEL_FOLDER = 'data/client/global_weights/'
 

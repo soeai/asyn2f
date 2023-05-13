@@ -2,7 +2,6 @@
 
 import functools
 import logging
-import time
 from abc import ABC, abstractmethod
 
 import pika
@@ -10,10 +9,8 @@ from pika.channel import Channel
 
 from pika.exchange_type import ExchangeType
 
-from fedasync.commons.conf import ServerConfig
+from fedasync.commons.conf import GlobalConfig
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
 LOGGER = logging.getLogger(__name__)
 
 
@@ -39,18 +36,15 @@ class QueueConnector(ABC):
     def __init__(self):
         """Create a new instance of the consumer class, passing in the AMQP
         URL used to connect to RabbitMQ.
-
-        :param str amqp_url: The AMQP url to connect with
-
         """
-        self.should_reconnect = False
-        self.was_consuming = False
+        self._should_reconnect = False
+        self._was_consuming = False
 
         self._connection = None
         self._channel: Channel = None
         self._closing = False
         self._consumer_tag = None
-        self._url = ServerConfig.QUEUE_URL
+        self._url = GlobalConfig.QUEUE_URL
         self._consuming = False
         # In production, experiment with higher prefetch values
         # for higher consumer throughput
@@ -124,7 +118,7 @@ class QueueConnector(ABC):
         ioloop.
 
         """
-        self.should_reconnect = True
+        self._should_reconnect = True
         self.stop()
 
     def _open_channel(self):
@@ -191,8 +185,8 @@ class QueueConnector(ABC):
         LOGGER.info('Issuing consumer related RPC commands')
         self._add_on_cancel_callback()
         self._consumer_tag = self._channel.basic_consume(
-            ServerConfig.QUEUE_NAME, self.on_message, auto_ack=True)
-        self.was_consuming = True
+            GlobalConfig.QUEUE_NAME, self.on_message, auto_ack=True)
+        self._was_consuming = True
         self._consuming = True
 
     def _add_on_cancel_callback(self):
