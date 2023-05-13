@@ -1,6 +1,7 @@
 from abc import ABC
 import logging
 import boto3
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
@@ -18,8 +19,9 @@ class AWSConnector(ABC):
         filename = local_file_path.split('/')[-1]
 
         try:
+            logging.info(f'Uploading {local_file_path} to {remote_file_path}...')
             self.s3.upload_file(local_file_path, bucket_name, remote_file_path)
-            logging.info(f'Successfully uploaded {filename} to {remote_file_path}')
+            logging.info(f'Successfully uploaded {local_file_path} to {remote_file_path}')
             return True
         except Exception as e:
             logging.error(e)
@@ -28,19 +30,10 @@ class AWSConnector(ABC):
     
     def download(self, bucket_name, remote_file_path, local_file_path):
         """Downloads a file from AWS"""
-
-        filename = remote_file_path.split('/')[-1]
-        # print("-" * 20)
-        # print("THIS IS THE LOCAL FILE PATH")
-        # print(local_file_path)
-        # print("THIS IS THE REMOTE FILE PATH")
-        # print(remote_file_path)
-        # print(self.access_key, self.secret_key)
-
-        # print("-" * 20)
         try:
+            logging.info(f'Saving {remote_file_path} to {local_file_path}...')
             self.s3.download_file(bucket_name, remote_file_path, local_file_path)
-            logging.info(f'Downloaded {filename}')
+            logging.info(f'Saved {remote_file_path} to {local_file_path}')
             return True
         except Exception as e:
             logging.error(e)
