@@ -68,9 +68,9 @@ class Server(QueueConnector):
             LOGGER.info(f"client_msg: {client_init_message.__str__()} at {threading.current_thread()}")
 
             # Create worker and add to Worker Manager.
-            new_id = str(uuid.uuid4())
+            worker_id = str(uuid.uuid4())
             new_worker = Worker(
-                worker_id=new_id,
+                worker_id=worker_id,
                 sys_info=client_init_message.sys_info,
                 data_desc=client_init_message.data_desc,
                 qod=client_init_message.qod
@@ -78,7 +78,7 @@ class Server(QueueConnector):
 
             # Generate minio keys
             with lock:
-                access_key, secret_key = self.cloud_storage.generate_keys(str(client_init_message.session_id))
+                access_key, secret_key = self.cloud_storage.generate_keys(worker_id)
 
             model_name= self.cloud_storage.get_newest_global_model().split('.')[0]
             model_version = model_name.split('_')[1][1:]

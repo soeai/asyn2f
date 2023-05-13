@@ -90,11 +90,9 @@ class Client(QueueConnector):
 
                 LOGGER.info(
                     f'Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}')
-                StorageConfig.ACCESS_KEY = message.access_key
-                StorageConfig.SECRET_KEY = message.secret_key
+                # StorageConfig.ACCESS_KEY = message.access_key
+                # StorageConfig.SECRET_KEY = message.secret_key
 
-                # client_access_key="AKIA2X4RVJV36O2WYXE2"
-                # client_secret_key="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"
 
                 # self.storage_connector = ClientStorage(client_access_key, client_secret_key)
                 self.storage_connector = ClientStorage(message.access_key,message.secret_key)
@@ -102,13 +100,15 @@ class Client(QueueConnector):
                 self._is_registered = True
                 # if local model version is smaller than the global model version and client's id is in the chosen ids
                 if self.current_local_version < self.global_model_version:
-                    LOGGER.info("Found new model.")
+                    LOGGER.info("Detect new global version.")
 
                     filename = self.global_model_name.split('/')[-1]
                     local_path = f'{ClientConfig.TMP_GLOBAL_MODEL_FOLDER}{filename}'
 
                     while True:
                         time.sleep(5)
+                        import os
+                        print(os.getcwd())
                         if self.storage_connector.download('fedasyn', self.global_model_name, local_path):
                             break
     
