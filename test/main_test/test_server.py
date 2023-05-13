@@ -3,17 +3,15 @@ print('Python %s on %s' % (sys.version, sys.platform))
 sys.path.extend(['/Users/tleq/PycharmProjects/AsynFL'])
 
 import os
-from fedasync.commons.conf import ServerConfig
+from fedasync.commons.conf import GlobalConfig
 from fedasync.server.server import Server
 from fedasync.server.strategies import Strategy
 from fedasync.server.strategies.AsynFL import AsynFL
 
-# sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL/fedasync'])
 
-
-ServerConfig.QUEUE_NAME = "server_queue"
-ServerConfig.QUEUE_URL = "amqp://guest:guest@localhost:5672/%2F"
-ServerConfig.TRAINING_EXCHANGE = "training_exchange"
+GlobalConfig.QUEUE_NAME = "server_queue"
+GlobalConfig.QUEUE_URL = "amqp://guest:guest@localhost:5672/%2F"
+GlobalConfig.TRAINING_EXCHANGE = "training_exchange"
 
 
 class FedAsyncServer(Server):
@@ -25,10 +23,10 @@ class FedAsyncServer(Server):
 
 
 strategy = AsynFL()
-if not os.path.exists(ServerConfig.TMP_GLOBAL_MODEL_FOLDER):
-    os.makedirs(ServerConfig.TMP_GLOBAL_MODEL_FOLDER)
-if not os.path.exists(ServerConfig.TMP_LOCAL_MODEL_FOLDER):
-    os.makedirs(ServerConfig.TMP_LOCAL_MODEL_FOLDER)
+if not os.path.exists(GlobalConfig.TMP_GLOBAL_MODEL_FOLDER):
+    os.makedirs(GlobalConfig.TMP_GLOBAL_MODEL_FOLDER)
+if not os.path.exists(GlobalConfig.TMP_LOCAL_MODEL_FOLDER):
+    os.makedirs(GlobalConfig.TMP_LOCAL_MODEL_FOLDER)
 
 
 fedasync_server = FedAsyncServer(strategy)
