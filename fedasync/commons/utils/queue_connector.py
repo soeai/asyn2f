@@ -1,5 +1,4 @@
 
-
 import functools
 import logging
 from abc import ABC, abstractmethod
@@ -9,7 +8,7 @@ from pika.channel import Channel
 
 from pika.exchange_type import ExchangeType
 
-from fedasync.commons.conf import GlobalConfig
+from fedasync.commons.conf import Config, check_config
 
 LOGGER = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ class QueueConnector(ABC):
         self._channel: Channel = None
         self._closing = False
         self._consumer_tag = None
-        self._url = GlobalConfig.QUEUE_URL
+        self._url = Config.QUEUE_URL
         self._consuming = False
         # In production, experiment with higher prefetch values
         # for higher consumer throughput
@@ -185,7 +184,7 @@ class QueueConnector(ABC):
         LOGGER.info('Issuing consumer related RPC commands')
         self._add_on_cancel_callback()
         self._consumer_tag = self._channel.basic_consume(
-            GlobalConfig.QUEUE_NAME, self.on_message, auto_ack=True)
+            Config.QUEUE_NAME, self.on_message, auto_ack=True)
         self._was_consuming = True
         self._consuming = True
 
@@ -277,4 +276,3 @@ class QueueConnector(ABC):
             else:
                 self._connection.ioloop.stop()
             LOGGER.info('Stopped')
-

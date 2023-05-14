@@ -4,7 +4,7 @@ import threading
 import uuid
 from abc import abstractmethod
 from fedasync.client.client_storage_connector import ClientStorage
-from fedasync.commons.conf import GlobalConfig, RoutingRules, StorageConfig
+from fedasync.commons.conf import Config, RoutingRules, StorageConfig, check_valid_config
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
 from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
 from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
@@ -22,7 +22,6 @@ logging.basicConfig(
     datefmt='%H:%M:%S'
 )
 LOGGER = logging.getLogger(__name__)
-
 
 lock = threading.Lock()
 
@@ -55,6 +54,9 @@ class Client(QueueConnector):
         self._new_model_flag = False
         self._is_registered = False
 
+        # check config for server
+        check_valid_config(Config)
+
     # Run the client
     def run(self):
         self.run_queue()
@@ -62,18 +64,18 @@ class Client(QueueConnector):
     def setup(self):
 
         # declare queue
-        self._channel.queue_declare(queue=GlobalConfig.QUEUE_NAME)
+        self._channel.queue_declare(queue=Config.QUEUE_NAME)
 
         # binding.
         self._channel.queue_bind(
-            GlobalConfig.QUEUE_NAME,
-            GlobalConfig.TRAINING_EXCHANGE,
+            Config.QUEUE_NAME,
+            Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT
         )
 
         self._channel.queue_bind(
-            GlobalConfig.QUEUE_NAME,
-            GlobalConfig.TRAINING_EXCHANGE,
+            Config.QUEUE_NAME,
+            Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT
         )
         self.publish_init_message()
@@ -92,7 +94,6 @@ class Client(QueueConnector):
                 self._client_id = message.client_id
                 self._global_model_name = message.model_url
                 self._global_model_version = message.model_version
-                self._access_key_id = message.access_key
 
                 LOGGER.info(
                     f'Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}')
@@ -100,6 +101,7 @@ class Client(QueueConnector):
                 StorageConfig.SECRET_KEY = message.secret_key
 
                 self._storage_connector = ClientStorage()
+
                 # sleep(5)
                 self._is_registered = True
                 # if local model version is smaller than the global model version and client's id is in the chosen ids
@@ -107,13 +109,14 @@ class Client(QueueConnector):
                     LOGGER.info("Detect new global version.")
 
                     filename = self._global_model_name.split('/')[-1]
-                    local_path = f'{GlobalConfig.TMP_GLOBAL_MODEL_FOLDER}{filename}'
+                    local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{filename}'
 
                     while True:
                         time.sleep(5)
                         import os
                         LOGGER.info(os.getcwd())
-                        if self._storage_connector.download(StorageConfig.BUCKET_NAME, self._global_model_name, local_path):
+                        if self._storage_connector.download(StorageConfig.BUCKET_NAME, self._global_model_name,
+                                                            local_path):
                             break
 
                     # start 1 thread to train model.
@@ -140,7 +143,7 @@ class Client(QueueConnector):
                 self._global_avg_loss = msg.avg_loss
 
                 remote_path = f'global-models/{msg.model_id}_v{msg.global_model_version}.pkl'
-                local_path = f'{GlobalConfig.TMP_GLOBAL_MODEL_FOLDER}{msg.model_id}_v{msg.global_model_version}.pkl'
+                local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{msg.model_id}_v{msg.global_model_version}.pkl'
                 LOGGER.info("*" * 10)
                 LOGGER.info(remote_path)
                 LOGGER.info(local_path)
@@ -154,14 +157,14 @@ class Client(QueueConnector):
 
     def notify_model_to_server(self, message):
         self._channel.basic_publish(
-            GlobalConfig.TRAINING_EXCHANGE,
+            Config.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER,
             message
         )
 
     def init_connect_to_server(self, message):
         self._channel.basic_publish(
-            GlobalConfig.TRAINING_EXCHANGE,
+            Config.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_INIT_SEND_TO_SERVER,
             message
         )

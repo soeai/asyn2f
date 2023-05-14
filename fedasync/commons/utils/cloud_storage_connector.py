@@ -2,7 +2,7 @@ from abc import ABC
 import logging
 import boto3
 
-from fedasync.commons.conf import StorageConfig
+from fedasync.commons.conf import StorageConfig, check_valid_config
 
 logging.getLogger(__name__)
 
@@ -11,6 +11,9 @@ class AWSConnector(ABC):
     """Class for connecting to AWS S3"""
 
     def __init__(self) -> None:
+
+        print(f'\n\n\n Storage Config: {StorageConfig.__class__.__dict__} \n\n')
+        check_valid_config(StorageConfig)
 
         self._s3 = boto3.client('s3', aws_access_key_id=StorageConfig.ACCESS_KEY,
                                 aws_secret_access_key=StorageConfig.SECRET_KEY,

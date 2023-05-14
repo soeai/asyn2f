@@ -25,7 +25,7 @@ class ServerStorage(AWSConnector):
         except self.iam.exceptions.EntityAlreadyExistsException as e:
             LOGGER.info(e)
 
-    def generate_keys(self, worker_id):
+    def get_client_key(self, worker_id):
         # Generate an access key and secret key for the user
         self.create_folder(worker_id)
         LOGGER.info(
