@@ -10,3 +10,4 @@ venv/*
 *.npz
 .DS_Store
 .log
+.vscode/*

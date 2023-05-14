@@ -8,7 +8,7 @@ import pickle
 # from tensorflow_examples.mnist.lenet_model import LeNet
 from fedasync.client.tensorflow_examples.mnist.lenet_model import LeNet
 from .client import Client
-from ..commons.conf import GlobalConfig
+from ..commons.conf import Config
 from ..commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 
 LOGGER = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ class ClientTensorflow(Client):
                     # previous, current and global weights are used in the merged process
                     self.model.current_weights = self.model.get_weights()
                     # load global weights from file
-                    global_model_path = GlobalConfig.TMP_GLOBAL_MODEL_FOLDER + self._global_model_name
+                    global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + self._global_model_name
 
                     LOGGER.info("0" * 20)
                     LOGGER.info(global_model_path)
@@ -124,7 +124,7 @@ class ClientTensorflow(Client):
             # filename = self.client_id + "_" + str(self.current_local_version) + ".pkl"
             # save weights to local location in pickle format
             filename = f'{self._client_id}_v{self._local_epoch}.pkl'
-            save_location = GlobalConfig.TMP_LOCAL_MODEL_FOLDER + filename
+            save_location = Config.TMP_LOCAL_MODEL_FOLDER + filename
             remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
             with open(save_location, 'wb') as f:
                 pickle.dump(self.model.get_weights(), f)
