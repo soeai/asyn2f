@@ -1,6 +1,7 @@
-
 import functools
 import logging
+import multiprocessing
+import threading
 from abc import ABC, abstractmethod
 
 import pika
@@ -8,7 +9,7 @@ from pika.channel import Channel
 
 from pika.exchange_type import ExchangeType
 
-from fedasync.commons.conf import Config, check_config
+from fedasync.commons.conf import Config
 
 LOGGER = logging.getLogger(__name__)
 
@@ -71,6 +72,7 @@ class QueueConnector(ABC):
         else:
             LOGGER.info('Closing connection')
             self._connection.close()
+
 
     def _on_connection_open(self, _unused_connection):
         """This method is called by pika once the connection to RabbitMQ has
