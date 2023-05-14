@@ -1,7 +1,7 @@
 
 import sys
 
-sys.path.extend(['/Users/tleq/PycharmProjects/AsynFL'])
+sys.path.extend(['/home/andreas/Coding/school/AsynFL'])
 
 import os
 from fedasync.commons.conf import Config
@@ -20,14 +20,9 @@ train_labels_path = '../data/mnist_data/train-labels-idx1-ubyte.gz'
 test_images_path = '../data/mnist_data/t10k-images-idx3-ubyte.gz'
 test_labels_path = '../data/mnist_data/t10k-labels-idx1-ubyte.gz'
 
-config = Config()
-config.TMP_LOCAL_MODEL_FOLDER = 'data/client/local_weights/'
-config.TMP_GLOBAL_MODEL_FOLDER = 'data/client/global_weights/'
-
-if not os.path.exists(config.TMP_LOCAL_MODEL_FOLDER):
-    os.makedirs(config.TMP_LOCAL_MODEL_FOLDER)
-if not os.path.exists(config.TMP_GLOBAL_MODEL_FOLDER):
-    os.makedirs(config.TMP_GLOBAL_MODEL_FOLDER)
+Config.QUEUE_NAME = "client_queue"
+Config.QUEUE_URL = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf"
+Config.TRAINING_EXCHANGE = "training_exchange"
 
 
 

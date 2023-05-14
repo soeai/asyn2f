@@ -5,7 +5,7 @@ import uuid
 from abc import abstractmethod
 from time import sleep
 from pika import BasicProperties
-from fedasync.commons.conf import StorageConfig, RoutingRules, Config, check_config, check_valid_config
+from fedasync.commons.conf import Config, RoutingRules, Config, check_valid_config, init_config
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit
 from fedasync.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
@@ -21,15 +21,6 @@ load_dotenv()
 
 lock = threading.Lock()
 
-# Define logger
-LOG_FORMAT = '%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'
-logging.basicConfig(
-    level=logging.INFO,
-    format=LOG_FORMAT,
-    filename="./logs/server_log.txt",
-    filemode='a',
-    datefmt='%H:%M:%S'
-)
 LOGGER = logging.getLogger(__name__)
 
 
@@ -48,16 +39,16 @@ class Server(QueueConnector):
         self._is_downloading = False
         self._is_new_global_model = False
 
-        check_valid_config(Config)
+        init_config()
 
         # NOTE: Any worker/server is forced to declare ServerConfig attributes before running.
         # if there is no key assign by the user => set default key for the storage ServerConfig.
-        if StorageConfig.ACCESS_KEY == "" or StorageConfig.SECRET_KEY == "":
+        if Config.STORAGE_ACCESS_KEY == "" or Config.STORAGE_SECRET_KEY == "":
             # read access_key and secret_key from file .env
-            StorageConfig.ACCESS_KEY = os.getenv('access_key')
-            StorageConfig.SECRET_KEY = os.getenv('secret_key')
+            Config.STORAGE_ACCESS_KEY = os.getenv('access_key')
+            Config.STORAGE_SECRET_KEY = os.getenv('secret_key')
 
-            if StorageConfig.ACCESS_KEY == "" or StorageConfig.SECRET_KEY == "":
+            if Config.STORAGE_ACCESS_KEY == "" or Config.STORAGE_SECRET_KEY == "":
                 raise Exception("Add s3 AccessKey and  SecretKey please!")
 
         # Dependencies
@@ -101,7 +92,9 @@ class Server(QueueConnector):
                 model_url=self._cloud_storage.get_newest_global_model(),
                 model_version=self._strategy.current_version,
                 access_key=access_key,
-                secret_key=secret_key
+                secret_key=secret_key,
+                bucket_name=Config.STORAGE_BUCKET_NAME,
+                region_name=Config.STORAGE_REGION_NAME
 
             )
             LOGGER.info(f"server response: {response.__str__()} at {threading.current_thread()}")
@@ -165,7 +158,7 @@ class Server(QueueConnector):
         # run the consuming thread!.
         consuming_thread.start()
 
-        while not self.is_stop_condition():
+        while not self.is_stop_condition() and not self._closing:
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
             if n_local_updates == 0:

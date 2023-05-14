@@ -4,7 +4,7 @@ import threading
 import uuid
 from abc import abstractmethod
 from fedasync.client.client_storage_connector import ClientStorage
-from fedasync.commons.conf import Config, RoutingRules, StorageConfig, check_valid_config
+from fedasync.commons.conf import Config, RoutingRules, Config, check_valid_config, init_config
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
 from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
 from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
@@ -12,15 +12,6 @@ from fedasync.commons.utils.queue_connector import QueueConnector
 
 import time
 
-# Define logger
-LOG_FORMAT = '%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'
-logging.basicConfig(
-    level=logging.INFO,
-    format=LOG_FORMAT,
-    filename="./logs/worker_log.txt",
-    filemode='a',
-    datefmt='%H:%M:%S'
-)
 LOGGER = logging.getLogger(__name__)
 
 lock = threading.Lock()
@@ -54,8 +45,7 @@ class Client(QueueConnector):
         self._new_model_flag = False
         self._is_registered = False
 
-        # check config for server
-        check_valid_config(Config)
+        init_config()
 
     # Run the client
     def run(self):
@@ -97,12 +87,13 @@ class Client(QueueConnector):
 
                 LOGGER.info(
                     f'Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}')
-                StorageConfig.ACCESS_KEY = message.access_key
-                StorageConfig.SECRET_KEY = message.secret_key
+                Config.STORAGE_ACCESS_KEY = message.access_key
+                Config.STORAGE_SECRET_KEY = message.secret_key
+                Config.STORAGE_REGION_NAME = message.region_name
+                Config.STORAGE_BUCKET_NAME = message.bucket_name
 
                 self._storage_connector = ClientStorage()
 
-                # sleep(5)
                 self._is_registered = True
                 # if local model version is smaller than the global model version and client's id is in the chosen ids
                 if self._current_local_version < self._global_model_version:
@@ -113,10 +104,10 @@ class Client(QueueConnector):
 
                     while True:
                         time.sleep(5)
-                        import os
-                        LOGGER.info(os.getcwd())
-                        if self._storage_connector.download(StorageConfig.BUCKET_NAME, self._global_model_name,
-                                                            local_path):
+                        if self._storage_connector.download(
+                                bucket_name=Config.STORAGE_BUCKET_NAME,
+                                remote_file_path=self._global_model_name,
+                                local_file_path=local_path):
                             break
 
                     # start 1 thread to train model.
@@ -138,6 +129,7 @@ class Client(QueueConnector):
                 # save the previous local version of the global model to log it to file
                 self._previous_local_version = self._current_local_version
                 # update local version (the latest global model that the client have)
+
                 self._current_local_version = self._global_model_version
                 self._global_model_update_data_size = msg.global_model_update_data_size
                 self._global_avg_loss = msg.avg_loss
@@ -149,8 +141,12 @@ class Client(QueueConnector):
                 LOGGER.info(local_path)
                 LOGGER.info("*" * 10)
 
-                self._storage_connector.download(bucket_name=StorageConfig.BUCKET_NAME, remote_file_path=remote_path,
-                                                 local_file_path=local_path)
+                while True:
+                    time.sleep(5)
+                    if self._storage_connector.download(bucket_name=Config.STORAGE_BUCKET_NAME,
+                                                        remote_file_path=remote_path,
+                                                        local_file_path=local_path):
+                        break
 
                 # change the flag to true.
                 self._new_model_flag = True

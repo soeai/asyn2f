@@ -2,7 +2,7 @@ from abc import ABC
 import logging
 import boto3
 
-from fedasync.commons.conf import StorageConfig, check_valid_config
+from fedasync.commons.conf import Config
 
 logging.getLogger(__name__)
 
@@ -12,12 +12,14 @@ class AWSConnector(ABC):
 
     def __init__(self) -> None:
 
-        print(f'\n\n\n Storage Config: {StorageConfig.__class__.__dict__} \n\n')
-        check_valid_config(StorageConfig)
+        print(Config.__dict__)
+        if "" in [Config.STORAGE_ACCESS_KEY, Config.STORAGE_SECRET_KEY, Config.STORAGE_BUCKET_NAME,
+                  Config.STORAGE_REGION_NAME]:
+            raise Exception("Storage connector config is not enough, check again.")
 
-        self._s3 = boto3.client('s3', aws_access_key_id=StorageConfig.ACCESS_KEY,
-                                aws_secret_access_key=StorageConfig.SECRET_KEY,
-                                region_name=StorageConfig.REGION_NAME)
+        self._s3 = boto3.client('s3', aws_access_key_id=Config.STORAGE_ACCESS_KEY,
+                                aws_secret_access_key=Config.STORAGE_SECRET_KEY,
+                                region_name=Config.STORAGE_REGION_NAME)
         logging.info(f'Connected to AWS server')
 
     def upload(self, local_file_path: str, remote_file_path: str, bucket_name: str):

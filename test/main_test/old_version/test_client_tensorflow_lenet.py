@@ -13,10 +13,10 @@ import pickle
 # Preprocessing data
 # mnist dataset
 # Set the file paths for the MNIST digit dataset files
-train_images_path = './data/mnist_data/train-images-idx3-ubyte.gz'
-train_labels_path = './data/mnist_data/train-labels-idx1-ubyte.gz'
-test_images_path = './data/mnist_data/t10k-images-idx3-ubyte.gz'
-test_labels_path = './data/mnist_data/t10k-labels-idx1-ubyte.gz'
+train_images_path = '../data/mnist_data/train-images-idx3-ubyte.gz'
+train_labels_path = '../data/mnist_data/train-labels-idx1-ubyte.gz'
+test_images_path = '../data/mnist_data/t10k-images-idx3-ubyte.gz'
+test_labels_path = '../data/mnist_data/t10k-labels-idx1-ubyte.gz'
 
 # preprocessing data to be ready for low level tensorflow training process
 data_preprocessing = TensorflowDataPreprocessing(train_images_path = train_images_path, train_labels_path= train_labels_path, batch_size= 64, split= True, fract= 0.2, evaluate_images_path= test_images_path, evaluate_labels_path= test_labels_path)
