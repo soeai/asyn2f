@@ -6,3 +6,8 @@
 *.pyd
 venv/*
 .env
+*.pkl
+*.npz
+.DS_Store
+.log
+.vscode/*

@@ -1,1 +1,3 @@
-from .cloud_storage_connector import MinioConnector as CloudStorageConnector
+from .cloud_storage_connector import AWSConnector
+from .queue_connector import QueueConnector
+

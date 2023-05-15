@@ -1,44 +1,109 @@
+import os
 import json
 import logging
 import threading
 import uuid
 from abc import abstractmethod
+from .client_storage_connector import ClientStorage
+from fedasync.commons.conf import RoutingRules, Config, init_config
+from fedasync.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
+from fedasync.commons.messages import ServerInitResponseToClient
+from fedasync.commons.messages import ServerNotifyModelToClient
+from fedasync.commons.utils import QueueConnector
 
-from fedasync.client.client_storage_connector import ClientStorage
-from fedasync.commons.conf import Config, RoutingRules, StorageConfig
-from fedasync.commons.messages.client_init_connect_to_server import ClientInit
-from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
-from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
-from fedasync.commons.utils.queue_connector import QueueConnector
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
 LOGGER = logging.getLogger(__name__)
 
 lock = threading.Lock()
-# Config.QUEUE_NAME = 'client_queue'
+
+
 
 class Client(QueueConnector):
     def __init__(self):
         super().__init__()
 
         # Dependencies
-        self.local_version = 0
-        self.global_avg_loss = None
-        self.global_model_update_data_size = None
-        self.global_model_version = None
-        self.global_model_name = None
-        self.storage_connector: ClientStorage = None
+        self._local_data_size = 0
+
+        self._previous_local_version = 0
+        self._current_local_version = -1
+
+        self._global_model_version = None
+
+        self._local_epoch = 0
+
+        self._global_avg_loss = None
+        self._global_model_update_data_size = None
+        self._global_model_name = None
+        self._storage_connector = None
 
         # variables.
-        self.client_id = ""
-        self.is_training = False
-        self.session_id = str(uuid.uuid4())
+        self._client_id = ""
+        self._is_training = False
+        self._session_id = ""
+        self._client_identifier = str(uuid.uuid4())
         self._new_model_flag = False
-        self._is_registration = False
+        self._is_registered = False
+
+        # if there is no profile.json file, then create a new one.
+        if not os.path.exists("profile.json"):
+            self.create_profile()
+        else:
+            self.load_profile()
+
+
+        self.log: bool = True
+        init_config("client")
+
+    def create_profile(self):
+        data = {
+            "session_id": self._session_id,
+            "client_id": self._client_id,
+            "local_data_size": self._local_data_size,
+            "global_model_name": self._global_model_name,
+            "global_model_version": self._global_model_version,
+            "local_epoch": self._local_epoch,
+            "global_avg_loss": self._global_avg_loss,
+            "global_model_update_data_size": self._global_model_update_data_size,
+        }
+        with open("profile.json", "w") as outfile:
+            json.dump(data, outfile)
+
+    def update_profile(self):
+        data = {
+            "session_id": self._session_id,
+            "client_id": self._client_id,
+            "local_data_size": self._local_data_size,
+            "global_model_name": self._global_model_name,
+            "global_model_version": self._global_model_version,
+            "local_epoch": self._local_epoch,
+            "global_avg_loss": self._global_avg_loss,
+            "global_model_update_data_size": self._global_model_update_data_size,
+        }
+        with open("profile.json", "w") as outfile:
+            json.dump(data, outfile)
+
+    # load client information from profile.json function
+    def load_profile(self):
+        try:
+            with open("profile.json") as json_file:
+                data = json.load(json_file)
+                self._session_id = data["session_id"]
+                self._client_id = data["client_id"]
+                self._local_data_size = data["local_data_size"]
+                self._global_model_name = data["global_model_name"]
+                self._global_model_version = data["global_model_version"]
+                self._local_epoch = data["local_epoch"]
+                self._global_avg_loss = data["global_avg_loss"]
+                self._global_model_update_data_size = data["global_model_update_data_size"]
+        except Exception as e:
+            print(e)
+
+    # Run the client
+    def run(self):
+        self.run_queue()
 
     def setup(self):
-
         # declare queue
         self._channel.queue_declare(queue=Config.QUEUE_NAME)
 
@@ -46,70 +111,115 @@ class Client(QueueConnector):
         self._channel.queue_bind(
             Config.QUEUE_NAME,
             Config.TRAINING_EXCHANGE,
-            RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT
+            RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT,
         )
 
         self._channel.queue_bind(
             Config.QUEUE_NAME,
             Config.TRAINING_EXCHANGE,
-            RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT
+            RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
         )
         self.publish_init_message()
         self.start_consuming()
 
     def on_message(self, channel, basic_deliver, properties, body):
-
-        # if message come from routing SERVER_INIT_RESPONSE_TO_CLIENT then save the model id.
+        # If message come from routing SERVER_INIT_RESPONSE_TO_CLIENT then save the model id.
         if basic_deliver.routing_key == RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT:
+            message = ServerInitResponseToClient()
             decoded = json.loads(bytes.decode(body))
-            message = ServerInitResponseToClient(decoded)
-            # get only the message that server reply to it base on the session_id
-            if self.session_id == message.session_id:
+            message.deserialize(decoded)
+
+            # Get only the message that server reply to it base on the session_id
+            if self._client_identifier == message.client_identifier:
                 # set client property from message
-                self.client_id = message.client_id
-                self.global_model_name = message.model_url
+                if self._session_id == message.session_id:
+                    # welcome back message
+                    LOGGER.info(
+                        f"Welcome back {message.client_id} | session_id: {message.session_id}"
+                    )
+                else:
+                    # registration message
+                    LOGGER.info(
+                        f"Client {message.client_id} is succesfully registered | session_id: {message.session_id}"
+                    )
+                    self._session_id = message.session_id
+                    self._client_id = message.client_id
+                    self._global_model_name = message.model_url
+                    self._global_model_version = message.model_version
 
                 LOGGER.info(
                     f'Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}')
-                StorageConfig.ACCESS_KEY = message.access_key
-                StorageConfig.SECRET_KEY = message.secret_key
+                Config.STORAGE_ACCESS_KEY = message.access_key
+                Config.STORAGE_SECRET_KEY = message.secret_key
+                Config.STORAGE_REGION_NAME = message.region_name
+                Config.STORAGE_BUCKET_NAME = message.bucket_name
+                Config.TRAINING_EXCHANGE = message.training_exchange
+                Config.QUEUE_NAME = self._client_id
+                Config.MONITOR_QUEUE = message.monitor_queue
 
-                self.storage_connector = ClientStorage(self.client_id)
+                self._storage_connector = ClientStorage()
 
-                # download model.
-                self.storage_connector.get_model(self.global_model_name)
-                self._new_model_flag = True
+                LOGGER.info(
+                        f"Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}"
+                        )
+                self._is_registered = True
+                # if local model version is smaller than the global model version and client's id is in the chosen ids
+                if self._current_local_version < self._global_model_version:
+                    LOGGER.info("Detect new global version.")
 
-        elif basic_deliver.routing_key == RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT:
+                    filename = self._global_model_name.split("/")[-1]
+                    local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{filename}"
+
+                    while True:
+                        if self._storage_connector.download(
+                            bucket_name=Config.STORAGE_BUCKET_NAME,
+                            remote_file_path=self._global_model_name,
+                            local_file_path=local_path,
+                        ):
+                            break
+
+                    # start 1 thread to train model.
+                    self.start_training_thread()
+
+        elif (
+            basic_deliver.routing_key == RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT
+            and self._is_registered
+        ):
             # download model.
             decoded = json.loads(bytes.decode(body))
-            msg = ServerNotifyModelToClient(decoded)
+            msg = ServerNotifyModelToClient()
+            msg.deserialize(decoded)
 
             LOGGER.info("Receive global model notify.")
 
             with lock:
-                self.global_model_name = msg.global_model_name
-                self.global_model_version = msg.global_model_version
-                self.global_model_update_data_size = msg.global_model_update_data_size
-                self.global_avg_loss = msg.avg_loss
+                self._global_model_name = msg.global_model_name
 
-                # if local model version is smaller than the global model version and client's id is in the chosen ids
-                if self.local_version < msg.global_model_version and (
-                        len(msg.chosen_id) == 0 or self.client_id in msg.chosen_id):
-                    # download model
-                    self.storage_connector.get_model(self.global_model_name)
+                self._global_model_version = msg.global_model_version
 
-                    # change the flag to true.
-                    self._new_model_flag = True
+                # save the previous local version of the global model to log it to file
+                self._previous_local_version = self._current_local_version
+                # update local version (the latest global model that the client have)
 
-                    # start 1 thread to train model.
-                    if not self.is_training:
-                        training_thread = threading.Thread(
-                            target=self.train,
-                            name="client_training_thread")
+                self._current_local_version = self._global_model_version
+                self._global_model_update_data_size = msg.global_model_update_data_size
+                self._global_avg_loss = msg.avg_loss
 
-                        self.is_training = True
-                        training_thread.start()
+                remote_path = f'global-models/{msg.model_id}_v{msg.global_model_version}.pkl'
+                local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{msg.model_id}_v{msg.global_model_version}.pkl'
+                LOGGER.info("*" * 10)
+                LOGGER.info(remote_path)
+                LOGGER.info(local_path)
+                LOGGER.info("*" * 10)
+
+                while True:
+                    if self._storage_connector.download(bucket_name=Config.STORAGE_BUCKET_NAME,
+                                                        remote_file_path=remote_path,
+                                                        local_file_path=local_path):
+                        break
+
+                # change the flag to true.
+                self._new_model_flag = True
 
     def notify_model_to_server(self, message):
         self._channel.basic_publish(
@@ -140,10 +250,26 @@ class Client(QueueConnector):
         pass
 
     @abstractmethod
-    def evaluate(self):
+    def evaluate(self, test_dataset):
         pass
 
     def publish_init_message(self):
-        message = ClientInit()
-        message.session_id = self.session_id
+        message = ClientInit(
+            client_identifier=self._client_identifier,
+            session_id=self._session_id,
+            client_id=self._client_id,
+            sys_info=SysInfo(),
+            data_desc=DataDesc(),
+            qod=QoD(),
+        )
         self.init_connect_to_server(message.serialize())
+
+    def start_training_thread(self):
+        if not self._is_training:
+            LOGGER.info("Start training thread.")
+            training_thread = threading.Thread(
+                target=self.train,
+                name="client_training_thread")
+
+            self._is_training = True
+            training_thread.start()
