@@ -64,18 +64,36 @@ class Server(QueueConnector):
             client_init_message.deserialize(body.decode())
             LOGGER.info(f"client_msg: {client_init_message.__str__()} at {threading.current_thread()}")
 
-            # Create worker and add to Worker Manager.
-            worker_id = str(uuid.uuid4())
-            new_worker = Worker(
-                worker_id=worker_id,
-                sys_info=client_init_message.sys_info,
-                data_desc=client_init_message.data_desc,
-                qod=client_init_message.qod
-            )
+            # check if session is in the worker_manager.get_all_worker_session
+            if client_init_message.session_id in self._worker_manager.list_all_worker_session_id() and client_init_message.client_id != '':
+                # get worker_id by client_id
+                worker = self._worker_manager.get_worker_by_id(client_init_message.client_id)
+                worker_id = worker.worker_id
+                session_id = client_init_message.session_id
+            else:
+                worker_id = str(uuid.uuid4())
+                session_id = str(uuid.uuid4())
 
-            # Generate minio keys
-            with lock:
-                access_key, secret_key = self._cloud_storage.get_client_key(worker_id)
+                # Get cloud storage keys
+                with lock:
+                    access_key, secret_key = self._cloud_storage.get_client_key(worker_id)
+
+                # Add worker to Worker Manager.
+                worker = Worker(
+                        session_id=session_id,
+                        worker_id=worker_id,
+                        sys_info=client_init_message.sys_info,
+                        data_desc=client_init_message.data_desc,
+                        qod=client_init_message.qod
+                )
+                with lock:
+                    worker.access_key_id = access_key
+                    worker.secret_key_id = secret_key
+                    self._worker_manager.add_worker(worker)
+                    
+
+
+
 
             model_name = self._cloud_storage.get_newest_global_model().split('.')[0]
             model_version = model_name.split('_')[1][1:]
@@ -87,23 +105,19 @@ class Server(QueueConnector):
 
             # Build response message
             response = ServerInitResponseToClient(
-                session_id=client_init_message.session_id,
-                client_id=new_worker.worker_id,
+                client_identifier=client_init_message.client_identifier,
+                session_id=session_id,
+                client_id=worker_id,
                 model_url=self._cloud_storage.get_newest_global_model(),
                 model_version=self._strategy.current_version,
-                access_key=access_key,
-                secret_key=secret_key,
+                access_key=worker.access_key_id,
+                secret_key=worker.secret_key_id,
                 bucket_name=Config.STORAGE_BUCKET_NAME,
                 region_name=Config.STORAGE_REGION_NAME
-
             )
             LOGGER.info(f"server response: {response.__str__()} at {threading.current_thread()}")
             self.response_to_client_init_connect(response)
 
-            # Add worker to Worker Manager.
-            with lock:
-                new_worker.access_key_id = access_key
-                self._worker_manager.add_worker(new_worker)
 
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
             client_notify_message = ClientNotifyModelToServer()
