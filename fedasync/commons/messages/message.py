@@ -1,5 +1,5 @@
 import json
-from typing import Optional, Dict, Union
+from typing import Dict, Union
 
 
 class Message:
@@ -23,6 +23,7 @@ class Message:
 
 
     """
+
     def deserialize(self, message: Union[str, Dict]) -> object:
         """
         @param message: is a string message taken from rabbitmq
@@ -67,7 +68,6 @@ class Message:
                 except Exception as e:
                     print(e)
                     print(self.__dict__[key])
-
 
         # Return the dictionary as a JSON string
         return json.dumps(result)

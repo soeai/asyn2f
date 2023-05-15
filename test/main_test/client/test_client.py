@@ -1,17 +1,13 @@
-import sys
-import os
-project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))
-sys.path.extend([project_dir])
+
 
 from fedasync.commons.conf import Config
-from fedasync.client.client_tensorflow import ClientTensorflow
-from fedasync.client.tensorflow_examples.mnist.lenet_model import LeNet
-from fedasync.client.tensorflow_examples.mnist.data_preprocessing import (
-    TensorflowDataPreprocessing,
-)
-
+from fedasync.client.client_asyncfL import ClientAsyncFl
+from test.tensorflow_examples.mnist.lenet_model import LeNet
+from test.tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
 # import tensorflow as tf
-import pickle
+
+
+
 
 # Preprocessing data
 # mnist dataset

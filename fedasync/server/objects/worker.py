@@ -1,4 +1,4 @@
-from fedasync.commons.conf import Config
+from fedasync.commons import Config
 from fedasync.commons.messages.client_init_connect_to_server import SysInfo, DataDesc, QoD
 
 
