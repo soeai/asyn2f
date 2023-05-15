@@ -1,5 +1,4 @@
 import logging
-import os
 from datetime import datetime
 from time import sleep
 
@@ -9,11 +8,9 @@ import pickle
 # from tensorflow_examples.mnist.lenet_model import LeNet
 from fedasync.client.tensorflow_examples.mnist.lenet_model import LeNet
 from .client import Client
-from ..commons.conf import ClientConfig
+from ..commons.conf import Config
 from ..commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
 LOGGER = logging.getLogger(__name__)
 
 
@@ -62,9 +59,9 @@ class ClientTensorflow(Client):
     def train(self):
         # training nonstop until the server command to do so
         # or the client attempt to quit
-        self.local_epoch = 0
+        self._local_epoch = 0
         while True:
-            self.local_epoch += 1
+            self._local_epoch += 1
             # for epoch in range(EPOCHS):
             LOGGER.info("ClientModel Start Training")
             batch_num = 0
@@ -90,23 +87,22 @@ class ClientTensorflow(Client):
                     # previous, current and global weights are used in the merged process
                     self.model.current_weights = self.model.get_weights()
                     # load global weights from file
-                    global_model_path = ClientConfig.TMP_GLOBAL_MODEL_FOLDER + self.global_model_name
+                    global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + self._global_model_name
 
-                    print("0" * 20)
-                    print(global_model_path)
-                    print("0" * 20)
+                    LOGGER.info("0" * 20)
+                    LOGGER.info(global_model_path)
+                    LOGGER.info("0" * 20)
 
                     with open(global_model_path, "rb") as f:
                         self.model.global_weights = pickle.load(f)
 
-                    print("0" * 20)
-                    print(self.model.global_weights)
-                    print("0" * 20)
-
+                    LOGGER.info("0" * 20)
+                    LOGGER.info(self.model.global_weights)
+                    LOGGER.info("0" * 20)
 
                     LOGGER.info(f"New model ? - {self._new_model_flag}")
                     LOGGER.info(
-                        f"Merging process happens at epoch {self.local_epoch}, batch {batch_num} when receiving the global version {self.current_local_version}, current global version {self.previous_local_version}")
+                        f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._current_local_version}, current global version {self._previous_local_version}")
 
                     self.__merge()
                     self.model.merged_weights = self.model.get_weights()
@@ -117,7 +113,7 @@ class ClientTensorflow(Client):
                     self.model.test_step(test_images, test_labels)
 
             LOGGER.info(
-                f'Epoch {self.local_epoch}, '
+                f'Epoch {self._local_epoch}, '
                 f'Loss: {self.model.train_loss.result()}, '
                 f'Accuracy: {self.model.train_accuracy.result() * 100}, '
                 f'Test Loss: {self.model.test_loss.result()}, '
@@ -127,22 +123,22 @@ class ClientTensorflow(Client):
             # Save weights after training
             # filename = self.client_id + "_" + str(self.current_local_version) + ".pkl"
             # save weights to local location in pickle format
-            filename = f'{self.client_id}_{self.local_epoch}.pkl'
-            save_location = ClientConfig.TMP_LOCAL_MODEL_FOLDER + filename
-            remote_file_path = self.access_key_id + '/' + filename
+            filename = f'{self._client_id}_v{self._local_epoch}.pkl'
+            save_location = Config.TMP_LOCAL_MODEL_FOLDER + filename
+            remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
             with open(save_location, 'wb') as f:
                 pickle.dump(self.model.get_weights(), f)
             # Print the weight location
-            print(f'Saved weights to {save_location}')
+            LOGGER.info(f'Saved weights to {save_location}')
 
             # Upload the weight to the storage
             while True:
-                if self.storage_connector.upload(save_location, remote_file_path, 'fedasyn') is True:
+                if self._storage_connector.upload(save_location, remote_file_path, 'fedasyn') is True:
                     # After training, notify new model to the server.
                     message = ClientNotifyModelToServer(
-                        client_id=self.client_id,
+                        client_id=self._client_id,
                         model_id=filename,
-                        global_model_version_used=self.current_local_version,
+                        global_model_version_used=self._current_local_version,
                         timestamp=datetime.now().timestamp(),
                         loss_value=self.evaluate(self.test_ds)['loss'],
                         weight_file=remote_file_path,
@@ -181,16 +177,16 @@ class ClientTensorflow(Client):
                     zip(self.model.global_weights, self.model.current_weights)]
 
         # check the dimension of these variables to see whether it fits one another
-        # print(f"total layers of previous weights: {len(self.model.previous_weights)}, total layers of current weights: {len(self.model.current_weights)}")
-        # print(f"total layers of e_local: {len(e_local)}, total layers of e_global: {len(e_global)}")
+        # LOGGER.info(f"total layers of previous weights: {len(self.model.previous_weights)}, total layers of current weights: {len(self.model.current_weights)}")
+        # LOGGER.info(f"total layers of e_local: {len(e_local)}, total layers of e_global: {len(e_global)}")
         # get the direction list (matrix)
         self.model.direction = [np.multiply(a, b) for a, b in zip(e_local, e_global)]
-        # print(f"total layers of direction: {len(self.model.direction)}")
+        # LOGGER.info(f"total layers of direction: {len(self.model.direction)}")
 
         # calculate alpha variable to ready for the merging process
         # alpha depend on qod, loss and sum of datasize from the server
         # now, just calculate alpha based on the size (local dataset size / local dataset size + server dataset size)
-        alpha = (self.local_data_size) / (self.local_data_size + self.global_model_update_data_size)
+        alpha = (self.local_data_size) / (self.local_data_size + self._global_model_update_data_size)
 
         # create a blank array to store the result
         self.model.merged_result = [np.zeros(layer.shape) for layer in self.model.current_weights]
@@ -205,7 +201,7 @@ class ClientTensorflow(Client):
         # access each layer of these variables correspondingly 
         for (local_layer, global_layer, direction_layer) in zip(self.model.current_weights, self.model.global_weights,
                                                                 self.model.direction):
-            # print(local_layer.shape, global_layer.shape, direction_layer.shape)
+            # LOGGER.info(local_layer.shape, global_layer.shape, direction_layer.shape)
             # access each element in each layer
             it = np.nditer([local_layer, global_layer, direction_layer], flags=['multi_index'])
             for local_element, global_element, direction_element in it:
