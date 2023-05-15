@@ -4,21 +4,18 @@ import logging
 import threading
 import uuid
 from abc import abstractmethod
-from fedasync.client.client_storage_connector import ClientStorage
-from fedasync.commons.conf import Config, RoutingRules, Config, check_valid_config, init_config
+from .client_storage_connector import ClientStorage
+from fedasync.commons.conf import RoutingRules, Config, init_config
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
-from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
-from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
-from fedasync.commons.utils.queue_connector import QueueConnector
+from fedasync.commons.messages import ServerInitResponseToClient
+from fedasync.commons.messages import ServerNotifyModelToClient
+from fedasync.commons.utils import QueueConnector
 
-import time
 
 LOGGER = logging.getLogger(__name__)
 
 lock = threading.Lock()
 
-
-# ClientConfig.QUEUE_NAME = 'client_queue'
 
 
 class Client(QueueConnector):

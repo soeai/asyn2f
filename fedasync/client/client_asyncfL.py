@@ -15,7 +15,7 @@ class ClientAsyncFl(Client):
     # def __init__(self, model, x_train, y_train, batch_size, x_test=None, y_test=None):
     def __init__(self, model, local_data_size: int, train_ds, test_ds, evaluate_ds=None):
         super().__init__()
-        # model must be create from Model module of tensorflow
+        # model must be created from Model module of tensorflow
         # from tensorflow.keras import Model
         self.model = model
         self.local_data_size = local_data_size
@@ -148,7 +148,7 @@ class ClientAsyncFl(Client):
 
     def __merge(self):
         LOGGER.info("MERGER weights.")
-        # updating the value in each parameters of the local model
+        # updating the value in each parameter of the local model
         # calculate the different to decide the formula of updating
         # the calculation is performed on each corresponding layout
         # the different between the current weight and the previous weights

@@ -1,23 +1,20 @@
-import os
-from dotenv import load_dotenv
 import logging
 import uuid
 from abc import abstractmethod
 from time import sleep
 from pika import BasicProperties
-from fedasync.commons.conf import Config, RoutingRules, Config, check_valid_config, init_config
+from fedasync.commons.conf import RoutingRules, Config, init_config
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit
 from fedasync.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
 from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
 from fedasync.commons.utils.queue_connector import QueueConnector
-from fedasync.server.objects import Worker
-from fedasync.server.server_storage_connector import ServerStorage
-from fedasync.server.strategies import Strategy
-from fedasync.server.worker_manager import WorkerManager
+from .objects import Worker
+from .server_storage_connector import ServerStorage
+from .strategies import Strategy
+from .worker_manager import WorkerManager
 import threading
 
-load_dotenv()
 
 lock = threading.Lock()
 
