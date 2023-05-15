@@ -6,7 +6,7 @@ from tensorflow.keras.layers import Dense, Flatten, Conv2D, AveragePooling2D
 class LeNet(Model):
     def __init__(self, input_shape=(32, 32, 1), nb_classes=10):
         super().__init__()
-        self.create_model(input_shape = input_shape, nb_classes = nb_classes)
+        self.create_model(input_shape=input_shape, nb_classes=nb_classes)
         # loss
         self.loss_object = None
         # optimizer
@@ -26,10 +26,9 @@ class LeNet(Model):
         self.direction = None
         self.merged_result = None
 
-
-        
     def create_model(self, input_shape, nb_classes):
-        self.conv1 = Conv2D(6, kernel_size=(5, 5), strides=(1, 1), activation='tanh', input_shape=input_shape, padding="valid")
+        self.conv1 = Conv2D(6, kernel_size=(5, 5), strides=(1, 1), activation='tanh', input_shape=input_shape,
+                            padding="valid")
         self.avgpool1 = AveragePooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')
         self.conv2 = Conv2D(16, kernel_size=(5, 5), strides=(1, 1), activation='tanh', padding='valid')
         self.avgpool2 = AveragePooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')
@@ -37,7 +36,6 @@ class LeNet(Model):
         self.dense1 = Dense(120, activation='tanh')
         self.dense2 = Dense(84, activation='tanh')
         self.dense3 = Dense(nb_classes, activation='softmax')
-        
 
     def call(self, x):
         x = self.conv1(x)
@@ -49,14 +47,14 @@ class LeNet(Model):
         x = self.dense2(x)
         x = self.dense3(x)
         return x
-    
-    def compile(self, loss = "categorical_crossentropy", optimizer = "Adam", metric = "accuracy"):
+
+    def compile(self, loss="categorical_crossentropy", optimizer="Adam", metric="accuracy"):
         # Now, for this model, support only this set of choice 
         if loss == "categorical_crossentropy":
-        # define loss = Categorical Crossentropy
+            # define loss = Categorical Crossentropy
             self.loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         if optimizer == "Adam":
-        # define optimizer = Adam
+            # define optimizer = Adam
             self.optimizer = tf.keras.optimizers.Adam()
         if metric == "accuracy":
             # setting up metric = accuracy
@@ -66,13 +64,12 @@ class LeNet(Model):
             self.test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
 
     def set_pretrained_weights(self, weights, train_ds):
-        num_of_layers= len(self.get_weights())
+        num_of_layers = len(self.get_weights())
         if num_of_layers < len(weights):
             for images, labels in train_ds:
                 self.train_step(images, labels)
                 break
         self.set_weights(weights)
-
 
     @tf.function
     def test_step(self, images, labels):
@@ -82,12 +79,12 @@ class LeNet(Model):
         t_loss = self.loss_object(labels, predictions)
         self.test_loss(t_loss)
         self.test_accuracy(labels, predictions)
-        
+
     @tf.function
     def train_step(self, images, labels):
         with tf.GradientTape() as tape:
-        # training=True is only needed if there are layers with different
-        # behavior during training versus inference (e.g. Dropout).
+            # training=True is only needed if there are layers with different
+            # behavior during training versus inference (e.g. Dropout).
             predictions = self(images, training=True)
             loss = self.loss_object(labels, predictions)
         # compute the gradient based on the loss
@@ -97,4 +94,3 @@ class LeNet(Model):
         # update training info
         self.train_loss(loss)
         self.train_accuracy(labels, predictions)
-

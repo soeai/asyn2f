@@ -1,14 +1,9 @@
 import functools
 import logging
-import multiprocessing
-import threading
 from abc import ABC, abstractmethod
-
 import pika
 from pika.channel import Channel
-
 from pika.exchange_type import ExchangeType
-
 from fedasync.commons.conf import Config
 
 LOGGER = logging.getLogger(__name__)

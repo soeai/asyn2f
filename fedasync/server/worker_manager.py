@@ -1,7 +1,7 @@
 import logging
 from typing import Dict
-from .objects import Worker
-from ..commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
+from fedasync.server.objects import Worker
+from fedasync.commons.messages import ClientNotifyModelToServer
 
 LOGGER = logging.getLogger(__name__)
 

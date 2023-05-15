@@ -2,7 +2,7 @@ import logging
 
 import boto3
 from fedasync.commons.conf import Config
-from fedasync.commons.utils.cloud_storage_connector import AWSConnector
+from fedasync.commons.utils import AWSConnector
 LOGGER = logging.getLogger(__name__)
 
 
