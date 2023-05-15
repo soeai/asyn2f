@@ -1,90 +1,63 @@
-import json
+import logging
+
 import boto3
-from fedasync.commons.conf import StorageConfig
+from fedasync.commons.conf import Config
 from fedasync.commons.utils.cloud_storage_connector import AWSConnector
+LOGGER = logging.getLogger(__name__)
 
 
 class ServerStorage(AWSConnector):
 
-    def __init__(self, access_key, secret_key):
-        super().__init__(access_key, secret_key)
-        self.iam = boto3.client('iam', aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+    def __init__(self):
+        super().__init__()
+        self.iam = boto3.client('iam', aws_access_key_id=Config.STORAGE_ACCESS_KEY,
+                                aws_secret_access_key=Config.STORAGE_SECRET_KEY)
 
-    def generate_keys(self, session_id):
+        self.client_keys = None
+        while True:
+            try:
+                self.iam.create_user(UserName='client')
+                self.iam.attach_user_policy(
+                    UserName='client',
+                    PolicyArn='arn:aws:iam::738502987127:policy/FedAsyncClientPolicy'
+                )
+                self.client_keys = self.iam.create_access_key(UserName='client')['AccessKey']
+                break
+
+            except self.iam.exceptions.EntityAlreadyExistsException as e:
+
+                try:
+                    self.client_keys = self.iam.create_access_key(UserName='client')['AccessKey']
+                    break
+                except:
+                    for key in self.iam.list_access_keys(UserName='client')['AccessKeyMetadata']:
+                        if key['UserName'] == "client":
+                            self.iam.delete_access_key(
+                                UserName='client',
+                                AccessKeyId=key['AccessKeyId']
+                            )
+                LOGGER.info(e)
+
+        self.client_access_key_id = self.client_keys['AccessKeyId']
+        self.client_secret_key = self.client_keys['SecretAccessKey']
+
+    def get_client_key(self, worker_id):
         # Generate an access key and secret key for the user
-        self.iam.create_user(UserName=session_id)
-        access_key = self.iam.create_access_key(UserName=session_id)['AccessKey']
-        self.access_key = access_key['AccessKeyId']
-
-        # Create a new user
-        self.create_folder(self.access_key)
-
-
-        # Define the custom policy that allows read/write access to a specific S3 bucket
-
-        policy = {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "s3:ListBucket",
-                    ],
-                    "Resource": [
-                        "arn:aws:s3:::fedasyn",
-                        "arn:aws:s3:::fedasyn/*",
-                    ]
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "s3:GetObject",
-                        "s3:GetObjectACL",
-                    ],
-                    "Resource": [
-                        "arn:aws:s3:::fedasyn/global-models/*",
-                    ]
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "s3:PutObject",
-                        "s3:PutObjectACL",
-                    ],
-                    "Resource": [
-                        f"arn:aws:s3:::fedasyn/{self.access_key}/*",
-                    ]
-                },
-            ]
-        }
-
-        # Create the self.s3 policy and get the ARN
-        policy_arn = self.iam.create_policy(
-            PolicyName=f"{self.access_key}-s3-policy",
-            PolicyDocument=json.dumps(policy)
-        )['Policy']['Arn']
-
-        # Attach the policy to the user
-        self.iam.attach_user_policy(
-            UserName=session_id,
-            PolicyArn=policy_arn
-        )
-
-        # Print the access key ID and secret access key
-        print(f"session: {session_id} - access key: {access_key['AccessKeyId']} - secret key: {access_key['SecretAccessKey']}")
-        return access_key['AccessKeyId'], access_key['SecretAccessKey']
-
+        self.create_folder(worker_id)
+        LOGGER.info(
+            f"session: {worker_id} - access key: {self.client_access_key_id} - secret key: {self.client_access_key_id}")
+        return self.client_access_key_id, self.client_secret_key
 
     def create_folder(self, folder_name):
-        self.s3.put_object(Bucket='fedasyn', Key=(folder_name + '/'))
+        self._s3.put_object(Bucket='fedasyn', Key=('clients/' + folder_name + '/'))
 
     def get_newest_global_model(self) -> str:
         # get the newest object in the global-models bucket
-        objects = self.s3.list_objects_v2(Bucket='fedasyn', Prefix='global-models/', Delimiter='/')['Contents']
+        objects = self._s3.list_objects_v2(Bucket='fedasyn', Prefix='global-models/', Delimiter='/')['Contents']
         # Sort the list of objects by LastModified in descending order
         sorted_objects = sorted(objects, key=lambda x: x['LastModified'], reverse=True)
 
         if len(sorted_objects) > 0:
             return sorted_objects[0]['Key']
         else:
-            print("Bucket is empty.")
+            LOGGER.info("Bucket is empty.")
