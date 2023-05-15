@@ -40,11 +40,15 @@ class Config:
     STORAGE_REGION_NAME = 'ap-southeast-2'
 
 
-def check_valid_config():
+def check_valid_config(side="server"):
     LOGGER.info("Check config")
     for field in Config.__dict__:
-        if Config.__dict__[field] == "" and "STORAGE_" not in field and field != "QUEUE_NAME":
-            raise Exception(f"{field} at {Config.__name__} cannot be empty!, please check again!")
+        if side == "server":
+            if Config.__dict__[field] == "" and "STORAGE_" not in field and field != "QUEUE_NAME":
+                raise Exception(f"{field} at {Config.__name__} cannot be empty!, please check again!")
+        if side == "client":
+            if Config.__dict__[field] == "" and "STORAGE_" not in field and field in ["QUEUE_NAME", ]:
+                raise Exception(f"{field} at {Config.__name__} cannot be empty!, please check again!")
 
     LOGGER.info("Config is valid!")
 

@@ -94,7 +94,9 @@ class Server(QueueConnector):
                 access_key=access_key,
                 secret_key=secret_key,
                 bucket_name=Config.STORAGE_BUCKET_NAME,
-                region_name=Config.STORAGE_REGION_NAME
+                region_name=Config.STORAGE_REGION_NAME,
+                training_exchange=Config.TRAINING_EXCHANGE,
+                monitor_queue=Config.MONITOR_QUEUE
 
             )
             LOGGER.info(f"server response: {response.__str__()} at {threading.current_thread()}")

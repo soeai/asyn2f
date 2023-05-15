@@ -91,8 +91,9 @@ class Client(QueueConnector):
                 Config.STORAGE_SECRET_KEY = message.secret_key
                 Config.STORAGE_REGION_NAME = message.region_name
                 Config.STORAGE_BUCKET_NAME = message.bucket_name
-
+                Config.TRAINING_EXCHANGE = message.training_exchange
                 Config.QUEUE_NAME = self._client_id
+                Config.MONITOR_QUEUE = message.monitor_queue
 
                 self._storage_connector = ClientStorage()
 

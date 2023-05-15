@@ -19,7 +19,6 @@ test_images_path = '../data/mnist_data/t10k-images-idx3-ubyte.gz'
 test_labels_path = '../data/mnist_data/t10k-labels-idx1-ubyte.gz'
 
 Config.QUEUE_URL = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf"
-Config.TRAINING_EXCHANGE = "training_exchange"
 
 # preprocessing data to be ready for low level tensorflow training process
 data_preprocessing = TensorflowDataPreprocessing(train_images_path=train_images_path,
