@@ -92,6 +92,8 @@ class Client(QueueConnector):
                 Config.STORAGE_REGION_NAME = message.region_name
                 Config.STORAGE_BUCKET_NAME = message.bucket_name
 
+                Config.QUEUE_NAME = self._client_id
+
                 self._storage_connector = ClientStorage()
 
                 self._is_registered = True
@@ -103,7 +105,6 @@ class Client(QueueConnector):
                     local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{filename}'
 
                     while True:
-                        time.sleep(5)
                         if self._storage_connector.download(
                                 bucket_name=Config.STORAGE_BUCKET_NAME,
                                 remote_file_path=self._global_model_name,
@@ -142,7 +143,6 @@ class Client(QueueConnector):
                 LOGGER.info("*" * 10)
 
                 while True:
-                    time.sleep(5)
                     if self._storage_connector.download(bucket_name=Config.STORAGE_BUCKET_NAME,
                                                         remote_file_path=remote_path,
                                                         local_file_path=local_path):
