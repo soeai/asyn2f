@@ -1,11 +1,12 @@
 import sys
+import os
+project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))
+sys.path.extend([project_dir])
 from fedasync.commons.conf import Config
 from fedasync.server.server import Server
 from fedasync.server.strategies import Strategy
 from fedasync.server.strategies.AsynFL import AsynFL
 
-print('Python %s on %s' % (sys.version, sys.platform))
-sys.path.extend([''])
 
 Config.QUEUE_NAME = "server_queue"
 Config.QUEUE_URL = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf"

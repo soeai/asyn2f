@@ -66,7 +66,7 @@ class ClientTensorflow(Client):
             LOGGER.info("ClientModel Start Training")
             batch_num = 0
 
-            sleep(3)
+            sleep(15)
 
             for images, labels in self.train_ds:
                 batch_num += 1
@@ -146,6 +146,7 @@ class ClientTensorflow(Client):
                     )
                     self.notify_model_to_server(message.serialize())
                     LOGGER.info("ClientModel End Training, notify new model to server.")
+                    self.update_profile()
                     break
 
     def evaluate(self, test_ds):
