@@ -43,7 +43,7 @@ class Config:
 def check_valid_config():
     LOGGER.info("Check config")
     for field in Config.__dict__:
-        if Config.__dict__[field] == "" and "STORAGE_" not in field:
+        if Config.__dict__[field] == "" and "STORAGE_" not in field and field != "QUEUE_NAME":
             raise Exception(f"{field} at {Config.__name__} cannot be empty!, please check again!")
 
     LOGGER.info("Config is valid!")

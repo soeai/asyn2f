@@ -1,4 +1,3 @@
-
 import sys
 
 sys.path.extend(['/home/andreas/Coding/school/AsynFL'])
@@ -11,7 +10,6 @@ from fedasync.client.tensorflow_examples.mnist.data_preprocessing import Tensorf
 # import tensorflow as tf
 import pickle
 
-
 # Preprocessing data
 # mnist dataset
 # Set the file paths for the MNIST digit dataset files
@@ -20,14 +18,14 @@ train_labels_path = '../data/mnist_data/train-labels-idx1-ubyte.gz'
 test_images_path = '../data/mnist_data/t10k-images-idx3-ubyte.gz'
 test_labels_path = '../data/mnist_data/t10k-labels-idx1-ubyte.gz'
 
-Config.QUEUE_NAME = "client_queue"
 Config.QUEUE_URL = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf"
 Config.TRAINING_EXCHANGE = "training_exchange"
 
-
-
 # preprocessing data to be ready for low level tensorflow training process
-data_preprocessing = TensorflowDataPreprocessing(train_images_path = train_images_path, train_labels_path= train_labels_path, batch_size= 64, split= True, fract= 0.2, evaluate_images_path= test_images_path, evaluate_labels_path= test_labels_path)
+data_preprocessing = TensorflowDataPreprocessing(train_images_path=train_images_path,
+                                                 train_labels_path=train_labels_path, batch_size=64, split=True,
+                                                 fract=0.2, evaluate_images_path=test_images_path,
+                                                 evaluate_labels_path=test_labels_path)
 
 # define dataset
 train_ds = data_preprocessing.train_ds
@@ -51,5 +49,6 @@ model = LeNet()
 # print(new_weights[4])
 
 
-tf_client = ClientTensorflow(model=model, local_data_size=10000, train_ds= train_ds, test_ds= test_ds, evaluate_ds= evaluate_ds)
+tf_client = ClientTensorflow(model=model, local_data_size=10000, train_ds=train_ds, test_ds=test_ds,
+                             evaluate_ds=evaluate_ds)
 tf_client.run()
