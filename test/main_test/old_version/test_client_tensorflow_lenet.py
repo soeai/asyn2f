@@ -3,11 +3,10 @@ print('Python %s on %s' % (sys.version, sys.platform))
 sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL'])
 
 
-from fedasync.client.client_tensorflow import ClientTensorflow
-from fedasync.client.tensorflow_examples.mnist.lenet_model import LeNet
-from fedasync.client.tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
+from fedasync.client.client_asyncfL import ClientTensorflow
+from test.tensorflow_examples.mnist.lenet_model import LeNet
+from test.tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
 # import tensorflow as tf
-import pickle
 
 
 # Preprocessing data

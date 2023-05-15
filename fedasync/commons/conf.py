@@ -44,10 +44,10 @@ def check_valid_config(side="server"):
     LOGGER.info("Check config")
     for field in Config.__dict__:
         if side == "server":
-            if Config.__dict__[field] == "" and "STORAGE_" not in field and field != "QUEUE_NAME":
+            if Config.__dict__[field] == "":
                 raise Exception(f"{field} at {Config.__name__} cannot be empty!, please check again!")
-        if side == "client":
-            if Config.__dict__[field] == "" and "STORAGE_" not in field and field in ["QUEUE_NAME", ]:
+        elif side == "client":
+            if Config.__dict__[field] == "" and field not in ["QUEUE_NAME", "QUEUE_URL"] and "STORAGE_" not in field:
                 raise Exception(f"{field} at {Config.__name__} cannot be empty!, please check again!")
 
     LOGGER.info("Config is valid!")
@@ -63,9 +63,9 @@ def prepare_folder():
         os.makedirs(Config.LOG_PATH)
 
 
-def init_config():
+def init_config(side):
     LOGGER.info(f'\n\n\n Config: {Config.__class__.__dict__} \n\n\n')
-    check_valid_config()
+    check_valid_config(side)
     prepare_folder()
     # Define logger
     LOG_FORMAT = '%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'

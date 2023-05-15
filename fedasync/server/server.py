@@ -39,7 +39,6 @@ class Server(QueueConnector):
         self._is_downloading = False
         self._is_new_global_model = False
 
-        init_config()
 
         # NOTE: Any worker/server is forced to declare ServerConfig attributes before running.
         # if there is no key assign by the user => set default key for the storage ServerConfig.
@@ -50,6 +49,8 @@ class Server(QueueConnector):
 
             if Config.STORAGE_ACCESS_KEY == "" or Config.STORAGE_SECRET_KEY == "":
                 raise Exception("Add s3 AccessKey and  SecretKey please!")
+
+        init_config("server")
 
         # Dependencies
         self._worker_manager: WorkerManager = WorkerManager()

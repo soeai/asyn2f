@@ -8,7 +8,7 @@ print('Python %s on %s' % (sys.version, sys.platform))
 sys.path.extend([''])
 
 Config.QUEUE_NAME = "server_queue"
-Config.QUEUE_URL = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf"
+Config.QUEUE_URL = "amqp://guest:guest@13.214.37.45:5672/%2F"
 Config.TRAINING_EXCHANGE = "training_exchange"
 Config.STORAGE_BUCKET_NAME = "fedasyn"
 
