@@ -23,29 +23,23 @@ class Client(QueueConnector):
     def __init__(self):
         super().__init__()
 
-        # Dependencies
-        self._local_data_size = 0
-
-        self._previous_local_version = 0
-        self._current_local_version = -1
-
-        self._global_model_version = None
-
-        self._local_epoch = 0
-
-        self._global_avg_loss = None
-        self._global_model_update_data_size = None
-        self._global_model_name = None
-        self._storage_connector = None
-
         # variables.
         self._client_id = ""
         self._is_training = False
         self._session_id = str(uuid.uuid4())
         self._new_model_flag = False
         self._is_registered = False
+        self._local_data_size = 0
+        self._previous_local_version = 0
+        self._current_local_version = -1
+        self._global_model_version = None
+        self._local_epoch = 0
+        self._global_avg_loss = None
+        self._global_model_update_data_size = None
+        self._global_model_name = None
+        self._storage_connector = None
 
-        init_config()
+        init_config("client")
 
     # Run the client
     def run(self):

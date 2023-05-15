@@ -2,13 +2,11 @@ import sys
 
 sys.path.extend(['/home/andreas/Coding/school/AsynFL'])
 
-import os
 from fedasync.commons.conf import Config
-from fedasync.client.client_tensorflow import ClientTensorflow
-from fedasync.client.tensorflow_examples.mnist.lenet_model import LeNet
-from fedasync.client.tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
+from fedasync.client.client_asyncfL import ClientTensorflow
+from test.tensorflow_examples.mnist.lenet_model import LeNet
+from test.tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
 # import tensorflow as tf
-import pickle
 
 # Preprocessing data
 # mnist dataset
