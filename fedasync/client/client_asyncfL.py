@@ -1,23 +1,19 @@
 import logging
 from datetime import datetime
 from time import sleep
-
 import numpy as np
 import pickle
-
-# from tensorflow_examples.mnist.lenet_model import LeNet
-from test.tensorflow_examples.mnist.lenet_model import LeNet
 from .client import Client
-from ..commons.conf import Config
-from ..commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
+from fedasync.commons import Config
+from fedasync.commons.messages import ClientNotifyModelToServer
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ClientTensorflow(Client):
+class ClientAsyncFl(Client):
 
     # def __init__(self, model, x_train, y_train, batch_size, x_test=None, y_test=None):
-    def __init__(self, model: LeNet, local_data_size: int, train_ds, test_ds, evaluate_ds=None):
+    def __init__(self, model, local_data_size: int, train_ds, test_ds, evaluate_ds=None):
         super().__init__()
         # model must be create from Model module of tensorflow
         # from tensorflow.keras import Model

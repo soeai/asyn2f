@@ -3,7 +3,7 @@ print('Python %s on %s' % (sys.version, sys.platform))
 sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL'])
 
 
-from fedasync.client.client_asyncfL import ClientTensorflow
+from fedasync.client.client_asyncfL import ClientAsyncFl
 from test.tensorflow_examples.mnist.lenet_model import LeNet
 from test.tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
 # import tensorflow as tf
@@ -45,5 +45,5 @@ model = LeNet()
 # print(new_weights[4])
 
 
-tf_client = ClientTensorflow(model=model, local_data_size=10000, train_ds= train_ds, test_ds= test_ds, evaluate_ds= evaluate_ds)
+tf_client = ClientAsyncFl(model=model, local_data_size=10000, train_ds= train_ds, test_ds= test_ds, evaluate_ds= evaluate_ds)
 tf_client.run()

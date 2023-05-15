@@ -3,7 +3,7 @@ import sys
 sys.path.extend(['/home/andreas/Coding/school/AsynFL'])
 
 from fedasync.commons.conf import Config
-from fedasync.client.client_asyncfL import ClientTensorflow
+from fedasync.client.client_asyncfL import ClientAsyncFl
 from test.tensorflow_examples.mnist.lenet_model import LeNet
 from test.tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
 # import tensorflow as tf
@@ -33,6 +33,6 @@ evaluate_ds = data_preprocessing.evaluate_ds
 model = LeNet()
 
 
-tf_client = ClientTensorflow(model=model, local_data_size=10000, train_ds=train_ds, test_ds=test_ds,
-                             evaluate_ds=evaluate_ds)
+tf_client = ClientAsyncFl(model=model, local_data_size=10000, train_ds=train_ds, test_ds=test_ds,
+                          evaluate_ds=evaluate_ds)
 tf_client.run()
