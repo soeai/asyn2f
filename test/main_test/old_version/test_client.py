@@ -4,7 +4,7 @@ print('Python %s on %s' % (sys.version, sys.platform))
 sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL'])
 
 
-from fedasync.client.client_tensorflow import ClientTensorflow
+from fedasync.client.client_asyncfL import ClientAsyncFl
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
@@ -19,5 +19,5 @@ model = tf.keras.Sequential([
 ])
 # Sample X_train
 x_train = np.random.rand(320, 32, 32)
-tf_client = ClientTensorflow(model=model, x_train=x_train, y_train=None, batch_size=32)
+tf_client = ClientAsyncFl(model=model, x_train=x_train, y_train=None, batch_size=32)
 tf_client.run()

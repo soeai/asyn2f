@@ -39,17 +39,7 @@ class Server(QueueConnector):
         self._is_downloading = False
         self._is_new_global_model = False
 
-        init_config()
-
-        # NOTE: Any worker/server is forced to declare ServerConfig attributes before running.
-        # if there is no key assign by the user => set default key for the storage ServerConfig.
-        if Config.STORAGE_ACCESS_KEY == "" or Config.STORAGE_SECRET_KEY == "":
-            # read access_key and secret_key from file .env
-            Config.STORAGE_ACCESS_KEY = os.getenv('access_key')
-            Config.STORAGE_SECRET_KEY = os.getenv('secret_key')
-
-            if Config.STORAGE_ACCESS_KEY == "" or Config.STORAGE_SECRET_KEY == "":
-                raise Exception("Add s3 AccessKey and  SecretKey please!")
+        init_config("server")
 
         # Dependencies
         self._worker_manager: WorkerManager = WorkerManager()
@@ -113,7 +103,10 @@ class Server(QueueConnector):
                 access_key=worker.access_key_id,
                 secret_key=worker.secret_key_id,
                 bucket_name=Config.STORAGE_BUCKET_NAME,
-                region_name=Config.STORAGE_REGION_NAME
+                region_name=Config.STORAGE_REGION_NAME,
+                training_exchange=Config.TRAINING_EXCHANGE,
+                monitor_queue=Config.MONITOR_QUEUE
+
             )
             LOGGER.info(f"server response: {response.__str__()} at {threading.current_thread()}")
             self.response_to_client_init_connect(response)
