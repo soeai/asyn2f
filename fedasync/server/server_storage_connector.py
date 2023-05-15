@@ -1,43 +1,63 @@
-import os
-from minio import MinioAdmin
+import logging
 
-from fedasync.commons.conf import StorageConfig
-from fedasync.commons.utils.cloud_storage_connector import MinioConnector
+import boto3
+from fedasync.commons.conf import Config
+from fedasync.commons.utils import AWSConnector
+LOGGER = logging.getLogger(__name__)
 
 
-class ServerStorage(MinioConnector):
+class ServerStorage(AWSConnector):
+
     def __init__(self):
-        super().__init__(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY)
-        self.admin = MinioAdmin(target='minio')
-        # check if bucket global-models is existing or not, if not then create one
-        if not self.client.bucket_exists('global-models'):
-            self.client.make_bucket('global-models')
+        super().__init__()
+        self.iam = boto3.client('iam', aws_access_key_id=Config.STORAGE_ACCESS_KEY,
+                                aws_secret_access_key=Config.STORAGE_SECRET_KEY)
 
-    def generate_keys(self, client_id, session_id):
-        self.client.make_bucket(client_id)
-        new_key = self.admin.user_add(client_id, session_id)
+        self.client_keys = None
+        while True:
+            try:
+                self.iam.create_user(UserName='client')
+                self.iam.attach_user_policy(
+                    UserName='client',
+                    PolicyArn='arn:aws:iam::738502987127:policy/FedAsyncClientPolicy'
+                )
+                self.client_keys = self.iam.create_access_key(UserName='client')['AccessKey']
+                break
 
-        # Add permissions for the new user
-        with open('worker_policy.json', 'w') as f:
-            upload_policy = '{"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": ["s3:PutObject"], ' \
-                            '"Resource": ["arn:aws:s3:::%s/*"]},{"Effect": "Allow","Action": [ "s3:GetObject", ' \
-                            '"s3:GetBucketLocation"],"Resource": [ "arn:aws:s3:::global-models/*"]}]}' % (
-                                client_id)
-            f.write(upload_policy)
-        self.admin.policy_add(client_id, 'worker_policy.json')
-        self.admin.policy_set(client_id, client_id)
-        os.remove('worker_policy.json')
+            except self.iam.exceptions.EntityAlreadyExistsException as e:
 
-        access_key, secret_key = new_key['accessKey'], new_key['secretKey']
-        return access_key, secret_key
+                try:
+                    self.client_keys = self.iam.create_access_key(UserName='client')['AccessKey']
+                    break
+                except:
+                    for key in self.iam.list_access_keys(UserName='client')['AccessKeyMetadata']:
+                        if key['UserName'] == "client":
+                            self.iam.delete_access_key(
+                                UserName='client',
+                                AccessKeyId=key['AccessKeyId']
+                            )
+                LOGGER.info(e)
 
-    def get_newest_global_model(self):
+        self.client_access_key_id = self.client_keys['AccessKeyId']
+        self.client_secret_key = self.client_keys['SecretAccessKey']
+
+    def get_client_key(self, worker_id):
+        # Generate an access key and secret key for the user
+        self.create_folder(worker_id)
+        LOGGER.info(
+            f"session: {worker_id} - access key: {self.client_access_key_id} - secret key: {self.client_access_key_id}")
+        return self.client_access_key_id, self.client_secret_key
+
+    def create_folder(self, folder_name):
+        self._s3.put_object(Bucket='fedasyn', Key=('clients/' + folder_name + '/'))
+
+    def get_newest_global_model(self) -> str:
         # get the newest object in the global-models bucket
-        objects = self.client.list_objects('global-models', recursive=True, start_after='')
-        sorted_objects = sorted(objects, key=lambda obj: obj.last_modified, reverse=True)
+        objects = self._s3.list_objects_v2(Bucket='fedasyn', Prefix='global-models/', Delimiter='/')['Contents']
+        # Sort the list of objects by LastModified in descending order
+        sorted_objects = sorted(objects, key=lambda x: x['LastModified'], reverse=True)
 
         if len(sorted_objects) > 0:
-            return sorted_objects[0].object_name
+            return sorted_objects[0]['Key']
         else:
-            print("Bucket is empty.")
-            return None
+            LOGGER.info("Bucket is empty.")

@@ -1,15 +1,8 @@
-from fedasync.commons.conf import StorageConfig
-from fedasync.commons.utils.cloud_storage_connector import MinioConnector
+from fedasync.commons.utils import AWSConnector
 
 
-class ClientStorage(MinioConnector):
-    def __init__(self, client_id):
-        super().__init__(StorageConfig.ACCESS_KEY, StorageConfig.SECRET_KEY, client_id)
-        self.client_id = client_id
+class ClientStorage(AWSConnector):
+    def __init__(self):
+        super().__init__()        
 
-    def get_model(self, model_version: str):
-        self.download('global-models', model_version)
-
-    def upload_local_model(self, file_path: str):
-        self.upload(self.client_id, file_path)
 

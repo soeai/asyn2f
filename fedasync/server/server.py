@@ -3,21 +3,21 @@ import uuid
 from abc import abstractmethod
 from time import sleep
 from pika import BasicProperties
-from fedasync.commons.conf import StorageConfig, RoutingRules, Config
+from fedasync.commons.conf import RoutingRules, Config, init_config
 from fedasync.commons.messages.client_init_connect_to_server import ClientInit
 from fedasync.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
 from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
 from fedasync.commons.utils.queue_connector import QueueConnector
-from fedasync.server.objects import Worker
-from fedasync.server.server_storage_connector import ServerStorage
-from fedasync.server.strategies import Strategy
-from fedasync.server.worker_manager import WorkerManager
+from .objects import Worker
+from .server_storage_connector import ServerStorage
+from .strategies import Strategy
+from .worker_manager import WorkerManager
 import threading
 
+
 lock = threading.Lock()
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -27,113 +27,118 @@ class Server(QueueConnector):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, t: int = 30) -> None:
+    def __init__(self, strategy: Strategy, t: int = 15) -> None:
         # Server variables
         super().__init__()
-        self.t = t
-        self.alpha: dict = {}
-        self.strategy = strategy
+        self._t = t
+        self._strategy = strategy
         # variables
-        self.is_downloading = False
+        self._is_downloading = False
+        self._is_new_global_model = False
 
-        # Server
-        self.server_access_key = 'minioadmin'
-        self.server_secret_key = 'minioadmin'
-
-        if StorageConfig.ACCESS_KEY == "" or StorageConfig.SECRET_KEY == "":
-            StorageConfig.ACCESS_KEY = self.server_access_key
-            StorageConfig.SECRET_KEY = self.server_secret_key
+        init_config("server")
 
         # Dependencies
-        self.worker_manager: WorkerManager = WorkerManager()
-        self.cloud_storage: ServerStorage = ServerStorage()
+        self._worker_manager: WorkerManager = WorkerManager()
+        self._cloud_storage: ServerStorage = ServerStorage()
 
     def on_message(self, channel, method, properties: BasicProperties, body):
 
         if method.routing_key == RoutingRules.CLIENT_INIT_SEND_TO_SERVER:
 
-            # get message and convert it
-            client_init_message: ClientInit = ClientInit(body.decode())
+            # Get message from Client
+            client_init_message: ClientInit = ClientInit()
+            client_init_message.deserialize(body.decode())
             LOGGER.info(f"client_msg: {client_init_message.__str__()} at {threading.current_thread()}")
 
-            # create worker and add worker to manager.
-            new_id = str(uuid.uuid4())
-            new_worker = Worker(
-                new_id,
-                client_init_message.sys_info,
-                client_init_message.data_desc,
-                client_init_message.qod
-            )
+            # check if session is in the worker_manager.get_all_worker_session
+            if client_init_message.session_id in self._worker_manager.list_all_worker_session_id() and client_init_message.client_id != '':
+                # get worker_id by client_id
+                worker = self._worker_manager.get_worker_by_id(client_init_message.client_id)
+                worker_id = worker.worker_id
+                session_id = client_init_message.session_id
+            else:
+                worker_id = str(uuid.uuid4())
+                session_id = str(uuid.uuid4())
+
+                # Get cloud storage keys
+                with lock:
+                    access_key, secret_key = self._cloud_storage.get_client_key(worker_id)
+
+                # Add worker to Worker Manager.
+                worker = Worker(
+                        session_id=session_id,
+                        worker_id=worker_id,
+                        sys_info=client_init_message.sys_info,
+                        data_desc=client_init_message.data_desc,
+                        qod=client_init_message.qod
+                )
+                with lock:
+                    worker.access_key_id = access_key
+                    worker.secret_key_id = secret_key
+                    self._worker_manager.add_worker(worker)
+                    
+
+
+
+
+            model_name = self._cloud_storage.get_newest_global_model().split('.')[0]
+            model_version = model_name.split('_')[1][1:]
+            try:
+                self._strategy.current_version = int(model_version)
+            except Exception as e:
+                logging.error(e)
+                self._strategy.current_version = 0
 
             # Build response message
-            response = ServerInitResponseToClient()
-            response.session_id = client_init_message.session_id
-            response.client_id = new_worker.uuid
-            response.model_url = self.cloud_storage.get_newest_global_model()
-            # generate minio keys
-            with lock:
-                access_key, secret_key = self.cloud_storage.generate_keys(new_id, response.session_id)
+            response = ServerInitResponseToClient(
+                client_identifier=client_init_message.client_identifier,
+                session_id=session_id,
+                client_id=worker_id,
+                model_url=self._cloud_storage.get_newest_global_model(),
+                model_version=self._strategy.current_version,
+                access_key=worker.access_key_id,
+                secret_key=worker.secret_key_id,
+                bucket_name=Config.STORAGE_BUCKET_NAME,
+                region_name=Config.STORAGE_REGION_NAME,
+                training_exchange=Config.TRAINING_EXCHANGE,
+                monitor_queue=Config.MONITOR_QUEUE
 
-            response.access_key = access_key
-            response.secret_key = secret_key
-
+            )
             LOGGER.info(f"server response: {response.__str__()} at {threading.current_thread()}")
-
             self.response_to_client_init_connect(response)
 
-            #  add to worker.
-            with lock:
-                self.worker_manager.add_worker(new_worker)
-                number_of_online_workers = self.worker_manager.total()
-
-            if number_of_online_workers > 1:
-                # construct message.
-                msg = ServerNotifyModelToClient()
-                msg.model_id = self.strategy.model_id
-                msg.chosen_id = []
-                msg.global_model_name = f"global_model_{self.strategy.current_version}"
-                msg.global_model_version = msg.model_id
-                msg.avg_loss = self.strategy.avg_loss
-                msg.timestamp = 0
-                msg.global_model_update_data_size = self.strategy.global_model_update_data_size
-
-                self.notify_global_model_to_client(message=msg)
 
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
-            # download local model.
-            client_noty_message = ClientNotifyModelToServer(body.decode())
+            client_notify_message = ClientNotifyModelToServer()
+            client_notify_message.deserialize(body.decode())
+            print(f'Receive new model from client [{client_notify_message.client_id}]!')
 
-            # download model!
+            # Download model!
             with lock:
-                # self.container.cloud_storage.download(f'{client_noty_message.client_id}/{client_noty_message.link}')
-                self.worker_manager.add_local_update(client_noty_message)
-
-            # print out
-            LOGGER.info(f"New model from {client_noty_message.client_id} is successfully downloaded! ")
+                self._cloud_storage.download(bucket_name='fedasyn',
+                                             remote_file_path=client_notify_message.weight_file,
+                                             local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + client_notify_message.model_id)
+                self._worker_manager.add_local_update(client_notify_message)
 
     def setup(self):
-        # declare exchange.
+        # Declare exchange, queue, binding.
         self._channel.exchange_declare(exchange=Config.TRAINING_EXCHANGE, exchange_type=self.EXCHANGE_TYPE)
-
-        # declare queue
         self._channel.queue_declare(queue=Config.QUEUE_NAME)
-
-        # binding.
         self._channel.queue_bind(
             Config.QUEUE_NAME,
             Config.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER
         )
-
         self._channel.queue_bind(
             Config.QUEUE_NAME,
             Config.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_INIT_SEND_TO_SERVER
         )
-
         self.start_consuming()
 
     def notify_global_model_to_client(self, message):
+        # Send notify message to client.
         self._channel.basic_publish(
             Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
@@ -141,6 +146,7 @@ class Server(QueueConnector):
         )
 
     def response_to_client_init_connect(self, message):
+        # Send response message to client.
         self._channel.basic_publish(
             Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT,
@@ -156,40 +162,44 @@ class Server(QueueConnector):
         # run the consuming thread!.
         consuming_thread.start()
 
-        while True:
+        while not self.is_stop_condition() and not self._closing:
             with lock:
-                n_local_updates = self.worker_manager.get_n_local_update(self.strategy.current_version)
-                LOGGER.info(f"Check, n_local_update = {n_local_updates}")
+                n_local_updates = len(self._worker_manager.get_completed_workers())
             if n_local_updates == 0:
-                sleep(self.t)
+                print(f'No local update found, sleep for {self._t} seconds...')
+                # Sleep for t seconds.
+                sleep(self._t)
             elif n_local_updates > 0:
-                print('publish global model')
+                print(f'Found {n_local_updates} local update(s)')
+                print('Start update global model')
                 self.update()
                 self.publish_global_model()
 
-            if self.is_stop_condition():
-                self.stop()
-                break
+                # Clear worker queue after aggregation.
+                self._worker_manager.update_worker_after_training()
+
+        self.stop()
 
     def update(self):
-        with lock:
-            workers = self.worker_manager.get_all()
-            self.strategy.aggregate(workers)
+        self._strategy.aggregate(self._worker_manager)
 
     @abstractmethod
     def is_stop_condition(self):
         return False
 
     def publish_global_model(self):
+        print('Publish global model (sv notify model to client)')
+        local_filename = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
+        remote_filename = f'global-models/{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
+        self._cloud_storage.upload(local_filename, remote_filename, 'fedasyn')
         # Construct message
-        msg = ServerNotifyModelToClient()
-        msg.model_id = self.strategy.model_id
-        msg.global_model_name = self.strategy.get_global_model_filename()
-        msg.global_model_version = self.strategy.current_version
-        msg.avg_loss = self.strategy.avg_loss
-        msg.chosen_id = []
-        msg.global_model_update_data_size = self.strategy.global_model_update_data_size
-
+        msg = ServerNotifyModelToClient(
+            model_id=self._strategy.model_id,
+            chosen_id=[],
+            global_model_name=f'{self._strategy.model_id}_v{self._strategy.current_version}.pkl',
+            global_model_version=self._strategy.current_version,
+            avg_loss=self._strategy.avg_loss,
+            global_model_update_data_size=self._strategy.global_model_update_data_size
+        )
         # Send message
-        with lock:
-            self.notify_global_model_to_client(msg)
+        self.notify_global_model_to_client(msg)

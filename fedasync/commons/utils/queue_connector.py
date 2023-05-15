@@ -1,19 +1,11 @@
-
-
 import functools
 import logging
-import time
 from abc import ABC, abstractmethod
-
 import pika
 from pika.channel import Channel
-
 from pika.exchange_type import ExchangeType
-
 from fedasync.commons.conf import Config
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
 LOGGER = logging.getLogger(__name__)
 
 
@@ -39,12 +31,9 @@ class QueueConnector(ABC):
     def __init__(self):
         """Create a new instance of the consumer class, passing in the AMQP
         URL used to connect to RabbitMQ.
-
-        :param str amqp_url: The AMQP url to connect with
-
         """
-        self.should_reconnect = False
-        self.was_consuming = False
+        self._should_reconnect = False
+        self._was_consuming = False
 
         self._connection = None
         self._channel: Channel = None
@@ -78,6 +67,7 @@ class QueueConnector(ABC):
         else:
             LOGGER.info('Closing connection')
             self._connection.close()
+
 
     def _on_connection_open(self, _unused_connection):
         """This method is called by pika once the connection to RabbitMQ has
@@ -124,7 +114,7 @@ class QueueConnector(ABC):
         ioloop.
 
         """
-        self.should_reconnect = True
+        self._should_reconnect = True
         self.stop()
 
     def _open_channel(self):
@@ -192,7 +182,7 @@ class QueueConnector(ABC):
         self._add_on_cancel_callback()
         self._consumer_tag = self._channel.basic_consume(
             Config.QUEUE_NAME, self.on_message, auto_ack=True)
-        self.was_consuming = True
+        self._was_consuming = True
         self._consuming = True
 
     def _add_on_cancel_callback(self):
@@ -283,4 +273,3 @@ class QueueConnector(ABC):
             else:
                 self._connection.ioloop.stop()
             LOGGER.info('Stopped')
-

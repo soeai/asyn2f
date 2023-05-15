@@ -1,10 +1,8 @@
 import logging
-from typing import List, Dict
+from typing import Dict, List
 from .objects import Worker
 from ..commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
 LOGGER = logging.getLogger(__name__)
 
 
@@ -23,16 +21,13 @@ class WorkerManager:
         # save history state by version.
         self.history_state: Dict[int, Dict[str, Worker]] = {}
 
-        # save local weights by version
-        self.weight_pool: Dict[int, Dict] = {}
-
     def add_worker(self, worker: Worker) -> None:
         """Add a Worker to the worker_pools attribute.
         Args:
             worker (Worker): The Worker object to add.
         """
-        LOGGER.info(f"New worker added, ID: {worker.uuid}")
-        self.worker_pool[worker.uuid] = worker
+        LOGGER.info(f"New worker added, ID: {worker.worker_id}")
+        self.worker_pool[worker.worker_id] = worker
 
     def total(self) -> int:
         """Get the total number of Workers.
@@ -49,9 +44,25 @@ class WorkerManager:
         """
         return self.worker_pool
 
-    def get_n_local_update(self, global_model_version):
-        LOGGER.info("Get n local updates")
-        return len(self.weight_pool)
-
     def add_local_update(self, message: ClientNotifyModelToServer):
-        pass
+        # update worker states with information from local worker.
+        client_id = message.client_id
+        self.worker_pool[client_id].loss = message.loss_value
+        self.worker_pool[client_id].current_version = message.global_model_version_used
+        self.worker_pool[client_id].weight_file = message.weight_file
+        self.worker_pool[client_id].batch_size = message.batch_size
+        self.worker_pool[client_id].alpha = message.alpha
+        self.worker_pool[client_id].is_completed = True
+
+    def update_worker_after_training(self):
+        for worker in self.worker_pool:
+            self.worker_pool[worker].is_completed = False
+
+    def get_completed_workers(self) -> Dict:
+        return {worker_id: self.worker_pool[worker_id] for worker_id in self.worker_pool if self.worker_pool[worker_id].is_completed == True}
+
+    def get_worker_by_id(self, worker_id: str) -> Worker:
+        return self.worker_pool[worker_id]
+
+    def list_all_worker_session_id(self) -> List:
+        return [self.worker_pool[worker_id].session_id for worker_id in self.worker_pool.keys()]

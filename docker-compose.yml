@@ -1,22 +1,23 @@
 version: '3'
 
+#services:
+#  rabbitmq:
+#    image: rabbitmq:3.11-management
+#    ports:
+#      - "5672:5672"
+#      - "15672:15672"
+#    environment:
+#      RABBITMQ_DEFAULT_USER: guest
+#      RABBITMQ_DEFAULT_PASS: guest
+
 services:
-  minio:
-    image: minio/minio
-    ports:
-      - "9000:9000"
-      - "9090:9090"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    volumes:
-      - ~/minio/data:/data
-    command: server /data --console-address ":9090"
-  rabbitmq:
-    image: rabbitmq:3.11-management
+  fed-async-client:
+    container_name: fed-async-client-soe
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5672:5672"
-      - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      access_key:
+      secret_key:
