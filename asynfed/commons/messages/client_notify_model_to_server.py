@@ -1,4 +1,4 @@
-from fedasync.commons.messages.message import Message
+from asynfed.commons.messages.message import Message
 
 
 class ClientNotifyModelToServer(Message):

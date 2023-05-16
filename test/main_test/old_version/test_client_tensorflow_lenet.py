@@ -3,7 +3,7 @@ print('Python %s on %s' % (sys.version, sys.platform))
 sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL'])
 
 
-from fedasync.client.client_asyncfL import ClientAsyncFl
+from asynfed.client.client_asyncfL import ClientAsyncFl
 from test.tensorflow_examples.mnist.lenet_model import LeNet
 from test.tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
 # import tensorflow as tf

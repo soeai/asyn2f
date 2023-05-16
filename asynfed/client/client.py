@@ -5,17 +5,16 @@ import threading
 import uuid
 from abc import abstractmethod
 from .client_storage_connector import ClientStorage
-from fedasync.commons.conf import RoutingRules, Config, init_config
-from fedasync.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
-from fedasync.commons.messages import ServerInitResponseToClient
-from fedasync.commons.messages import ServerNotifyModelToClient
-from fedasync.commons.utils import QueueConnector
+from asynfed.commons.conf import RoutingRules, Config, init_config
+from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
+from asynfed.commons.messages import ServerInitResponseToClient
+from asynfed.commons.messages import ServerNotifyModelToClient
+from asynfed.commons.utils import QueueConnector
 
 
 LOGGER = logging.getLogger(__name__)
 
 lock = threading.Lock()
-
 
 
 class Client(QueueConnector):
@@ -50,7 +49,6 @@ class Client(QueueConnector):
             self.create_profile()
         else:
             self.load_profile()
-
 
         self.log: bool = True
         init_config("client")
@@ -129,6 +127,8 @@ class Client(QueueConnector):
             decoded = json.loads(bytes.decode(body))
             message.deserialize(decoded)
 
+            LOGGER.info(message.__dict__)
+
             # Get only the message that server reply to it base on the session_id
             if self._client_identifier == message.client_identifier:
                 # set client property from message
@@ -142,10 +142,10 @@ class Client(QueueConnector):
                     LOGGER.info(
                         f"Client {message.client_id} is succesfully registered | session_id: {message.session_id}"
                     )
-                    self._session_id = message.session_id
-                    self._client_id = message.client_id
-                    self._global_model_name = message.model_url
-                    self._global_model_version = message.model_version
+                self._session_id = message.session_id
+                self._client_id = message.client_id
+                self._global_model_name = message.model_url
+                self._global_model_version = message.model_version
 
                 LOGGER.info(
                     f'Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}')
@@ -160,9 +160,10 @@ class Client(QueueConnector):
                 self._storage_connector = ClientStorage()
 
                 LOGGER.info(
-                        f"Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}"
-                        )
+                    f"Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}"
+                )
                 self._is_registered = True
+
                 # if local model version is smaller than the global model version and client's id is in the chosen ids
                 if self._current_local_version < self._global_model_version:
                     LOGGER.info("Detect new global version.")

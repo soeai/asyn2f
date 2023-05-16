@@ -2,8 +2,8 @@ import sys
 
 sys.path.extend(['/home/andreas/Coding/school/AsynFL'])
 
-from fedasync.commons.conf import Config
-from fedasync.client.client_asyncfL import ClientAsyncFl
+from asynfed.commons.conf import Config
+from asynfed.client.client_asyncfL import ClientAsyncFl
 from test.tensorflow_examples.mnist.lenet_model import LeNet
 from test.tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
 # import tensorflow as tf

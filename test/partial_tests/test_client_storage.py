@@ -8,9 +8,9 @@ sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL'])
 
 
 
-from fedasync.client.client_storage_connector import ClientStorage
-from fedasync.commons.utils.cloud_storage_connector import AWSConnector
-from fedasync.server.server_storage_connector import ServerStorage
+from asynfed.client.client_storage_connector import ClientStorage
+from asynfed.commons.utils.cloud_storage_connector import AWSConnector
+from asynfed.server.server_storage_connector import ServerStorage
 
 # access_key_id = os.getenv('acces_key')
 # secret_access_key = os.getenv('secret_key')

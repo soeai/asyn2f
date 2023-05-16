@@ -3,10 +3,10 @@ import os
 project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))
 sys.path.extend([project_dir])
 
-from fedasync.commons.conf import Config
-from fedasync.client.client_asyncfL import ClientTensorflow
-from fedasync.client.tensorflow_examples.mnist.lenet_model import LeNet
-from fedasync.client.tensorflow_examples.mnist.data_preprocessing import (
+from asynfed.commons.conf import Config
+from asynfed.client.client_asyncfL import ClientTensorflow
+from asynfed.client.tensorflow_examples.mnist.lenet_model import LeNet
+from asynfed.client.tensorflow_examples.mnist.data_preprocessing import (
     TensorflowDataPreprocessing,
 )
 

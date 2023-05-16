@@ -1,8 +1,8 @@
 import logging
 
 import boto3
-from fedasync.commons.conf import Config
-from fedasync.commons.utils import AWSConnector
+from asynfed.commons.conf import Config
+from asynfed.commons.utils import AWSConnector
 LOGGER = logging.getLogger(__name__)
 
 
@@ -36,7 +36,6 @@ class ServerStorage(AWSConnector):
                                 UserName='client',
                                 AccessKeyId=key['AccessKeyId']
                             )
-                LOGGER.info(e)
 
         self.client_access_key_id = self.client_keys['AccessKeyId']
         self.client_secret_key = self.client_keys['SecretAccessKey']

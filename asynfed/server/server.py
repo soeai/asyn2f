@@ -3,18 +3,17 @@ import uuid
 from abc import abstractmethod
 from time import sleep
 from pika import BasicProperties
-from fedasync.commons.conf import RoutingRules, Config, init_config
-from fedasync.commons.messages.client_init_connect_to_server import ClientInit
-from fedasync.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
-from fedasync.commons.messages.server_init_response_to_client import ServerInitResponseToClient
-from fedasync.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
-from fedasync.commons.utils.queue_connector import QueueConnector
+from asynfed.commons.conf import RoutingRules, Config, init_config
+from asynfed.commons.messages.client_init_connect_to_server import ClientInit
+from asynfed.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
+from asynfed.commons.messages.server_init_response_to_client import ServerInitResponseToClient
+from asynfed.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
+from asynfed.commons.utils.queue_connector import QueueConnector
 from .objects import Worker
 from .server_storage_connector import ServerStorage
 from .strategies import Strategy
 from .worker_manager import WorkerManager
 import threading
-
 
 lock = threading.Lock()
 
@@ -53,10 +52,12 @@ class Server(QueueConnector):
 
             # check if session is in the worker_manager.get_all_worker_session
             if client_init_message.session_id in self._worker_manager.list_all_worker_session_id() and client_init_message.client_id != '':
+
                 # get worker_id by client_id
                 worker = self._worker_manager.get_worker_by_id(client_init_message.client_id)
                 worker_id = worker.worker_id
                 session_id = client_init_message.session_id
+
             else:
                 worker_id = str(uuid.uuid4())
                 session_id = str(uuid.uuid4())
@@ -67,20 +68,16 @@ class Server(QueueConnector):
 
                 # Add worker to Worker Manager.
                 worker = Worker(
-                        session_id=session_id,
-                        worker_id=worker_id,
-                        sys_info=client_init_message.sys_info,
-                        data_desc=client_init_message.data_desc,
-                        qod=client_init_message.qod
+                    session_id=session_id,
+                    worker_id=worker_id,
+                    sys_info=client_init_message.sys_info,
+                    data_desc=client_init_message.data_desc,
+                    qod=client_init_message.qod
                 )
                 with lock:
                     worker.access_key_id = access_key
                     worker.secret_key_id = secret_key
                     self._worker_manager.add_worker(worker)
-                    
-
-
-
 
             model_name = self._cloud_storage.get_newest_global_model().split('.')[0]
             model_version = model_name.split('_')[1][1:]
@@ -135,6 +132,9 @@ class Server(QueueConnector):
             Config.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_INIT_SEND_TO_SERVER
         )
+
+        self._channel.queue_purge(Config.QUEUE_NAME)
+
         self.start_consuming()
 
     def notify_global_model_to_client(self, message):

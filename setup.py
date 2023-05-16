@@ -1,9 +1,9 @@
 import setuptools
 setuptools.setup(
-    name="fedasync",
+    name="asynfed",
     version="1.0.0",
     author="TTU SOE",
-    description="fedasync lib",
+    description="asynfed lib",
     packages=setuptools.find_packages(),
     install_requires=[
         "boto3",

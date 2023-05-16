@@ -1,5 +1,5 @@
-from fedasync.commons.conf import Config
-from fedasync.commons.messages.client_init_connect_to_server import SysInfo, DataDesc, QoD
+from asynfed.commons.conf import Config
+from asynfed.commons.messages.client_init_connect_to_server import SysInfo, DataDesc, QoD
 
 
 class Worker:

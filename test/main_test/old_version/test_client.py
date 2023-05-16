@@ -1,10 +1,10 @@
 import sys
 print('Python %s on %s' % (sys.version, sys.platform))
-# sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL/fedasync'])
+# sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL/asynfed'])
 sys.path.extend(['/home/vtn_ubuntu/ttu/spring23/working_project/AsynFL'])
 
 
-from fedasync.client.client_asyncfL import ClientAsyncFl
+from asynfed.client.client_asyncfL import ClientAsyncFl
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
