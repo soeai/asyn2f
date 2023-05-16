@@ -1,8 +1,8 @@
 import uuid
-from fedasync.commons.conf import Config
-from fedasync.server.strategies.AsynFL import AsynFL
-from fedasync.server.worker_manager import WorkerManager
-from fedasync.server.objects.worker import Worker
+from asynfed.commons.conf import Config
+from asynfed.server.strategies.AsynFL import AsynFL
+from asynfed.server.worker_manager import WorkerManager
+from asynfed.server.objects.worker import Worker
 
 strat = AsynFL()
 strat.current_version = 1

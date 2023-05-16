@@ -6,11 +6,11 @@ import numpy as np
 from numpy import ndarray
 import pickle
 
-from fedasync.commons.conf   import Config
-from fedasync.server.objects import Worker
-from fedasync.server.strategies import Strategy
+from asynfed.commons.conf   import Config
+from asynfed.server.objects import Worker
+from asynfed.server.strategies import Strategy
 
-from fedasync.server.worker_manager import WorkerManager
+from asynfed.server.worker_manager import WorkerManager
 
 
 class AsynFL(Strategy):

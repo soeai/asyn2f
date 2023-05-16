@@ -14,8 +14,8 @@ COPY .env .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the 'fedasync' folder
-COPY fedasync ./fedasync
+# Copy the 'asynfed' folder
+COPY asynfed ./asynfed
 
 RUN pip install --upgrade pip
 RUN python setup.py install

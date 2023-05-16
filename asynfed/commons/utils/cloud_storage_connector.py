@@ -2,7 +2,7 @@ from abc import ABC
 import logging
 import boto3
 
-from fedasync.commons.conf import Config
+from asynfed.commons.conf import Config
 
 logging.getLogger(__name__)
 

@@ -4,8 +4,8 @@ from time import sleep
 import numpy as np
 import pickle
 from .client import Client
-from fedasync.commons.conf import Config
-from fedasync.commons.messages import ClientNotifyModelToServer
+from asynfed.commons.conf import Config
+from asynfed.commons.messages import ClientNotifyModelToServer
 
 LOGGER = logging.getLogger(__name__)
 

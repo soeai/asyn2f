@@ -1,2 +1,2 @@
-import fedasync
+import asynfed
 

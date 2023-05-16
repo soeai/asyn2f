@@ -2,8 +2,8 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
 
-from fedasync.commons.conf import Config
-from fedasync.client.client_asyncfL import ClientAsyncFl
+from asynfed.commons.conf import Config
+from asynfed.client.client_asyncfL import ClientAsyncFl
 from test.tensorflow_examples.mnist.lenet_model import LeNet
 from test.tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
 # import tensorflow as tf
@@ -19,7 +19,9 @@ train_labels_path = '../data/mnist_data/train-labels-idx1-ubyte.gz'
 test_images_path = '../data/mnist_data/t10k-images-idx3-ubyte.gz'
 test_labels_path = '../data/mnist_data/t10k-labels-idx1-ubyte.gz'
 
-Config.QUEUE_URL = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf"
+# Config.QUEUE_URL = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf"
+
+Config.QUEUE_URL = "amqp://guest:guest@13.214.37.45:5672/%2F"
 
 # preprocessing data to be ready for low level tensorflow training process
 data_preprocessing = TensorflowDataPreprocessing(train_images_path=train_images_path,

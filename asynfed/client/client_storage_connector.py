@@ -1,4 +1,4 @@
-from fedasync.commons.utils import AWSConnector
+from asynfed.commons.utils import AWSConnector
 
 
 class ClientStorage(AWSConnector):
