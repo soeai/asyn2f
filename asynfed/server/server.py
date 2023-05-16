@@ -35,9 +35,21 @@ class Server(QueueConnector):
         self._is_downloading = False
         self._is_new_global_model = False
 
+        self._server_id = str(uuid.uuid4())
+
+        # All this information was decided by server to prevent conflict
+        # because multiple server can use the same RabbitMQ, S3 server.
+        Config.QUEUE_NAME = self._server_id
+        Config.TRAINING_EXCHANGE = self._server_id
+        Config.STORAGE_BUCKET_NAME = self._server_id
+
         init_config("server")
 
-        # Dependencies
+        LOGGER.info(f' \n\nServer is running with RabbitMQ Exchange : {self._server_id}'
+              f'S3 Bucket: {self._server_id}'
+              f'\n\n')
+
+        # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
         self._cloud_storage: ServerStorage = ServerStorage()
 
@@ -104,7 +116,6 @@ class Server(QueueConnector):
             )
             LOGGER.info(f"server response: {response.__str__()} at {threading.current_thread()}")
             self.response_to_client_init_connect(response)
-
 
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
             client_notify_message = ClientNotifyModelToServer()

@@ -1,7 +1,3 @@
-import sys
-import os
-project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))
-sys.path.extend([project_dir])
 from asynfed.commons.conf import Config
 from asynfed.server.server import Server
 from asynfed.server.strategies import Strategy
@@ -12,11 +8,8 @@ import os
 load_dotenv()
 
 
-Config.QUEUE_NAME = "server_queue"
 Config.QUEUE_URL = "amqp://guest:guest@13.214.37.45:5672/%2F"
 # Config.QUEUE_URL = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf"
-Config.TRAINING_EXCHANGE = "training_exchange"
-Config.STORAGE_BUCKET_NAME = "fedasyn"
 Config.STORAGE_ACCESS_KEY = os.getenv("access_key")
 Config.STORAGE_SECRET_KEY = os.getenv("secret_key")
 
