@@ -24,16 +24,17 @@ class Config:
     # Queue name
     QUEUE_URL: str = "amqp://guest:guest@localhost:5672/%2F"
     QUEUE_NAME: str = ""
-    MONITOR_QUEUE: str = "monitor_queue"
+    MONITOR_QUEUE: str = ""
 
     # Exchanges
-    TRAINING_EXCHANGE: str = "training_exchange"
+    TRAINING_EXCHANGE: str = ""
 
     # this folder is used to save local models
     TMP_LOCAL_MODEL_FOLDER = "./weights/local_weights/"
     TMP_GLOBAL_MODEL_FOLDER = "./weights/global_weights/"
     LOG_PATH = "./logs/"
 
+    # Cloud storage bucket information.
     STORAGE_ACCESS_KEY = ""
     STORAGE_SECRET_KEY = ""
     STORAGE_BUCKET_NAME = ""
@@ -44,7 +45,7 @@ def check_valid_config(side="server"):
     LOGGER.info("Check config")
     for field in Config.__dict__:
         if side == "server":
-            if Config.__dict__[field] == "":
+            if Config.__dict__[field] == "" and field != "MONITOR_QUEUE":
                 raise Exception(f"{field} at {Config.__name__} cannot be empty!, please check again!")
         elif side == "client":
             if Config.__dict__[field] == "" and field not in ["QUEUE_NAME", "QUEUE_URL"] and "STORAGE_" not in field:
