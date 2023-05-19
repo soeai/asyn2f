@@ -6,7 +6,7 @@ import numpy as np
 from numpy import ndarray
 import pickle
 
-from asynfed.commons.conf   import Config
+from asynfed.commons.conf import Config
 from asynfed.server.objects import Worker
 from asynfed.server.strategies import Strategy
 
@@ -14,12 +14,10 @@ from asynfed.server.worker_manager import WorkerManager
 
 
 class AsynFL(Strategy):
+
     def __init__(self):
         super().__init__()
         self.alpha: Dict = {}
-
-    def get_global_model_filename(self):
-        return f"{self.model_id}_v{self.current_version}.pkl"
 
     def select_client(self, all_clients) -> List[str]:
         return all_clients
@@ -60,15 +58,15 @@ class AsynFL(Strategy):
         # save weight file.
         save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self.get_global_model_filename()
         print(save_location)
-        print('='*20)
+        print('=' * 20)
         with open(save_location, "wb") as f:
             pickle.dump(merged_weight, f)
         # print(merged_weight)
 
     def get_model_weights(self, file_path) -> ndarray:
-        print("*"*10)
+        print("*" * 10)
         print(file_path)
-        print("*"*10)
+        print("*" * 10)
 
         if os.path.isfile(file_path) is False:
             raise Exception("File not found")
@@ -77,3 +75,6 @@ class AsynFL(Strategy):
             with open(file_path, "rb") as f:
                 weights = pickle.load(f)
             return weights
+
+    def is_completed(self):
+        return False

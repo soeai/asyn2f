@@ -9,6 +9,7 @@ LOGGER = logging.getLogger(__name__)
 
 class RoutingRules:
     # at ClientModel Queue
+    SERVER_ERROR_TO_CLIENT = "error.message"
     CLIENT_INIT_SEND_TO_SERVER: str = "client.init.send.to.server"
     CLIENT_NOTIFY_MODEL_TO_SERVER: str = "client.notify.update"
 

@@ -11,7 +11,6 @@ from asynfed.commons.messages import ServerInitResponseToClient
 from asynfed.commons.messages import ServerNotifyModelToClient
 from asynfed.commons.utils import QueueConnector
 
-
 LOGGER = logging.getLogger(__name__)
 
 lock = threading.Lock()
@@ -101,7 +100,7 @@ class Client(QueueConnector):
     def run(self):
         self.run_queue()
 
-    def setup(self):
+    def __setup(self):
         # declare queue
         self._channel.queue_declare(queue=Config.QUEUE_NAME)
 
@@ -120,7 +119,7 @@ class Client(QueueConnector):
         self.publish_init_message()
         self.start_consuming()
 
-    def on_message(self, channel, basic_deliver, properties, body):
+    def __on_message(self, channel, basic_deliver, properties, body):
         # If message come from routing SERVER_INIT_RESPONSE_TO_CLIENT then save the model id.
         if basic_deliver.routing_key == RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT:
             message = ServerInitResponseToClient()
@@ -173,9 +172,9 @@ class Client(QueueConnector):
 
                     while True:
                         if self._storage_connector.download(
-                            bucket_name=Config.STORAGE_BUCKET_NAME,
-                            remote_file_path=self._global_model_name,
-                            local_file_path=local_path,
+                                bucket_name=Config.STORAGE_BUCKET_NAME,
+                                remote_file_path=self._global_model_name,
+                                local_file_path=local_path,
                         ):
                             break
 
@@ -183,8 +182,8 @@ class Client(QueueConnector):
                     self.start_training_thread()
 
         elif (
-            basic_deliver.routing_key == RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT
-            and self._is_registered
+                basic_deliver.routing_key == RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT
+                and self._is_registered
         ):
             # download model.
             decoded = json.loads(bytes.decode(body))
@@ -206,18 +205,18 @@ class Client(QueueConnector):
                 self._global_model_update_data_size = msg.global_model_update_data_size
                 self._global_avg_loss = msg.avg_loss
 
-                remote_path = f'global-models/{msg.model_id}_v{msg.global_model_version}.pkl'
-                local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{msg.model_id}_v{msg.global_model_version}.pkl'
-                LOGGER.info("*" * 10)
-                LOGGER.info(remote_path)
-                LOGGER.info(local_path)
-                LOGGER.info("*" * 10)
+                # if local model version is smaller than the global model version and client's id is in the chosen ids
+                if self._current_local_version < self._global_model_version:
+                    LOGGER.info("Detect new global version.")
 
-                while True:
-                    if self._storage_connector.download(bucket_name=Config.STORAGE_BUCKET_NAME,
-                                                        remote_file_path=remote_path,
-                                                        local_file_path=local_path):
-                        break
+                    remote_path = f'global-models/{msg.model_id}_v{msg.global_model_version}.pkl'
+                    local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{msg.model_id}_v{msg.global_model_version}.pkl'
+
+                    while True:
+                        if self._storage_connector.download(bucket_name=Config.STORAGE_BUCKET_NAME,
+                                                            remote_file_path=remote_path,
+                                                            local_file_path=local_path):
+                            break
 
                 # change the flag to true.
                 self._new_model_flag = True
