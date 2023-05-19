@@ -31,6 +31,7 @@ class Server(QueueConnector):
         # Server variables
         super().__init__()
         self._t = t
+        print(self._t)
         self._strategy = strategy
         # variables
         self._is_downloading = False
@@ -54,7 +55,7 @@ class Server(QueueConnector):
         self._worker_manager: WorkerManager = WorkerManager()
         self._cloud_storage: ServerStorage = ServerStorage()
 
-    def __on_message(self, channel, method, properties: BasicProperties, body):
+    def on_message(self, channel, method, properties: BasicProperties, body):
 
         if method.routing_key == RoutingRules.CLIENT_INIT_SEND_TO_SERVER:
             try:
@@ -136,7 +137,7 @@ class Server(QueueConnector):
                                              local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + client_notify_message.model_id)
                 self._worker_manager.add_local_update(client_notify_message)
 
-    def __setup(self):
+    def setup(self):
         # Declare exchange, queue, binding.
         self._channel.exchange_declare(exchange=Config.TRAINING_EXCHANGE, exchange_type=self.EXCHANGE_TYPE)
         self._channel.queue_declare(queue=Config.QUEUE_NAME)
@@ -179,7 +180,7 @@ class Server(QueueConnector):
             message.serialize()
         )
 
-    def __run(self):
+    def run(self):
 
         # create 1 thread to listen on the queue.
         consuming_thread = threading.Thread(target=self.run_queue,

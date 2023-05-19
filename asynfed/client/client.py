@@ -100,7 +100,7 @@ class Client(QueueConnector):
     def run(self):
         self.run_queue()
 
-    def __setup(self):
+    def setup(self):
         # declare queue
         self._channel.queue_declare(queue=Config.QUEUE_NAME)
 
@@ -119,7 +119,7 @@ class Client(QueueConnector):
         self.publish_init_message()
         self.start_consuming()
 
-    def __on_message(self, channel, basic_deliver, properties, body):
+    def on_message(self, channel, basic_deliver, properties, body):
         # If message come from routing SERVER_INIT_RESPONSE_TO_CLIENT then save the model id.
         if basic_deliver.routing_key == RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT:
             message = ServerInitResponseToClient()
