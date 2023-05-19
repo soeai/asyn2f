@@ -99,6 +99,7 @@ class ClientAsyncFl(Client):
                 f'Last Batch Test Loss: {test_loss}, '
             )
 
+            
             # Save weights locally after training
             filename = f'{self._client_id}_v{self._local_epoch}.pkl'
             save_location = Config.TMP_LOCAL_MODEL_FOLDER + filename

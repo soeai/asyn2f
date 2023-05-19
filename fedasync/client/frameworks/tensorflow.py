@@ -21,7 +21,7 @@ class TensorflowModel(ModelWrapper):
         return self.model.set_weights(weights)
     
     def get_weights(self):
-        return self.model.get_weights
+        return self.model.get_weights()
     
     def fit(self, x, y):
         self.train_step(x, y)
