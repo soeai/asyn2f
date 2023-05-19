@@ -1,6 +1,6 @@
 import tensorflow as tf
-from tensorflow.keras import Model
-from tensorflow.keras.layers import Dense, Flatten, Conv2D, AveragePooling2D
+from keras import Model
+from keras.layers import Dense, Flatten, Conv2D, AveragePooling2D
 
 
 class LeNet(Model):
