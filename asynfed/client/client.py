@@ -52,6 +52,11 @@ class Client(QueueConnector):
         self.log: bool = True
         init_config("client")
 
+
+    @abstractmethod
+    def train(self):
+        pass
+
     def create_profile(self):
         data = {
             "session_id": self._session_id,
@@ -235,23 +240,6 @@ class Client(QueueConnector):
             message
         )
 
-        # Abstract methods
-
-    @abstractmethod
-    def set_weights(self, weights):
-        pass
-
-    @abstractmethod
-    def get_weights(self):
-        pass
-
-    @abstractmethod
-    def train(self):
-        pass
-
-    @abstractmethod
-    def evaluate(self, test_dataset):
-        pass
 
     def publish_init_message(self):
         message = ClientInit(
