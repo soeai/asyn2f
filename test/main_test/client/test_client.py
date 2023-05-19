@@ -4,10 +4,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
 
 from fedasync.commons.conf import Config
 from fedasync.client.algorithms.client_asyncfL import ClientAsyncFl
+from fedasync.client.frameworks.tensorflow import TensorflowModel
 
-from ..tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
-from ..tensorflow_examples.mnist.tensorflow import TensorflowModel
-from ..tensorflow_examples.mnist.Lenet import LeNet
+from data_preprocessing import TensorflowDataPreprocessing
+# from ..tensorflow_examples.mnist.tensorflow import TensorflowModel
+from Lenet import LeNet
 # import tensorflow as tf
 
 # Preprocessing data
@@ -26,19 +27,18 @@ data_preprocessing = TensorflowDataPreprocessing(train_images_path=train_images_
                                                  fract=0.2, evaluate_images_path=test_images_path,
                                                  evaluate_labels_path=test_labels_path)
 
+
 # define dataset
 train_ds = data_preprocessing.train_ds
 test_ds = data_preprocessing.test_ds
 evaluate_ds = data_preprocessing.evaluate_ds
 
+data_size = 10000
 
 # define model
 lenet_model = LeNet()
 # define framework
-tensorflow_framework = TensorflowModel(model = lenet_model)
+tensorflow_framework = TensorflowModel(model = lenet_model, data_size= data_size, train_ds= train_ds, test_ds= test_ds)
 
-
-
-tf_client = ClientAsyncFl(model= tensorflow_framework, local_data_size=10000, train_ds=train_ds, test_ds=test_ds,
-                          evaluate_ds=evaluate_ds)
+tf_client = ClientAsyncFl(model= tensorflow_framework)
 tf_client.run()
