@@ -48,11 +48,11 @@ class ServerStorage(AWSConnector):
         return self.client_access_key_id, self.client_secret_key
 
     def create_folder(self, folder_name):
-        self._s3.put_object(Bucket='fedasyn', Key=('clients/' + folder_name + '/'))
+        self._s3.put_object(Bucket=Config.STORAGE_BUCKET_NAME, Key=('clients/' + folder_name + '/'))
 
     def get_newest_global_model(self) -> str:
         # get the newest object in the global-models bucket
-        objects = self._s3.list_objects_v2(Bucket='fedasyn', Prefix='global-models/', Delimiter='/')['Contents']
+        objects = self._s3.list_objects_v2(Bucket=Config.STORAGE_BUCKET_NAME, Prefix='global-models/', Delimiter='/')['Contents']
         # Sort the list of objects by LastModified in descending order
         sorted_objects = sorted(objects, key=lambda x: x['LastModified'], reverse=True)
 
