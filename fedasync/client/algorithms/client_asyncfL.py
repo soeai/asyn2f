@@ -17,26 +17,27 @@ class ClientAsyncFl(Client):
         super().__init__()
         # model must be an instance of an inheritant of class ModelWrapper
         self.model = model
-        self.local_data_size = self.model.local_data_size
+        self.local_data_size = self.model.data_size
 
     # train_ds: require
     # test_ds: optional
     # train_ds and test_ds must in a format of a list of several batches
     # each batch contain x, y
-    def train(self, train_ds, test_ds):
+    def train(self):
         # training nonstop until the server command to do so
         # or the client attempt to quit
         self._local_epoch = 0
 
         # before training, load the global model to set to be the client model weights 
-        global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + self._global_model_name
+        file_name = self._global_model_name.split('/')[-1]
+        global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + file_name
         with open(global_model_path, "rb") as f:
             self.model.global_weights = pickle.load(f)
         # for tensorflow model, there is some conflict in the dimension of 
         # an initialized model and al already trained one
         # temporarily fixed this problem
         # by training the model before loading the global weights
-        for images, labels in train_ds:
+        for images, labels in self.model.train_ds:
             self.model.fit(images, labels)
             break
         self.model.set_weights(self.model.global_weights)
@@ -46,12 +47,12 @@ class ClientAsyncFl(Client):
             self._local_epoch += 1
             # for epoch in range(EPOCHS):
             LOGGER.info("ClientModel Start Training")
-            sleep(15)
+            sleep(3)
             # record some info of the training process
             batch_num = 0
 
             # training per several epoch
-            for images, labels in train_ds:
+            for images, labels in self.model.train_ds:
                 batch_num += 1
                 # get the previous weights before the new training process within each batch
                 self.model.previous_weights = self.model.get_weights()
@@ -75,14 +76,15 @@ class ClientAsyncFl(Client):
                     # changing flag status
                     self._new_model_flag = False
 
-                if test_ds:
-                    for test_images, test_labels in test_ds:
+                if self.model.test_ds:
+                    for test_images, test_labels in self.model.test_ds:
                         test_acc, test_loss = self.model.evaluate(test_images, test_labels)
 
-            if test_ds:
+            # if there is a test dataset 
+            # --> send acc and loss of test dataset
+            if self.model.test_ds:
                 acc = test_acc
                 loss = test_loss
-            
             else:
                 acc = train_acc
                 loss = train_loss

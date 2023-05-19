@@ -1,8 +1,9 @@
 from abc import abstractmethod, ABC
 
 class ModelWrapper(ABC):
-    # define and compile the model when init
-    def __int__(self):
+    # model, data_size, train_ds is require
+    # test_ds is optional
+    def __int__(self, model, data_size, train_ds, test_ds):
         pass
 
     @abstractmethod
