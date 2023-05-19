@@ -8,14 +8,23 @@ LOGGER = logging.getLogger(__name__)
 
 class ServerStorage(AWSConnector):
 
-    def __init__(self):
+    def __init__(self, bucket_name: str):
         super().__init__()
+        self.bucket_name = bucket_name
         self.iam = boto3.client('iam', aws_access_key_id=Config.STORAGE_ACCESS_KEY,
                                 aws_secret_access_key=Config.STORAGE_SECRET_KEY)
-
+        self.s3 = boto3.client('s3', aws_access_key_id=Config.STORAGE_ACCESS_KEY,
+                                aws_secret_access_key=Config.STORAGE_SECRET_KEY)
         self.client_keys = None
+
         while True:
             try:
+                logging.info(f"Creating bucket {bucket_name}")
+                try:
+                    self.s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': 'ap-southeast-2'})
+                except:
+                    pass
+                logging.info(f"Created bucket {bucket_name}")
                 self.iam.create_user(UserName='client')
                 self.iam.attach_user_policy(
                     UserName='client',
@@ -60,3 +69,10 @@ class ServerStorage(AWSConnector):
             return sorted_objects[0]['Key']
         else:
             LOGGER.info("Bucket is empty.")
+
+    def delete_bucket(self):
+        try:
+            self.s3.delete_bucket(Bucket=self.bucket_name)
+            logging.info(f'Success! Bucket {self.bucket_name} deleted.')
+        except Exception as e:
+            logging.error(f'Error! Bucket {self.bucket_name} was not deleted. {e}')
