@@ -138,7 +138,7 @@ class QueueConnector(ABC):
         LOGGER.info('Channel opened')
         self._channel = channel
         self._add_on_channel_close_callback()
-        self.setup()
+        self.__setup()
 
     def _add_on_channel_close_callback(self):
         """This method tells pika to call the on_channel_closed method if
@@ -163,7 +163,7 @@ class QueueConnector(ABC):
         self._close_connection()
 
     @abstractmethod
-    def setup(self):
+    def __setup(self):
         """
         Setup Queue for consumer.
         """
@@ -181,7 +181,7 @@ class QueueConnector(ABC):
         LOGGER.info('Issuing consumer related RPC commands')
         self._add_on_cancel_callback()
         self._consumer_tag = self._channel.basic_consume(
-            Config.QUEUE_NAME, self.on_message, auto_ack=True)
+            Config.QUEUE_NAME, self.__on_message, auto_ack=True)
         self._was_consuming = True
         self._consuming = True
 
@@ -207,7 +207,7 @@ class QueueConnector(ABC):
             self._channel.close()
 
     @abstractmethod
-    def on_message(self, channel, method, properties, body):
+    def __on_message(self, channel, method, properties, body):
         pass
 
     def _stop_consuming(self):

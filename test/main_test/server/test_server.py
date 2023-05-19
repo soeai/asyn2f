@@ -13,15 +13,7 @@ Config.STORAGE_ACCESS_KEY = os.getenv("access_key")
 Config.STORAGE_SECRET_KEY = os.getenv("secret_key")
 
 
-class FedAsyncServer(Server):
-    def __init__(self, strategy: Strategy, t=30):
-        super().__init__(strategy, t)
-
-    def is_stop_condition(self):
-        return False
-
-
 strategy = AsynFL()
 
-fedasync_server = FedAsyncServer(strategy)
-fedasync_server.run()
+fedasync_server = Server(strategy, t=30)
+fedasync_server.__run()

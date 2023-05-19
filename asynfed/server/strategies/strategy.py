@@ -16,7 +16,6 @@ class Strategy(ABC):
         self.global_model_update_data_size = 0
         self.total_qod = 0
 
-    @abstractmethod
     def get_global_model_filename(self):
         return f"{self.model_id}_v{self.current_version}.pkl"
 
@@ -34,3 +33,7 @@ class Strategy(ABC):
     def get_model_weights(self, file_path):
         """
         """
+
+    @abstractmethod
+    def is_completed(self):
+        pass
