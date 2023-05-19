@@ -35,7 +35,7 @@ class Server(QueueConnector):
         self._is_downloading = False
         self._is_new_global_model = False
 
-        self._server_id = str(uuid.uuid4())
+        self._server_id = f'server_{str(uuid.uuid4())}'
 
         # All this information was decided by server to prevent conflict
         # because multiple server can use the same RabbitMQ, S3 server.
