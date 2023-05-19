@@ -15,6 +15,7 @@ from .worker_manager import WorkerManager
 import threading
 
 from ..commons.messages.error_message import ErrorMessage
+from pynput import keyboard
 
 lock = threading.Lock()
 
@@ -31,13 +32,12 @@ class Server(QueueConnector):
         # Server variables
         super().__init__()
         self._t = t
-        print(self._t)
         self._strategy = strategy
         # variables
         self._is_downloading = False
         self._is_new_global_model = False
 
-        self._server_id = f'server_{str(uuid.uuid4())}'
+        self._server_id = f'server-{str(uuid.uuid4())}'
 
         # All this information was decided by server to prevent conflict
         # because multiple server can use the same RabbitMQ, S3 server.
@@ -47,14 +47,15 @@ class Server(QueueConnector):
 
         init_config("server")
 
-        LOGGER.info(f' \n\nServer is running with RabbitMQ Exchange : {self._server_id}'
-                    f'S3 Bucket: {self._server_id}'
+        LOGGER.info(f' \n\nServer Info:\n\tRabbitMQ Exchange : {self._server_id}'
+                    f'\n\tS3 Bucket: {self._server_id}'
                     f'\n\n')
 
         # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
-        self._cloud_storage: ServerStorage = ServerStorage()
+        self._cloud_storage: ServerStorage = ServerStorage(self._server_id)
 
+        self.delete_bucket_on_exit = True
     def on_message(self, channel, method, properties: BasicProperties, body):
 
         if method.routing_key == RoutingRules.CLIENT_INIT_SEND_TO_SERVER:
@@ -189,7 +190,14 @@ class Server(QueueConnector):
         # run the consuming thread!.
         consuming_thread.start()
 
+        thread = threading.Thread(target=keyboard_thread)
+        thread.start()
         while not self.__is_stop_condition() and not self._closing:
+
+            if not thread.is_alive():
+                if self.delete_bucket_on_exit:
+                    self._cloud_storage.delete_bucket()
+                self.stop()
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
             if n_local_updates == 0:
@@ -210,7 +218,7 @@ class Server(QueueConnector):
                     self.__notify_error_to_client(message)
 
         self.stop()
-
+        thread.join()
     def __update(self):
         self._strategy.aggregate(self._worker_manager)
 
@@ -233,3 +241,18 @@ class Server(QueueConnector):
         )
         # Send message
         self.__notify_global_model_to_client(msg)
+
+
+def on_press(key):
+    if key == keyboard.Key.esc:
+        return False
+
+def keyboard_thread():
+    # Create a listener instance
+    listener = keyboard.Listener(on_press=on_press)
+
+    # Start the listener
+    listener.start()
+
+    # Wait for the listener to finish (blocking operation)
+    listener.join()
