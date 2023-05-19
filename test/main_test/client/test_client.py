@@ -3,13 +3,12 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
 
 from fedasync.commons.conf import Config
-from fedasync.client.client_asyncfL import ClientAsyncFl
-from test.tensorflow_examples.mnist.lenet_model import LeNet
-from test.tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
+from fedasync.client.algorithms.client_asyncfL import ClientAsyncFl
+
+from ..tensorflow_examples.mnist.data_preprocessing import TensorflowDataPreprocessing
+from ..tensorflow_examples.mnist.tensorflow import TensorflowModel
+from ..tensorflow_examples.mnist.Lenet import LeNet
 # import tensorflow as tf
-
-
-
 
 # Preprocessing data
 # mnist dataset
@@ -32,23 +31,14 @@ train_ds = data_preprocessing.train_ds
 test_ds = data_preprocessing.test_ds
 evaluate_ds = data_preprocessing.evaluate_ds
 
+
 # define model
-model = LeNet()
-
-# test model
-# print(model.get_weights())
-
-# # try to load pretrained model 
-# path = './data/mnist_data/sample_weights.pkl'
-
-# with open(path, 'rb') as f:
-#     weights = pickle.load(f)
-
-# model.set_pretrained_weights(weights, train_ds)
-# new_weights = model.get_weights()
-# print(new_weights[4])
+lenet_model = LeNet()
+# define framework
+tensorflow_framework = TensorflowModel(model = lenet_model)
 
 
-tf_client = ClientAsyncFl(model=model, local_data_size=10000, train_ds=train_ds, test_ds=test_ds,
+
+tf_client = ClientAsyncFl(model= tensorflow_framework, local_data_size=10000, train_ds=train_ds, test_ds=test_ds,
                           evaluate_ds=evaluate_ds)
 tf_client.run()
