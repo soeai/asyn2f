@@ -110,7 +110,7 @@ class ClientAsyncFl(Client):
             # Upload the weight to the storage (the remote server)
             remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
             while True:
-                if self._storage_connector.upload(save_location, remote_file_path, 'fedasyn') is True:
+                if self._storage_connector.upload(save_location, remote_file_path) is True:
                     # After training, notify new model to the server.
                     message = ClientNotifyModelToServer(
                         client_id=self._client_id,

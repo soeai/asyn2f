@@ -28,7 +28,7 @@ class Server(QueueConnector):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, t: int = 15) -> None:
+    def __init__(self, strategy: Strategy, t: int = 15, test=True) -> None:
         # Server variables
         super().__init__()
         self._t = t
@@ -37,7 +37,10 @@ class Server(QueueConnector):
         self._is_downloading = False
         self._is_new_global_model = False
 
-        self._server_id = f'server-{str(uuid.uuid4())}'
+        if test:
+            self._server_id = 'test-server01234561011010101'
+        else:
+            self._server_id = f'server-{str(uuid.uuid4())}'
 
         # All this information was decided by server to prevent conflict
         # because multiple server can use the same RabbitMQ, S3 server.
@@ -95,7 +98,11 @@ class Server(QueueConnector):
                         self._worker_manager.add_worker(worker)
 
                 model_name = self._cloud_storage.get_newest_global_model().split('.')[0]
-                model_version = model_name.split('_')[1][1:]
+                try:
+                    model_version = model_name.split('_')[1][1:]
+            
+                except Exception as e:
+                    model_version = -1
                 try:
                     self._strategy.current_version = int(model_version)
                 except Exception as e:
@@ -133,8 +140,7 @@ class Server(QueueConnector):
 
             # Download model!
             with lock:
-                self._cloud_storage.download(bucket_name='fedasyn',
-                                             remote_file_path=client_notify_message.weight_file,
+                self._cloud_storage.download(remote_file_path=client_notify_message.weight_file,
                                              local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + client_notify_message.model_id)
                 self._worker_manager.add_local_update(client_notify_message)
 
@@ -229,7 +235,7 @@ class Server(QueueConnector):
         print('Publish global model (sv notify model to client)')
         local_filename = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
         remote_filename = f'global-models/{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
-        self._cloud_storage.upload(local_filename, remote_filename, 'fedasyn')
+        self._cloud_storage.upload(local_filename, remote_filename)
         # Construct message
         msg = ServerNotifyModelToClient(
             model_id=self._strategy.model_id,

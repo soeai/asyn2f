@@ -20,7 +20,7 @@ test_labels_path = '../data/mnist_data/t10k-labels-idx1-ubyte.gz'
 # Config.QUEUE_URL = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf"
 
 Config.QUEUE_URL = "amqp://guest:guest@13.214.37.45:5672/%2F"
-Config.TRAINING_EXCHANGE = "server_076dc8b4-1238-4786-bfdd-90cf60fe9462S3"
+Config.TRAINING_EXCHANGE = "test-server01234561011010101"
 Config.MONITOR_QUEUE = "test"
 
 # preprocessing data to be ready for low level tensorflow training process
