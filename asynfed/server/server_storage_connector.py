@@ -8,20 +8,25 @@ LOGGER = logging.getLogger(__name__)
 
 class ServerStorage(AWSConnector):
 
-    def __init__(self, bucket_name: str):
+    def __init__(self):
         super().__init__()
-        self.bucket_name = bucket_name
         self.iam = boto3.client('iam', aws_access_key_id=Config.STORAGE_ACCESS_KEY,
                                 aws_secret_access_key=Config.STORAGE_SECRET_KEY)
         self.client_keys = None
 
         while True:
             try:
-                logging.info(f"Creating bucket {bucket_name}")
+                logging.info(f"Creating bucket {Config.STORAGE_BUCKET_NAME}")
                 try:
-                    self._s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': 'ap-southeast-2'})
-                    logging.info(f"Created bucket {bucket_name}")
-                    self._s3.put_object(Bucket=Config.STORAGE_BUCKET_NAME, Key=('global-models/'))
+
+                    self._s3.create_bucket(
+                        Bucket=Config.STORAGE_BUCKET_NAME,
+                        CreateBucketConfiguration={'LocationConstraint': Config.STORAGE_REGION_NAME}
+                    )
+
+                    logging.info(f"Created bucket {Config.STORAGE_BUCKET_NAME}")
+                    self._s3.put_object(Bucket=Config.STORAGE_BUCKET_NAME, Key='global-models/')
+
                 except:
                     pass
                 self.iam.create_user(UserName='client')
@@ -69,12 +74,12 @@ class ServerStorage(AWSConnector):
                 return sorted_objects[1]['Key']
             return sorted_objects[0]['Key']
         except:
-            self.upload('../../../testweight_v1.pkl', 'global-models/testweight_v0.pkl', Config.STORAGE_BUCKET_NAME)
+            self.upload('../../../testweight_v1.pkl', 'global-models/testweight_v0.pkl')
             return 'global-models/testweight_v1.pkl'
 
     def delete_bucket(self):
         try:
-            self._s3.delete_bucket(Bucket=self.bucket_name)
-            logging.info(f'Success! Bucket {self.bucket_name} deleted.')
+            self._s3.delete_bucket(Bucket=Config.STORAGE_BUCKET_NAME)
+            logging.info(f'Success! Bucket {Config.STORAGE_BUCKET_NAME} deleted.')
         except Exception as e:
-            logging.error(f'Error! Bucket {self.bucket_name} was not deleted. {e}')
+            logging.error(f'Error! Bucket {Config.STORAGE_BUCKET_NAME} was not deleted. {e}')
