@@ -15,6 +15,7 @@ from .worker_manager import WorkerManager
 import threading
 
 from ..commons.messages.error_message import ErrorMessage
+
 from pynput import keyboard
 
 lock = threading.Lock()
@@ -56,9 +57,10 @@ class Server(QueueConnector):
 
         # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
-        self._cloud_storage: ServerStorage = ServerStorage(self._server_id)
+        self._cloud_storage: ServerStorage = ServerStorage()
 
         self.delete_bucket_on_exit = True
+
     def on_message(self, channel, method, properties: BasicProperties, body):
 
         if method.routing_key == RoutingRules.CLIENT_INIT_SEND_TO_SERVER:
@@ -100,7 +102,7 @@ class Server(QueueConnector):
                 model_name = self._cloud_storage.get_newest_global_model().split('.')[0]
                 try:
                     model_version = model_name.split('_')[1][1:]
-            
+
                 except Exception as e:
                     model_version = -1
                 try:
@@ -198,12 +200,14 @@ class Server(QueueConnector):
 
         thread = threading.Thread(target=keyboard_thread)
         thread.start()
+
         while not self.__is_stop_condition() and not self._closing:
 
             if not thread.is_alive():
                 if self.delete_bucket_on_exit:
                     self._cloud_storage.delete_bucket()
                 self.stop()
+
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
             if n_local_updates == 0:
@@ -225,6 +229,7 @@ class Server(QueueConnector):
 
         self.stop()
         thread.join()
+
     def __update(self):
         self._strategy.aggregate(self._worker_manager)
 
@@ -252,6 +257,7 @@ class Server(QueueConnector):
 def on_press(key):
     if key == keyboard.Key.esc:
         return False
+
 
 def keyboard_thread():
     # Create a listener instance
