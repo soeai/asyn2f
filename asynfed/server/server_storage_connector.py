@@ -1,5 +1,5 @@
 import logging
-
+import os
 import boto3
 from asynfed.commons.conf import Config
 from asynfed.commons.utils import AWSConnector
@@ -13,23 +13,22 @@ class ServerStorage(AWSConnector):
         self.bucket_name = bucket_name
         self.iam = boto3.client('iam', aws_access_key_id=Config.STORAGE_ACCESS_KEY,
                                 aws_secret_access_key=Config.STORAGE_SECRET_KEY)
-        self.s3 = boto3.client('s3', aws_access_key_id=Config.STORAGE_ACCESS_KEY,
-                                aws_secret_access_key=Config.STORAGE_SECRET_KEY)
         self.client_keys = None
 
         while True:
             try:
                 logging.info(f"Creating bucket {bucket_name}")
                 try:
-                    self.s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': 'ap-southeast-2'})
+                    self._s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': 'ap-southeast-2'})
+                    logging.info(f"Created bucket {bucket_name}")
+                    self._s3.put_object(Bucket=Config.STORAGE_BUCKET_NAME, Key=('global-models/'))
                 except:
                     pass
-                logging.info(f"Created bucket {bucket_name}")
                 self.iam.create_user(UserName='client')
-                self.iam.attach_user_policy(
-                    UserName='client',
-                    PolicyArn='arn:aws:iam::738502987127:policy/FedAsyncClientPolicy'
-                )
+                # self.iam.attach_user_policy(
+                #     UserName='client',
+                #     PolicyArn='arn:aws:iam::738502987127:policy/FedAsyncClientPolicy'
+                # )
                 self.client_keys = self.iam.create_access_key(UserName='client')['AccessKey']
                 break
 
@@ -65,14 +64,17 @@ class ServerStorage(AWSConnector):
         # Sort the list of objects by LastModified in descending order
         sorted_objects = sorted(objects, key=lambda x: x['LastModified'], reverse=True)
 
-        if len(sorted_objects) > 0:
+        try:
+            if sorted_objects[0]['Key'] == 'global-models/':
+                return sorted_objects[1]['Key']
             return sorted_objects[0]['Key']
-        else:
-            LOGGER.info("Bucket is empty.")
+        except:
+            self.upload('../../../testweight_v1.pkl', 'global-models/testweight_v0.pkl', Config.STORAGE_BUCKET_NAME)
+            return 'global-models/testweight_v1.pkl'
 
     def delete_bucket(self):
         try:
-            self.s3.delete_bucket(Bucket=self.bucket_name)
+            self._s3.delete_bucket(Bucket=self.bucket_name)
             logging.info(f'Success! Bucket {self.bucket_name} deleted.')
         except Exception as e:
             logging.error(f'Error! Bucket {self.bucket_name} was not deleted. {e}')

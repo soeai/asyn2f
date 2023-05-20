@@ -3,8 +3,9 @@ import json
 import logging
 import threading
 import uuid
+from time import sleep
 from abc import abstractmethod
-from .client_storage_connector import ClientStorage
+from asynfed.client.client_storage_connector import ClientStorage
 from asynfed.commons.conf import RoutingRules, Config, init_config
 from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
 from asynfed.commons.messages import ServerInitResponseToClient
@@ -177,11 +178,12 @@ class Client(QueueConnector):
 
                     while True:
                         if self._storage_connector.download(
-                                bucket_name=Config.STORAGE_BUCKET_NAME,
                                 remote_file_path=self._global_model_name,
                                 local_file_path=local_path,
                         ):
                             break
+                        print("Download model failed. Retry in 5 seconds.")
+                        sleep(5)
 
                     # start 1 thread to train model.
                     self.start_training_thread()
@@ -218,13 +220,12 @@ class Client(QueueConnector):
                     local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{msg.model_id}_v{msg.global_model_version}.pkl'
 
                     while True:
-                        if self._storage_connector.download(bucket_name=Config.STORAGE_BUCKET_NAME,
-                                                            remote_file_path=remote_path,
+                        if self._storage_connector.download(remote_file_path=remote_path,
                                                             local_file_path=local_path):
                             break
 
                 # change the flag to true.
-                self._new_model_flag = True
+                # self._new_model_flag = True
 
     def notify_model_to_server(self, message):
         self._channel.basic_publish(

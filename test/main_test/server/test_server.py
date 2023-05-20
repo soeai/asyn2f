@@ -1,9 +1,10 @@
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
 from asynfed.commons.conf import Config
 from asynfed.server.server import Server
 from asynfed.server.strategies import Strategy
 from asynfed.server.strategies.AsynFL import AsynFL
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
