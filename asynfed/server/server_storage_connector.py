@@ -74,7 +74,12 @@ class ServerStorage(AWSConnector):
                 return sorted_objects[1]['Key']
             return sorted_objects[0]['Key']
         except:
-            self.upload('../../../testweight_v1.pkl', 'global-models/testweight_v0.pkl')
+            LOGGER.info("*" * 20)
+            LOGGER.info("NO MODEL EXIST YET")
+            LOGGER.info("Uploading initial model...")
+            self.upload('./testweight_v1.pkl', 'global-models/testweight_v1.pkl')
+            LOGGER.info("Upload initial model succesfully")
+            LOGGER.info("*" * 20)
             return 'global-models/testweight_v1.pkl'
 
     def delete_bucket(self):

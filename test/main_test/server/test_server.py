@@ -16,5 +16,5 @@ Config.STORAGE_SECRET_KEY = os.getenv("secret_key")
 
 strategy = AsynFL()
 
-fedasync_server = Server(strategy, t=40)
+fedasync_server = Server(strategy, t=40, test = True)
 fedasync_server.run()
