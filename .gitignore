@@ -15,11 +15,11 @@ venv/*
 build
 asynfed.egg-info
 dist
+
 test/main_test/server/logs
 test/main_test/server/weights
 test/main_test/client/logs
 test/main_test/client/weights
-test/main_test/client/profile.json
 
 training_process/server/weights
 training_process/server/logs
