@@ -11,18 +11,25 @@ from ..ModelWrapper import ModelWrapper
 
 LOGGER = logging.getLogger(__name__)
 
-
+# This is the proposed federated asynchronous training algorithm of our paper
+# More algorithms can be found at other files in this directory 
 class ClientAsyncFl(Client):
     def __init__(self, model: ModelWrapper):
         super().__init__()
-        # model must be an instance of an inheritant of class ModelWrapper
+        '''
+        - model must be an instance of an inheritant of class ModelWrapper
+        - model.train_ds: require
+        - model.test_ds: optional
+        - train_ds and test_ds must in a format of a list of several batches
+            each batch contain x, y
+        - detail instruction (use as reference) of how to create a tensorflow model 
+            is found at asynfed/client/tensorflow/tensorflow_framework
+        - user is freely decided to follow the sample
+            or create their own model in their own platform (pytorch,...)
+        '''
         self.model = model
         self.local_data_size = self.model.data_size
 
-    # train_ds: require
-    # test_ds: optional
-    # train_ds and test_ds must in a format of a list of several batches
-    # each batch contain x, y
     def train(self):
         # training nonstop until the server command to do so
         # or the client attempt to quit
