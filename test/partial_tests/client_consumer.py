@@ -1,5 +1,5 @@
-from fedasync.client.client import Client
-from fedasync.commons.conf import Config
+from asynfed.client.client import Client
+from asynfed.commons.conf import Config
 
 Config.QUEUE_NAME = "client_queue"
 client_consumer = Client()
