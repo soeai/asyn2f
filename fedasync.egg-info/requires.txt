@@ -1,5 +1,0 @@
-boto3
-numpy
-pika
-python-dotenv
-tensorflow
