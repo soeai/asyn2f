@@ -11,3 +11,12 @@ venv/*
 .DS_Store
 .log
 .vscode/*
+
+build
+dist
+fedasync.egg-info
+test/main_test/server/logs
+test/main_test/server/weights
+test/main_test/client/logs
+test/main_test/client/weights
+test/main_test/client/profile.json

@@ -1,5 +1,5 @@
 import logging
-from typing import Dict
+from typing import Dict, List
 from .objects import Worker
 from ..commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 
@@ -60,3 +60,9 @@ class WorkerManager:
 
     def get_completed_workers(self) -> Dict:
         return {worker_id: self.worker_pool[worker_id] for worker_id in self.worker_pool if self.worker_pool[worker_id].is_completed == True}
+
+    def get_worker_by_id(self, worker_id: str) -> Worker:
+        return self.worker_pool[worker_id]
+
+    def list_all_worker_session_id(self) -> List:
+        return [self.worker_pool[worker_id].session_id for worker_id in self.worker_pool.keys()]
