@@ -46,10 +46,14 @@ class ClientAsyncFl(Client):
         while True:
             self._local_epoch += 1
             # for epoch in range(EPOCHS):
+            LOGGER.info("*" * 40)
             LOGGER.info("ClientModel Start Training")
+            # since the current mnist model is small, set some sleeping time
+            # to avoid overhead for the queue exchange and storage server
             sleep(3)
             # record some info of the training process
             batch_num = 0
+            LOGGER.info("*" * 40)
 
             # training per several epoch
             for images, labels in self.model.train_ds:
@@ -93,10 +97,10 @@ class ClientAsyncFl(Client):
 
             LOGGER.info(
                 f'Epoch: {self._local_epoch}'
-                f'Last Batch Train Accuracy: {train_acc * 100}, '
-                f'Last Batch Train Loss: {train_loss}, '
-                f'Last Batch Test Accuracy: {test_acc * 100}'
-                f'Last Batch Test Loss: {test_loss}, '
+                f'\tLast Batch Train Accuracy: {train_acc * 100}, '
+                f'\tLast Batch Train Loss: {train_loss}, '
+                f'\tLast Batch Test Accuracy: {test_acc * 100}'
+                f'\tLast Batch Test Loss: {test_loss}, '
             )
 
             # Save weights locally after training
@@ -106,6 +110,9 @@ class ClientAsyncFl(Client):
                 pickle.dump(self.model.get_weights(), f)
             # Print the weight location
             LOGGER.info(f'Saved weights to {save_location}')
+            # LOGGER.info("*" * 30)
+            # LOGGER.info(f'{self.model.get_weights()}')
+            # LOGGER.info("*" * 30)
 
             # Upload the weight to the storage (the remote server)
             remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
@@ -118,8 +125,8 @@ class ClientAsyncFl(Client):
                         global_model_version_used=self._current_local_version,
                         timestamp=datetime.now().timestamp(),
                         weight_file=remote_file_path,
-                        loss_value=loss,
                         performance=acc,
+                        loss_value=loss,
                     )
                     self.notify_model_to_server(message.serialize())
                     LOGGER.info("ClientModel End Training, notify new model to server.")
@@ -128,26 +135,25 @@ class ClientAsyncFl(Client):
 
     def __merge(self):
         LOGGER.info("MERGER weights.")
-        # updating the value in each parameter of the local model
-        # calculate the different to decide the formula of updating
-        # the calculation is performed on each corresponding layout
+        # updating the value of each parameter of the local model
+        # calculating the different to decide the formula of updating
+        # calculation is performed on each corresponding layout
         # the different between the current weight and the previous weights
 
-        # this situation is for tensorflow model when the dim of 
-        # initialized model and already trained model
+        # why if scenario? --> this situation is for tensorflow model when the dim of 
+        # initialized model (fewer layers) and already trained model (more added layers)
         # is conflicted 
         if len(self.model.previous_weights) < len(self.model.current_weights):
-            # applying when entering the training step with an initialized model (8 layers), not the pretrained one (18 layers)
+            # applying when entering the training step with an initialized model (8 layers), 
+            # not the pretrained one (18 layers)
             # in the 1st batch of the 1st epoch
             e_local = self.model.current_weights
         else:
             # perform calculation normally for all the other cases
-            e_local = [layer_a - layer_b for layer_a, layer_b in
-                       zip(self.model.current_weights, self.model.previous_weights)]
+            e_local = [layer_a - layer_b for layer_a, layer_b in zip(self.model.current_weights, self.model.previous_weights)]
 
         # the different between the global weights and the current weights
-        e_global = [layer_a - layer_b for layer_a, layer_b in
-                    zip(self.model.global_weights, self.model.current_weights)]
+        e_global = [layer_a - layer_b for layer_a, layer_b in zip(self.model.global_weights, self.model.current_weights)]
         # get the direction list (matrix)
         self.model.direction = [np.multiply(a, b) for a, b in zip(e_local, e_global)]
 
@@ -157,14 +163,13 @@ class ClientAsyncFl(Client):
         alpha = (self.local_data_size) / (self.local_data_size + self._global_model_update_data_size)
 
         # create a blank array to store the result
-        self.model.merged_result = [np.zeros(layer.shape) for layer in self.model.current_weights]
+        self.model.merged_weights = [np.zeros(layer.shape) for layer in self.model.current_weights]
         # base on the direction, global weights and current local weights
         # updating the value of each parameter to get the new local weights (from merging process)
         # set the index to move to the next layer
-        t = 0
+        i = 0
         # access each layer of these variables correspondingly 
-        for (local_layer, global_layer, direction_layer) in zip(self.model.current_weights, self.model.global_weights,
-                                                                self.model.direction):
+        for (local_layer, global_layer, direction_layer) in zip(self.model.current_weights, self.model.global_weights, self.model.direction):
             # access each element in each layer
             it = np.nditer([local_layer, global_layer, direction_layer], flags=['multi_index'])
             for local_element, global_element, direction_element in it:
@@ -175,9 +180,10 @@ class ClientAsyncFl(Client):
                 else:
                     result_element = (1 - alpha) * global_element + alpha * local_element
 
-                self.model.merged_result[t][index] = result_element
-            # move to the next layer
-            t += 1
+                self.model.merged_weights[i][index] = result_element
+            # then, move to the next layer
+            i += 1
+        
+        # set the merged_weights to be the current weights of the model
+        self.model.set_weights(self.model.merged_weights)
 
-        # set the current weights of the model to be the result of the merging process
-        self.model.set_weights(self.model.merged_result)

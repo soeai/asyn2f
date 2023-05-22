@@ -197,35 +197,32 @@ class Client(QueueConnector):
             msg = ServerNotifyModelToClient()
             msg.deserialize(decoded)
 
-            LOGGER.info("Receive global model notify.")
-
+            LOGGER.info("Receive global model notify............")
             with lock:
+                # LOGGER.info("Detect new global version.")
                 self._global_model_name = msg.global_model_name
-
                 self._global_model_version = msg.global_model_version
-
                 # save the previous local version of the global model to log it to file
                 self._previous_local_version = self._current_local_version
                 # update local version (the latest global model that the client have)
-
                 self._current_local_version = self._global_model_version
                 self._global_model_update_data_size = msg.global_model_update_data_size
                 self._global_avg_loss = msg.avg_loss
 
-                # if local model version is smaller than the global model version and client's id is in the chosen ids
-                if self._current_local_version < self._global_model_version:
-                    LOGGER.info("Detect new global version.")
+                remote_path = f'global-models/{msg.model_id}_v{msg.global_model_version}.pkl'
+                local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{msg.model_id}_v{msg.global_model_version}.pkl'
 
-                    remote_path = f'global-models/{msg.model_id}_v{msg.global_model_version}.pkl'
-                    local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{msg.model_id}_v{msg.global_model_version}.pkl'
-
-                    while True:
-                        if self._storage_connector.download(remote_file_path=remote_path,
-                                                            local_file_path=local_path):
-                            break
+                LOGGER.info("Downloading new global model............")
+                while True:
+                    if self._storage_connector.download(remote_file_path=remote_path,
+                                                        local_file_path=local_path):
+                        break
+                    print("Download model failed. Retry in 5 seconds.")
+                    sleep(5)
+                LOGGER.info(f"Successfully downloaded new global model, version {self._global_model_version}")
 
                 # change the flag to true.
-                # self._new_model_flag = True
+                self._new_model_flag = True
 
     def notify_model_to_server(self, message):
         self._channel.basic_publish(

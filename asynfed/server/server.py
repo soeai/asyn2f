@@ -29,7 +29,7 @@ class Server(QueueConnector):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, t: int = 15, test=True) -> None:
+    def __init__(self, strategy: Strategy, t: int = 15, test= True) -> None:
         # Server variables
         super().__init__()
         self._t = t
@@ -60,6 +60,8 @@ class Server(QueueConnector):
         self._cloud_storage: ServerStorage = ServerStorage()
 
         self.delete_bucket_on_exit = True
+
+        
 
     def on_message(self, channel, method, properties: BasicProperties, body):
 
@@ -225,6 +227,9 @@ class Server(QueueConnector):
                     self._worker_manager.update_worker_after_training()
                 except Exception as e:
                     message = ErrorMessage(str(e), None)
+                    LOGGER.info("*" * 20)
+                    LOGGER.info("THIS IS THE INTENDED MESSAGE")
+                    LOGGER.info("*" * 20)
                     self.__notify_error_to_client(message)
 
         self.stop()

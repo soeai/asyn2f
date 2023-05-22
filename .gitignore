@@ -20,3 +20,8 @@ test/main_test/server/weights
 test/main_test/client/logs
 test/main_test/client/weights
 test/main_test/client/profile.json
+
+training_process/server/weights
+training_process/server/logs
+training_process/client/weights
+training_process/client/logs
