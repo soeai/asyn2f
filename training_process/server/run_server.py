@@ -15,6 +15,7 @@ Config.STORAGE_SECRET_KEY = os.getenv("secret_key")
 
 print(os.getenv("access_key"))
 print(os.getenv("secret_key"))
+
 # local saving directories
 Config.TMP_LOCAL_MODEL_FOLDER = os.getenv("local_model_folder")
 Config.TMP_GLOBAL_MODEL_FOLDER = os.getenv("global_model_folder")
