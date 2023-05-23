@@ -7,14 +7,17 @@ from asynfed.server.strategies.AsynFL import AsynFL
 from dotenv import load_dotenv
 
 load_dotenv()
-
-Config.QUEUE_URL = "amqp://guest:guest@13.214.37.45:5672/%2F"
-# Config.QUEUE_URL = "amqps://bxvrtbsf:RYNaloqSceK4YD59EQL44t-nYaWpVlnO@whale.rmq.cloudamqp.com/bxvrtbsf"
+# queue
+Config.QUEUE_URL = os.getenv("queue_url")
+# storage
 Config.STORAGE_ACCESS_KEY = os.getenv("access_key")
 Config.STORAGE_SECRET_KEY = os.getenv("secret_key")
+# local saving directories
+Config.TMP_LOCAL_MODEL_FOLDER = os.getenv("local_model_folder")
+Config.TMP_GLOBAL_MODEL_FOLDER = os.getenv("global_model_folder")
+Config.LOG_PATH = os.getenv("log_path")
 
 
 strategy = AsynFL()
-
 fedasync_server = Server(strategy, t=40, test = True)
 fedasync_server.run()

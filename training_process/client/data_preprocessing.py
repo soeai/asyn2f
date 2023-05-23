@@ -3,19 +3,22 @@ import tensorflow as tf
 import numpy as np
 import gzip
 
-# Set the file paths for the MNIST digit dataset files
-train_images_path = 'mnist_data/train-images-idx3-ubyte.gz'
-train_labels_path = 'mnist_data/train-labels-idx1-ubyte.gz'
-test_images_path = 'mnist_data/t10k-images-idx3-ubyte.gz'
-test_labels_path = 'mnist_data/t10k-labels-idx1-ubyte.gz'
+# import os
+# from dotenv import load_dotenv
 
+# load_dotenv()
+# train_images_path = os.getenv("x_train_path")
+# train_labels_path = os.getenv("y_train_path")
+# test_images_path = os.getenv("x_test_path")
+# test_labels_path = os.getenv("y_test_path")
 
-
-class TensorflowDataPreprocessing():
-    def __init__(self, train_images_path, train_labels_path, batch_size = 32, shuffle_time = 10000, split = True, fract = 0.1, evaluate_images_path = None, evaluate_labels_path = None):
+class TensorflowImageDataPreprocessing():
+    def __init__(self, train_images_path: str, train_labels_path: str, height: int, width: int, batch_size = 32, shuffle_time = 10000, split = True, fract = 0.1, evaluate_images_path = None, evaluate_labels_path = None):
         self.train_ds = None
         self.test_ds = None
         self.evaluate_ds = None
+        self.height = height
+        self. width = width
 
         self.load_training_dataset(train_images_path, train_labels_path, batch_size, shuffle_time, split, fract = fract)
         if evaluate_images_path != None and evaluate_labels_path != None:
@@ -24,7 +27,8 @@ class TensorflowDataPreprocessing():
     def load_training_dataset(self, train_images_path: str, train_labels_path: str, batch_size: int, shuffle_time: int, split: bool, fract):
         # Load the MNIST digit dataset files into numpy arrays
         with gzip.open(train_images_path, 'rb') as f:
-            x = np.frombuffer(f.read(), np.uint8, offset=16).reshape(-1, 28, 28)
+            x = np.frombuffer(f.read(), np.uint8, offset=16).reshape(-1, self.height, self.width)
+
         with gzip.open(train_labels_path, 'rb') as f:
             y = np.frombuffer(f.read(), np.uint8, offset=8)
         x = x / 255    
@@ -63,7 +67,7 @@ class TensorflowDataPreprocessing():
 
     def load_evaluate_dataset(self, evaluate_images_path: str, evaluate_labels_path: str, batch_size: int):
         with gzip.open(evaluate_images_path, 'rb') as f:
-            x = np.frombuffer(f.read(), np.uint8, offset=16).reshape(-1, 28, 28)
+            x = np.frombuffer(f.read(), np.uint8, offset=16).reshape(-1, self.height, self.width)
         with gzip.open(evaluate_labels_path, 'rb') as f:
             y = np.frombuffer(f.read(), np.uint8, offset=8)
 
@@ -75,10 +79,10 @@ class TensorflowDataPreprocessing():
         self.evaluate_ds = tf.data.Dataset.from_tensor_slices((x, y)).batch(batch_size)
 
 
-# data_preprocessing = TensorflowDataPreprocessing(train_images_path = train_images_path, train_labels_path= train_labels_path, batch_size= 64, split= True, fract= 0.2, evaluate_images_path= test_images_path, evaluate_labels_path= test_labels_path)
-# print(type(data_preprocessing.train_ds))
-# print(type(data_preprocessing.test_ds))
-# print(type(data_preprocessing.evaluate_ds))
-
-
-
+# data_preprocessing = TensorflowImageDataPreprocessing(train_images_path=train_images_path, train_labels_path=train_labels_path, 
+#                                                       height = 28, width = 28, batch_size=64, split=True, 
+#                                                       fract=0.2, evaluate_images_path=test_images_path, evaluate_labels_path=test_labels_path)
+# # define dataset
+# train_ds = data_preprocessing.train_ds
+# test_ds = data_preprocessing.test_ds
+# evaluate_ds = data_preprocessing.evaluate_ds

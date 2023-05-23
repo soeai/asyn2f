@@ -2,8 +2,6 @@ import tensorflow as tf
 from tensorflow.keras import Model
 from ...ModelWrapper import ModelWrapper
 
-# from .tensorflow_sequential_model import TensorflowSequentialModel
-
 '''
     - This is a reference of how user can defined a tensorflow model
         that can be used in our platform
