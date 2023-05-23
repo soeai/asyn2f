@@ -9,8 +9,6 @@ services:
     environment:
       - queue_url=amqp://guest:guest@13.214.37.45:5672/%2F
       - training_exchange=test-server01234561011010101
-      - access_key=AKIA2X4RVJV3TGHN7NAP
-      - secret_key=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
       - local_model_folder=./weights/local_weights/
       - global_model_folder=./weights/global_weights/
       - log_path=./logs/
