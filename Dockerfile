@@ -12,18 +12,23 @@ COPY setup.py .
 COPY .env .
 
 # Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Copy the 'asynfed' folder
 COPY asynfed ./asynfed
 
-RUN pip install --upgrade pip
+# RUN pip install --upgrade pip
 RUN python setup.py install
 
-# Copy the 'client' folder
-COPY test/main_test/client ./client
+# Copy neccessary file to run client on tensorflow lenet model
+# COPY training_process/client ./training_process/client
+COPY training_process/client/data_preprocessing.py ./client/data_preprocessing.py
+COPY training_process/client/Lenet.py ./client/Lenet.py
+COPY training_process/client/run_client.py ./client/run_client.py
 
-RUN cd ./client
+# COPY mnist dataset
+COPY training_process/client/data ./data
 
 # Set the entrypoint to run the Python script
-ENTRYPOINT ["python", "./client/test_client.py"]
+ENTRYPOINT ["python", "client/run_client.py"]

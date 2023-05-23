@@ -6,7 +6,7 @@
 *.pyd
 venv/*
 .env
-*.pkl
+# *.pkl
 *.npz
 .DS_Store
 .log
