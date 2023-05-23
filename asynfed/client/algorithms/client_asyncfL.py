@@ -40,6 +40,7 @@ class ClientAsyncFl(Client):
         global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + file_name
         with open(global_model_path, "rb") as f:
             self.model.global_weights = pickle.load(f)
+            
         # for tensorflow model, there is some conflict in the dimension of 
         # an initialized model and al already trained one
         # temporarily fixed this problem
@@ -55,12 +56,12 @@ class ClientAsyncFl(Client):
             # for epoch in range(EPOCHS):
             LOGGER.info("*" * 40)
             LOGGER.info("ClientModel Start Training")
+            LOGGER.info("*" * 40)
             # since the current mnist model is small, set some sleeping time
             # to avoid overhead for the queue exchange and storage server
             sleep(3)
             # record some info of the training process
             batch_num = 0
-            LOGGER.info("*" * 40)
 
             # training per several epoch
             for images, labels in self.model.train_ds:
@@ -117,9 +118,7 @@ class ClientAsyncFl(Client):
                 pickle.dump(self.model.get_weights(), f)
             # Print the weight location
             LOGGER.info(f'Saved weights to {save_location}')
-            # LOGGER.info("*" * 30)
-            # LOGGER.info(f'{self.model.get_weights()}')
-            # LOGGER.info("*" * 30)
+
 
             # Upload the weight to the storage (the remote server)
             remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
@@ -174,23 +173,14 @@ class ClientAsyncFl(Client):
         # base on the direction, global weights and current local weights
         # updating the value of each parameter to get the new local weights (from merging process)
         # set the index to move to the next layer
-        i = 0
-        # access each layer of these variables correspondingly 
+        # i = 0
         for (local_layer, global_layer, direction_layer) in zip(self.model.current_weights, self.model.global_weights, self.model.direction):
             # access each element in each layer
-            it = np.nditer([local_layer, global_layer, direction_layer], flags=['multi_index'])
-            for local_element, global_element, direction_element in it:
-                index = it.multi_index
-
-                if direction_element >= 0:
-                    result_element = global_element
-                else:
-                    result_element = (1 - alpha) * global_element + alpha * local_element
-
-                self.model.merged_weights[i][index] = result_element
-            # then, move to the next layer
+            # np.where(condition, true, false)
+            merged_layer = np.where(direction_layer >=0, global_layer, (1 - alpha) * global_layer + alpha * local_layer)
+            self.model.merged_weights[i] = merged_layer
             i += 1
-        
+
         # set the merged_weights to be the current weights of the model
         self.model.set_weights(self.model.merged_weights)
 
