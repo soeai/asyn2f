@@ -25,7 +25,7 @@ class Config:
     # Queue name
     QUEUE_URL: str = "amqp://guest:guest@localhost:5672/%2F"
     QUEUE_NAME: str = ""
-    MONITOR_QUEUE: str = ""
+    MONITOR_QUEUE: str = "any"
 
     # Exchanges
     TRAINING_EXCHANGE: str = ""
