@@ -2,7 +2,7 @@ version: '3'
 
 services:
   fed-async-client:
-    container_name: soe-asynfed-client-1
+    container_name: soe-asynfed-client-5
     image: vtn13042000/asynfed_tensorflow_client:2.0.0
     ports:
       - "5672:5672"
