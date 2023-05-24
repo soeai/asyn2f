@@ -43,10 +43,6 @@ if args.training_exchange:
 # Preprocessing data
 # mnist dataset
 # Set the file paths for the MNIST digit dataset files
-# train_images_path = './data/mnist_data/train-images-idx3-ubyte.gz'
-# train_labels_path = './data/mnist_data/train-labels-idx1-ubyte.gz'
-# test_images_path = './data/mnist_data/t10k-images-idx3-ubyte.gz'
-# test_labels_path = './data/mnist_data/t10k-labels-idx1-ubyte.gz'
 train_images_path = os.getenv("x_train_path")
 train_labels_path = os.getenv("y_train_path")
 test_images_path = os.getenv("x_test_path")

@@ -91,6 +91,8 @@ class ClientAsyncFl(Client):
                 if self.model.test_ds:
                     for test_images, test_labels in self.model.test_ds:
                         test_acc, test_loss = self.model.evaluate(test_images, test_labels)
+            # calculate alpha before notifying new local model to server
+            alpha = 0.5
 
             # if there is a test dataset 
             # --> send acc and loss of test dataset
@@ -127,12 +129,13 @@ class ClientAsyncFl(Client):
                     # After training, notify new model to the server.
                     message = ClientNotifyModelToServer(
                         client_id=self._client_id,
-                        model_id=filename,
-                        global_model_version_used=self._current_local_version,
                         timestamp=datetime.now().timestamp(),
+                        model_id=filename,
                         weight_file=remote_file_path,
+                        global_model_version_used=self._current_local_version,
                         performance=acc,
                         loss_value=loss,
+                        alpha = alpha,
                     )
                     self.notify_model_to_server(message.serialize())
                     LOGGER.info("ClientModel End Training, notify new model to server.")
@@ -173,7 +176,7 @@ class ClientAsyncFl(Client):
         # base on the direction, global weights and current local weights
         # updating the value of each parameter to get the new local weights (from merging process)
         # set the index to move to the next layer
-        # i = 0
+        i = 0
         for (local_layer, global_layer, direction_layer) in zip(self.model.current_weights, self.model.global_weights, self.model.direction):
             # access each element in each layer
             # np.where(condition, true, false)

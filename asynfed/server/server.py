@@ -140,6 +140,8 @@ class Server(QueueConnector):
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
             client_notify_message = ClientNotifyModelToServer()
             client_notify_message.deserialize(body.decode())
+            # take the info here
+            # save client qod, loss and size
             print(f'Receive new model from client [{client_notify_message.client_id}]!')
 
             # Download model!
@@ -221,6 +223,9 @@ class Server(QueueConnector):
                     print(f'Found {n_local_updates} local update(s)')
                     print('Start update global model')
                     self.__update()
+                    # calculate average qod here, within the self.__update function
+                    # self._avg_qod = 0.1
+
                     self.__publish_global_model()
 
                     # Clear worker queue after aggregation.
@@ -246,14 +251,18 @@ class Server(QueueConnector):
         local_filename = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
         remote_filename = f'global-models/{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
         self._cloud_storage.upload(local_filename, remote_filename)
+
         # Construct message
         msg = ServerNotifyModelToClient(
-            model_id=self._strategy.model_id,
             chosen_id=[],
-            global_model_name=f'{self._strategy.model_id}_v{self._strategy.current_version}.pkl',
+            model_id=self._strategy.model_id,
+
             global_model_version=self._strategy.current_version,
+            global_model_name=f'{self._strategy.model_id}_v{self._strategy.current_version}.pkl',
+
+            global_model_update_data_size=self._strategy.global_model_update_data_size,
             avg_loss=self._strategy.avg_loss,
-            global_model_update_data_size=self._strategy.global_model_update_data_size
+            avg_qod= self._avg_qod
         )
         # Send message
         self.__notify_global_model_to_client(msg)

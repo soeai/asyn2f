@@ -23,10 +23,10 @@ class DataDesc(Message):
 
 
 class QoD(Message):
-    def __init__(self, schema: str = "", comment: str = ""):
+    def __init__(self, schema: str = "", comment: str = "", qod: float = 0.0):
         self.schema = schema
         self.comment = comment
-        self.value = 0.0
+        self.value = qod
 
 
 class ClientInit(Message):
