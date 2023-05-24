@@ -17,9 +17,9 @@ print(os.getenv("access_key"))
 print(os.getenv("secret_key"))
 
 # local saving directories
-Config.TMP_LOCAL_MODEL_FOLDER = os.getenv("local_model_folder")
-Config.TMP_GLOBAL_MODEL_FOLDER = os.getenv("global_model_folder")
-Config.LOG_PATH = os.getenv("log_path")
+# Config.TMP_LOCAL_MODEL_FOLDER = os.getenv("local_model_folder")
+# Config.TMP_GLOBAL_MODEL_FOLDER = os.getenv("global_model_folder")
+# Config.LOG_PATH = os.getenv("log_path")
 
 
 strategy = AsynFL()

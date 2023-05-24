@@ -4,6 +4,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.getcwd())))
 
 # platform package
 from asynfed.client.algorithms.client_asyncfL import ClientAsyncFl
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
 from asynfed.commons.conf import Config
 
 # tensorflow 
