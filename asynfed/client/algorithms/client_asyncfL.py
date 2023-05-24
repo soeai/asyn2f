@@ -8,6 +8,13 @@ from asynfed.commons.messages import ClientNotifyModelToServer
 
 from ..client import Client
 from ..ModelWrapper import ModelWrapper
+from asynfed.commons.conf import Config
+
+import os
+import dotenv
+
+
+dotenv.load_dotenv()
 
 LOGGER = logging.getLogger(__name__)
 
@@ -59,13 +66,29 @@ class ClientAsyncFl(Client):
             LOGGER.info("*" * 40)
             # since the current mnist model is small, set some sleeping time
             # to avoid overhead for the queue exchange and storage server
-            sleep(3)
+            LOGGER.info(f"Sleep for {Config.SLEEPING_TIME} seconds to avoid overhead")
+            sleep(int(Config.SLEEPING_TIME))
             # record some info of the training process
             batch_num = 0
+            # if user require
+            # Tracking the training process every x samples 
+            # x define by user
+            batch_size = Config.BATCH_SIZE
+            tracking_point = Config.TRACKING_POINT
+            multiplier = 1
 
             # training per several epoch
+            LOGGER.info(f"Enter epoch {self._local_epoch}")
             for images, labels in self.model.train_ds:
                 batch_num += 1
+                # Tracking the training process every x samples 
+                # x define by user
+                total_trained_sample = batch_num * batch_size
+                if total_trained_sample > tracking_point:
+                    LOGGER.info(f"Training up to {total_trained_sample} samples")
+                    multiplier += 1
+                    tracking_point = tracking_point * multiplier
+
                 # get the previous weights before the new training process within each batch
                 self.model.previous_weights = self.model.get_weights()
                 # training normally

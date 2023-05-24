@@ -31,6 +31,8 @@ args = parser.parse_args()
 
 # load env variables
 load_dotenv()
+
+
 Config.QUEUE_URL = os.getenv("queue_url")
 if args.queue_url:
     Config.QUEUE_URL = args.queue_url
@@ -38,7 +40,6 @@ if args.queue_url:
 Config.TRAINING_EXCHANGE = os.getenv("training_exchange")
 if args.training_exchange:
     Config.TRAINING_EXCHANGE = args.training_exchange
-
 
 
 # ------------oOo--------------------
@@ -50,9 +51,30 @@ train_labels_path = os.getenv("y_train_path")
 test_images_path = os.getenv("x_test_path")
 test_labels_path = os.getenv("y_test_path")
 
+if os.getenv("batch_size"):
+    Config.BATCH_SIZE = int(os.getenv("batch_size"))
+else:
+    Config.BATCH_SIZE = 128
+
+if os.getenv("data_size"):
+    Config.DATA_SIZE = int(os.getenv("data_size"))
+else:
+    Config.DATA_SIZE = 60000
+
+# for tracking process when training
+if os.getenv("tracking_point"):
+    Config.TRACKING_POINT = int(os.getenv("tracking_point"))
+else:
+    Config.TRACKING_POINT = 10000
+
+if os.getenv("sleeping_time"):
+    Config.SLEEPING_TIME= int(os.getenv("sleeping_time"))
+else:
+    Config.SLEEPING_TIME= 3
+
 # preprocessing data to be ready for low level tensorflow training process
 data_preprocessing = TensorflowImageDataPreprocessing(train_images_path=train_images_path, train_labels_path=train_labels_path, 
-                                                      height = 28, width = 28, batch_size=64, split=True, fract=0.2,
+                                                      height = 28, width = 28, batch_size=Config.BATCH_SIZE, split=True, fract=0.2,
                                                       evaluate_images_path=test_images_path, evaluate_labels_path=test_labels_path)
 # define dataset
 train_ds = data_preprocessing.train_ds
@@ -60,12 +82,11 @@ test_ds = data_preprocessing.test_ds
 evaluate_ds = data_preprocessing.evaluate_ds
 # ------------oOo--------------------
 
-data_size = 10000
 
 # define model
 lenet_model = LeNet(input_features = (32, 32, 1), output_features = 10)
 # define framework
-tensorflow_framework = TensorflowFramework(model = lenet_model, data_size= data_size, train_ds= train_ds, test_ds= test_ds)
+tensorflow_framework = TensorflowFramework(model = lenet_model, data_size= Config.DATA_SIZE, train_ds= train_ds, test_ds= test_ds)
 
 tf_client = ClientAsyncFl(model=tensorflow_framework)
 tf_client.run()

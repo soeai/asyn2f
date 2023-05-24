@@ -1,4 +1,6 @@
 import tensorflow as tf
+
+
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, AveragePooling2D
 
 from asynfed.client.frameworks.tensorflow.tensorflow_sequential_model import TensorflowSequentialModel
