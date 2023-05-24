@@ -1,10 +1,9 @@
 import logging
-import os
 import boto3
 from asynfed.commons.conf import Config
 from asynfed.commons.utils import AWSConnector
 LOGGER = logging.getLogger(__name__)
-
+import json
 
 class ServerStorage(AWSConnector):
 
@@ -17,8 +16,8 @@ class ServerStorage(AWSConnector):
         while True:
             try:
                 logging.info(f"Creating bucket {Config.STORAGE_BUCKET_NAME}")
-                try:
 
+                try:
                     self._s3.create_bucket(
                         Bucket=Config.STORAGE_BUCKET_NAME,
                         CreateBucketConfiguration={'LocationConstraint': Config.STORAGE_REGION_NAME}
@@ -26,27 +25,29 @@ class ServerStorage(AWSConnector):
 
                     logging.info(f"Created bucket {Config.STORAGE_BUCKET_NAME}")
                     self._s3.put_object(Bucket=Config.STORAGE_BUCKET_NAME, Key='global-models/')
-
                 except:
                     pass
-                self.iam.create_user(UserName='client')
+                
+                self.iam.create_user(UserName=f'client')
                 # self.iam.attach_user_policy(
                 #     UserName='client',
                 #     PolicyArn='arn:aws:iam::738502987127:policy/FedAsyncClientPolicy'
                 # )
-                self.client_keys = self.iam.create_access_key(UserName='client')['AccessKey']
+
+
+                self.client_keys = self.iam.create_access_key(UserName=f'client')['AccessKey']
                 break
 
             except self.iam.exceptions.EntityAlreadyExistsException as e:
 
                 try:
-                    self.client_keys = self.iam.create_access_key(UserName='client')['AccessKey']
+                    self.client_keys = self.iam.create_access_key(UserName=f'client')['AccessKey']
                     break
                 except:
-                    for key in self.iam.list_access_keys(UserName='client')['AccessKeyMetadata']:
-                        if key['UserName'] == "client":
+                    for key in self.iam.list_access_keys(UserName=f'client')['AccessKeyMetadata']:
+                        if key['UserName'] == f'client':
                             self.iam.delete_access_key(
-                                UserName='client',
+                                UserName= f'client',
                                 AccessKeyId=key['AccessKeyId']
                             )
 
