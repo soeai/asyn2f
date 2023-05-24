@@ -26,6 +26,7 @@ class AsynFL(Strategy):
         return 1
 
     def aggregate(self, worker_manager: WorkerManager):
+        # calculate avg, loss and datasize here
         # Get all workers that has the weight version with server
         completed_workers: dict[str, Worker] = worker_manager.get_completed_workers()
         self.current_version += 1

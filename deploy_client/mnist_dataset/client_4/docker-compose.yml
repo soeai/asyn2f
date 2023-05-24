@@ -4,8 +4,6 @@ services:
   fed-async-client:
     container_name: soe-asynfed-client-4
     image: vtn13042000/asynfed_tensorflow_client:2.0.0
-    ports:
-      - "5672:5672"
     environment:
       - queue_url=amqp://guest:guest@13.214.37.45:5672/%2F
       - training_exchange=test-server01234561011010101
@@ -16,6 +14,9 @@ services:
       - y_train_path=./data/mnist_data/train-labels-idx1-ubyte.gz
       - x_test_path=./data/mnist_data/t10k-images-idx3-ubyte.gz
       - y_test_path=./data/mnist_data/t10k-labels-idx1-ubyte.gz
-
+      - sleeping_time=2
+      - batch_size=128
+      - data_size=60000
+      - tracking_point=5000
 
 
