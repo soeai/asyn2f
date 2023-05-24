@@ -5,19 +5,22 @@ class ClientNotifyEvaluation(Message):
 
     def __init__(self,
                  client_id=None,
+                 timestamp=None,
                  model_id=None,
                  global_model_version_used=None,
-                 timestamp=None,
                  loss_value=None,
                  performance=None,
+                 alpha=1,
                  batch_size=32,
-                 alpha=1):
+                 ):
         super().__init__()
         self.client_id = client_id
         self.model_id = model_id
-        self.global_model_version_used = global_model_version_used
         self.timestamp = timestamp
         self.loss_value = loss_value
         self.performance = performance
-        self.batch_size = batch_size
+
+        # unused one
         self.alpha = alpha
+        self.batch_size = batch_size
+        self.global_model_version_used = global_model_version_used

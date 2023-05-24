@@ -1,10 +1,10 @@
 import logging
-import os
 import boto3
 from asynfed.commons.conf import Config
 from asynfed.commons.utils import AWSConnector
 LOGGER = logging.getLogger(__name__)
-
+import json
+import uuid
 
 class ServerStorage(AWSConnector):
 
@@ -14,42 +14,87 @@ class ServerStorage(AWSConnector):
                                 aws_secret_access_key=Config.STORAGE_SECRET_KEY)
         self.client_keys = None
 
-        while True:
-            try:
-                logging.info(f"Creating bucket {Config.STORAGE_BUCKET_NAME}")
-                try:
+        try:
+            logging.info(f"Creating bucket {Config.STORAGE_BUCKET_NAME}")
+            self._s3.create_bucket(
+                Bucket=Config.STORAGE_BUCKET_NAME,
+                CreateBucketConfiguration={'LocationConstraint': Config.STORAGE_REGION_NAME}
+            )
+            logging.info(f"Created bucket {Config.STORAGE_BUCKET_NAME}")
+            self._s3.put_object(Bucket=Config.STORAGE_BUCKET_NAME, Key='global-models/')
+        except Exception as e:
+            logging.error(e)
 
-                    self._s3.create_bucket(
-                        Bucket=Config.STORAGE_BUCKET_NAME,
-                        CreateBucketConfiguration={'LocationConstraint': Config.STORAGE_REGION_NAME}
+
+        self.client_name = f'client-{Config.STORAGE_BUCKET_NAME}'
+
+        try:
+            self.iam.create_user(UserName=self.client_name)
+        except Exception as e:
+            logging.error(e)
+
+        policy_arn = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "ListBucket",
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:ListBucket"
+                    ],
+                    "Resource": [
+                        f"arn:aws:s3:::{Config.STORAGE_BUCKET_NAME}",
+                        f"arn:aws:s3:::{Config.STORAGE_BUCKET_NAME}/*"
+                    ]
+                },
+                {
+                    "Sid": "GetGlobalModel",
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:GetObject",
+                        "s3:GetObjectACL"
+                    ],
+                    "Resource": [
+                        f"arn:aws:s3:::{Config.STORAGE_BUCKET_NAME}/global-models",
+                        f"arn:aws:s3:::{Config.STORAGE_BUCKET_NAME}/global-models/*"
+                    ]
+                },
+                {
+                    "Sid": "PutLocalModel",
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:PutObject",
+                        "s3:PutObjectACL"
+                    ],
+                    "Resource": [
+                        f"arn:aws:s3:::{Config.STORAGE_BUCKET_NAME}/clients/*"
+                    ]
+                }
+            ]
+        }
+        try:
+            policy = self.iam.create_policy(
+                PolicyName=Config.STORAGE_BUCKET_NAME,
+                PolicyDocument=json.dumps(policy_arn),
+            )
+            self.iam.attach_user_policy(
+                UserName=self.client_name,
+                PolicyArn=policy['Policy']['Arn'],
+            )
+        except Exception as e:
+            logging.error(e)
+            pass # Policy is already exist
+
+        try:
+            self.client_keys = self.iam.create_access_key(UserName=self.client_name)['AccessKey']
+        except:
+            for key in self.iam.list_access_keys(UserName=self.client_name)['AccessKeyMetadata']:
+                if key['UserName'] == self.client_name:
+                    self.iam.delete_access_key(
+                        UserName=self.client_name,
+                        AccessKeyId=key['AccessKeyId']
                     )
-
-                    logging.info(f"Created bucket {Config.STORAGE_BUCKET_NAME}")
-                    self._s3.put_object(Bucket=Config.STORAGE_BUCKET_NAME, Key='global-models/')
-
-                except:
-                    pass
-                self.iam.create_user(UserName='client')
-                # self.iam.attach_user_policy(
-                #     UserName='client',
-                #     PolicyArn='arn:aws:iam::738502987127:policy/FedAsyncClientPolicy'
-                # )
-                self.client_keys = self.iam.create_access_key(UserName='client')['AccessKey']
-                break
-
-            except self.iam.exceptions.EntityAlreadyExistsException as e:
-
-                try:
-                    self.client_keys = self.iam.create_access_key(UserName='client')['AccessKey']
-                    break
-                except:
-                    for key in self.iam.list_access_keys(UserName='client')['AccessKeyMetadata']:
-                        if key['UserName'] == "client":
-                            self.iam.delete_access_key(
-                                UserName='client',
-                                AccessKeyId=key['AccessKeyId']
-                            )
-
+            self.client_keys = self.iam.create_access_key(UserName=self.client_name)['AccessKey']
         self.client_access_key_id = self.client_keys['AccessKeyId']
         self.client_secret_key = self.client_keys['SecretAccessKey']
 

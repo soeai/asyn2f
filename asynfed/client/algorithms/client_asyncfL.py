@@ -8,6 +8,13 @@ from asynfed.commons.messages import ClientNotifyModelToServer
 
 from ..client import Client
 from ..ModelWrapper import ModelWrapper
+from asynfed.commons.conf import Config
+
+import os
+import dotenv
+
+
+dotenv.load_dotenv()
 
 LOGGER = logging.getLogger(__name__)
 
@@ -59,13 +66,29 @@ class ClientAsyncFl(Client):
             LOGGER.info("*" * 40)
             # since the current mnist model is small, set some sleeping time
             # to avoid overhead for the queue exchange and storage server
-            sleep(3)
+            LOGGER.info(f"Sleep for {Config.SLEEPING_TIME} seconds to avoid overhead")
+            sleep(int(Config.SLEEPING_TIME))
             # record some info of the training process
             batch_num = 0
+            # if user require
+            # Tracking the training process every x samples 
+            # x define by user
+            batch_size = Config.BATCH_SIZE
+            tracking_point = Config.TRACKING_POINT
+            multiplier = 1
 
             # training per several epoch
+            LOGGER.info(f"Enter epoch {self._local_epoch}")
             for images, labels in self.model.train_ds:
                 batch_num += 1
+                # Tracking the training process every x samples 
+                # x define by user
+                total_trained_sample = batch_num * batch_size
+                if total_trained_sample > tracking_point:
+                    LOGGER.info(f"Training up to {total_trained_sample} samples")
+                    multiplier += 1
+                    tracking_point = tracking_point * multiplier
+
                 # get the previous weights before the new training process within each batch
                 self.model.previous_weights = self.model.get_weights()
                 # training normally
@@ -91,6 +114,8 @@ class ClientAsyncFl(Client):
                 if self.model.test_ds:
                     for test_images, test_labels in self.model.test_ds:
                         test_acc, test_loss = self.model.evaluate(test_images, test_labels)
+            # calculate alpha before notifying new local model to server
+            alpha = 0.5
 
             # if there is a test dataset 
             # --> send acc and loss of test dataset
@@ -127,12 +152,13 @@ class ClientAsyncFl(Client):
                     # After training, notify new model to the server.
                     message = ClientNotifyModelToServer(
                         client_id=self._client_id,
-                        model_id=filename,
-                        global_model_version_used=self._current_local_version,
                         timestamp=datetime.now().timestamp(),
+                        model_id=filename,
                         weight_file=remote_file_path,
+                        global_model_version_used=self._current_local_version,
                         performance=acc,
                         loss_value=loss,
+                        alpha = alpha,
                     )
                     self.notify_model_to_server(message.serialize())
                     LOGGER.info("ClientModel End Training, notify new model to server.")
@@ -173,7 +199,7 @@ class ClientAsyncFl(Client):
         # base on the direction, global weights and current local weights
         # updating the value of each parameter to get the new local weights (from merging process)
         # set the index to move to the next layer
-        # i = 0
+        i = 0
         for (local_layer, global_layer, direction_layer) in zip(self.model.current_weights, self.model.global_weights, self.model.direction):
             # access each element in each layer
             # np.where(condition, true, false)

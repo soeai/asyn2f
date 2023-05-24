@@ -52,7 +52,6 @@ class Message:
         return self.serialize()
 
     def serialize(self) -> str:
-
         # Create an empty dictionary to store the serialized object
         result: dict = {}
         # Iterate through the object's attributes

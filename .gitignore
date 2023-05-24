@@ -11,6 +11,7 @@ venv/*
 .DS_Store
 .log
 .vscode/*
+profile.json
 
 build
 asynfed.egg-info

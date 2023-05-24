@@ -58,7 +58,7 @@ class Client(QueueConnector):
     def train(self):
         pass
 
-    def create_profile(self):
+    def create_message(self):
         data = {
             "session_id": self._session_id,
             "client_id": self._client_id,
@@ -69,20 +69,15 @@ class Client(QueueConnector):
             "global_avg_loss": self._global_avg_loss,
             "global_model_update_data_size": self._global_model_update_data_size,
         }
+        return data
+
+    def create_profile(self):
+        data = self.create_message()
         with open("profile.json", "w") as outfile:
             json.dump(data, outfile)
 
     def update_profile(self):
-        data = {
-            "session_id": self._session_id,
-            "client_id": self._client_id,
-            "local_data_size": self._local_data_size,
-            "global_model_name": self._global_model_name,
-            "global_model_version": self._global_model_version,
-            "local_epoch": self._local_epoch,
-            "global_avg_loss": self._global_avg_loss,
-            "global_model_update_data_size": self._global_model_update_data_size,
-        }
+        data = self.create_message()
         with open("profile.json", "w") as outfile:
             json.dump(data, outfile)
 
@@ -199,18 +194,25 @@ class Client(QueueConnector):
 
             LOGGER.info("Receive global model notify............")
             with lock:
-                # LOGGER.info("Detect new global version.")
+                # ----- receive and load global message ----
+                self._global_chosen_list = msg.chosen_id
+
+                # update latest model info
                 self._global_model_name = msg.global_model_name
                 self._global_model_version = msg.global_model_version
+
+                # global info for merging process
+                self._global_model_update_data_size = msg.global_model_update_data_size
+                self._global_avg_loss = msg.avg_loss
+                self._global_avg_qod = msg.avg_qod
+
                 # save the previous local version of the global model to log it to file
                 self._previous_local_version = self._current_local_version
                 # update local version (the latest global model that the client have)
                 self._current_local_version = self._global_model_version
-                self._global_model_update_data_size = msg.global_model_update_data_size
-                self._global_avg_loss = msg.avg_loss
 
-                remote_path = f'global-models/{msg.model_id}_v{msg.global_model_version}.pkl'
-                local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{msg.model_id}_v{msg.global_model_version}.pkl'
+                remote_path = f'global-models/{msg.model_id}_v{self._global_model_version}.pkl'
+                local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{msg.model_id}_v{self._global_model_version}.pkl'
 
                 LOGGER.info("Downloading new global model............")
                 while True:
@@ -239,14 +241,14 @@ class Client(QueueConnector):
         )
 
 
-    def publish_init_message(self):
+    def publish_init_message(self, data_size = 10000, qod = 0.1):
         message = ClientInit(
             client_identifier=self._client_identifier,
             session_id=self._session_id,
             client_id=self._client_id,
             sys_info=SysInfo(),
-            data_desc=DataDesc(),
-            qod=QoD(),
+            data_desc=DataDesc(data_size= data_size),
+            qod=QoD(qod= qod),
         )
         self.init_connect_to_server(message.serialize())
 
