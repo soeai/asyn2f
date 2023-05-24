@@ -12,6 +12,7 @@ venv/
 # IDE/Editor Specific
 .idea/*
 .vscode/*
+profile.json
 
 # Log Files
 logs
