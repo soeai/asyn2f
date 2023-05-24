@@ -41,6 +41,12 @@ class Config:
     STORAGE_BUCKET_NAME = ""
     STORAGE_REGION_NAME = 'ap-southeast-2'
 
+    # config sleep time for tensorflow small client model
+    SLEEPING_TIME = 10
+    TRACKING_POINT = 5000
+    BATCH_SIZE=128
+    DATA_SIZE=60000
+
 
 def check_valid_config(side="server"):
     LOGGER.info("Check config")
