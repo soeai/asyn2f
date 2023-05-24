@@ -224,7 +224,7 @@ class Server(QueueConnector):
                     print('Start update global model')
                     self.__update()
                     # calculate average qod here, within the self.__update function
-                    # self._avg_qod = 0.1
+                    self._avg_qod = 0.1
 
                     self.__publish_global_model()
 
