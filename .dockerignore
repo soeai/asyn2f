@@ -1,0 +1,10 @@
+venv
+.git
+.gitignore
+fedasync.egg-info
+training_process/server
+Diagram.drawio
+Diagram.png
+.DS_Store
+test
+asynfed.egg-info
