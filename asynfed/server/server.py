@@ -29,7 +29,7 @@ class Server(QueueConnector):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, t: int = 15, test= True) -> None:
+    def __init__(self, strategy: Strategy, t: int = 15, test= True, bucket_name = 'test-client-tensorflow-mnist') -> None:
         # Server variables
         super().__init__()
         self._t = t
@@ -47,7 +47,11 @@ class Server(QueueConnector):
         # because multiple server can use the same RabbitMQ, S3 server.
         Config.QUEUE_NAME = self._server_id
         Config.TRAINING_EXCHANGE = self._server_id
-        Config.STORAGE_BUCKET_NAME = self._server_id
+        
+        if test:
+            Config.STORAGE_BUCKET_NAME = bucket_name
+        else:
+            Config.STORAGE_BUCKET_NAME = self._server_id
 
         init_config("server")
 
