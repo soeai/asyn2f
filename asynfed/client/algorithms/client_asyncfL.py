@@ -10,11 +10,6 @@ from ..client import Client
 from ..ModelWrapper import ModelWrapper
 from asynfed.commons.conf import Config
 
-import os
-import dotenv
-
-
-dotenv.load_dotenv()
 
 LOGGER = logging.getLogger(__name__)
 
