@@ -6,23 +6,24 @@ services:
     command: python3.9 /app/training_process/client/run_client.py
     env_file:
       - .env
-    volumes: 
-      - .:/app
-      - ${profile_path}:/app/training_process/client/profile.json
     environment:
       - queue_url=amqp://guest:guest@13.214.37.45:5672/%2F
       - training_exchange=test-client-tensorflow-mnist
       - local_model_folder=./weights/local_weights/
       - global_model_folder=./weights/global_weights/
       - log_path=./logs/
-      - x_train_path=./data/mnist_data/train-images-idx3-ubyte.gz
-      - y_train_path=./data/mnist_data/train-labels-idx1-ubyte.gz
-      - x_test_path=./data/mnist_data/t10k-images-idx3-ubyte.gz
-      - y_test_path=./data/mnist_data/t10k-labels-idx1-ubyte.gz
+      - x_train_path=./training_process/client/data/mnist_data/train-images-idx3-ubyte.gz
+      - y_train_path=./training_process/client/data/mnist_data/train-labels-idx1-ubyte.gz
+      - x_test_path=./training_process/client/data/mnist_data/t10k-images-idx3-ubyte.gz
+      - y_test_path=./training_process/client/data/mnist_data/t10k-labels-idx1-ubyte.gz
+      - profile_path = ./profile.json
       - sleeping_time=2
       - batch_size=128
       - data_size=10000
       - tracking_point=5000
+    volumes: 
+      - .:/app
+      - ${profile_path}:/app/training_process/client/profile.json
 
 
 

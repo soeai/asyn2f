@@ -30,7 +30,7 @@ class ClientAsyncFl(Client):
             or create their own model in their own platform (pytorch,...)
         '''
         self.model = model
-        self.local_data_size = self.model.data_size
+        self._local_data_size = self.model.data_size
 
     def train(self):
         # training nonstop until the server command to do so
@@ -187,7 +187,7 @@ class ClientAsyncFl(Client):
         # calculate alpha variable to ready for the merging process
         # alpha depend on qod, loss and sum of datasize from the server
         # now, just calculate alpha based on the size (local dataset size / local dataset size + server dataset size)
-        alpha = (self.local_data_size) / (self.local_data_size + self._global_model_update_data_size)
+        alpha = (self._local_data_size) / (self._local_data_size + self._global_model_update_data_size)
 
         # create a blank array to store the result
         self.model.merged_weights = [np.zeros(layer.shape) for layer in self.model.current_weights]
