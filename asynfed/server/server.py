@@ -29,7 +29,7 @@ class Server(QueueConnector):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, t: int = 15, test= True) -> None:
+    def __init__(self, strategy: Strategy, t: int = 15, test= True, bucket_name = 'test-client-tensorflow-mnist') -> None:
         # Server variables
         super().__init__()
         self._t = t
@@ -47,7 +47,11 @@ class Server(QueueConnector):
         # because multiple server can use the same RabbitMQ, S3 server.
         Config.QUEUE_NAME = self._server_id
         Config.TRAINING_EXCHANGE = self._server_id
-        Config.STORAGE_BUCKET_NAME = self._server_id
+        
+        if test:
+            Config.STORAGE_BUCKET_NAME = bucket_name
+        else:
+            Config.STORAGE_BUCKET_NAME = self._server_id
 
         init_config("server")
 
@@ -202,15 +206,15 @@ class Server(QueueConnector):
         # run the consuming thread!.
         consuming_thread.start()
 
-        thread = threading.Thread(target=keyboard_thread)
-        thread.start()
+        # thread = threading.Thread(target=keyboard_thread)
+        # thread.start()
 
         while not self.__is_stop_condition() and not self._closing:
-
-            if not thread.is_alive():
-                if self.delete_bucket_on_exit:
-                    self._cloud_storage.delete_bucket()
-                self.stop()
+            #
+            # if not thread.is_alive():
+            #     if self.delete_bucket_on_exit:
+            #         self._cloud_storage.delete_bucket()
+            #     self.stop()
 
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
@@ -238,7 +242,7 @@ class Server(QueueConnector):
                     self.__notify_error_to_client(message)
 
         self.stop()
-        thread.join()
+        # thread.join()
 
     def __update(self):
         self._strategy.aggregate(self._worker_manager)
@@ -267,18 +271,18 @@ class Server(QueueConnector):
         # Send message
         self.__notify_global_model_to_client(msg)
 
-
-def on_press(key):
-    if key == keyboard.Key.esc:
-        return False
-
-
-def keyboard_thread():
-    # Create a listener instance
-    listener = keyboard.Listener(on_press=on_press)
-
-    # Start the listener
-    listener.start()
-
-    # Wait for the listener to finish (blocking operation)
-    listener.join()
+#
+# def on_press(key):
+#     if key == keyboard.Key.esc:
+#         return False
+#
+#
+# def keyboard_thread():
+#     # Create a listener instance
+#     listener = keyboard.Listener(on_press=on_press)
+#
+#     # Start the listener
+#     listener.start()
+#
+#     # Wait for the listener to finish (blocking operation)
+#     listener.join()
