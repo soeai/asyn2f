@@ -11,6 +11,8 @@ from asynfed.commons.messages.client_init_connect_to_server import ClientInit, S
 from asynfed.commons.messages import ServerInitResponseToClient
 from asynfed.commons.messages import ServerNotifyModelToClient
 from asynfed.commons.utils import QueueConnector
+import dotenv
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -181,6 +183,7 @@ class Client(QueueConnector):
                         sleep(5)
 
                     # start 1 thread to train model.
+                    self.update_profile()
                     self.start_training_thread()
 
         elif (

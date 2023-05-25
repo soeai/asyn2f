@@ -3,14 +3,6 @@ import tensorflow as tf
 import numpy as np
 import gzip
 
-# import os
-# from dotenv import load_dotenv
-
-# load_dotenv()
-# train_images_path = os.getenv("x_train_path")
-# train_labels_path = os.getenv("y_train_path")
-# test_images_path = os.getenv("x_test_path")
-# test_labels_path = os.getenv("y_test_path")
 
 class TensorflowImageDataPreprocessing():
     def __init__(self, train_images_path: str, train_labels_path: str, height: int, width: int, batch_size = 32, shuffle_time = 10000, split = True, fract = 0.1, evaluate_images_path = None, evaluate_labels_path = None):
@@ -77,12 +69,3 @@ class TensorflowImageDataPreprocessing():
         x = x[..., tf.newaxis].astype("float32")
         # shape of x and y now: ((size, 28, 28, 1), (size,))
         self.evaluate_ds = tf.data.Dataset.from_tensor_slices((x, y)).batch(batch_size)
-
-
-# data_preprocessing = TensorflowImageDataPreprocessing(train_images_path=train_images_path, train_labels_path=train_labels_path, 
-#                                                       height = 28, width = 28, batch_size=64, split=True, 
-#                                                       fract=0.2, evaluate_images_path=test_images_path, evaluate_labels_path=test_labels_path)
-# # define dataset
-# train_ds = data_preprocessing.train_ds
-# test_ds = data_preprocessing.test_ds
-# evaluate_ds = data_preprocessing.evaluate_ds
