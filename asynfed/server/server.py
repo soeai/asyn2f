@@ -39,7 +39,7 @@ class Server(QueueConnector):
         self._is_new_global_model = False
 
         if test:
-            self._server_id = 'test-server01234561011010101'
+            self._server_id = 'test-client-tensorflow-mnist'
         else:
             self._server_id = f'server-{str(uuid.uuid4())}'
 

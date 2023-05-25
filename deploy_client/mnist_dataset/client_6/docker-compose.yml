@@ -6,7 +6,7 @@ services:
     image: vtn13042000/asynfed_tensorflow_client:2.0.0
     environment:
       - queue_url=amqp://guest:guest@13.214.37.45:5672/%2F
-      - training_exchange=test-server01234561011010101
+      - training_exchange=test-client-tensorflow-mnist
       - local_model_folder=./weights/local_weights/
       - global_model_folder=./weights/global_weights/
       - log_path=./logs/
