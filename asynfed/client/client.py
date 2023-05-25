@@ -13,7 +13,6 @@ from asynfed.commons.messages import ServerNotifyModelToClient
 from asynfed.commons.utils import QueueConnector
 import dotenv
 
-dotenv.load_dotenv()
 
 LOGGER = logging.getLogger(__name__)
 

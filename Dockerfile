@@ -14,7 +14,6 @@ COPY . .
 
 COPY setup.py .
 RUN python3.9 setup.py install
-# COPY .env .
 
 
 # Copy neccessary file to run client on tensorflow lenet model
