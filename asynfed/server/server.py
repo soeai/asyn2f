@@ -8,7 +8,7 @@ from asynfed.commons.messages.client_notify_model_to_server import ClientNotifyM
 from asynfed.commons.messages.server_init_response_to_client import ServerInitResponseToClient
 from asynfed.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
 from asynfed.commons.utils.queue_connector import QueueConnector
-from asynfed.commons.utils import time_diff, time_now
+from asynfed.commons.utils.time_ultils import time_diff, time_now
 from .objects import Worker
 from .server_storage_connector import ServerStorage
 from .strategies import Strategy
@@ -17,7 +17,7 @@ import threading
 
 from ..commons.messages.error_message import ErrorMessage
 
-from pynput import keyboard
+# from pynput import keyboard
 
 lock = threading.Lock()
 
@@ -40,7 +40,6 @@ class Server(QueueConnector):
         self._is_new_global_model = False
 
         # Record arive time for calculate dynamic waiting time for server.
-
         self._start_time = None
         self._first_arrival = None
         self._latest_arrival = None
@@ -52,18 +51,19 @@ class Server(QueueConnector):
 
         # All this information was decided by server to prevent conflict
         # because multiple server can use the same RabbitMQ, S3 server.
-        Config.QUEUE_NAME = self._server_id
         Config.TRAINING_EXCHANGE = self._server_id
         
         if test:
             Config.STORAGE_BUCKET_NAME = bucket_name
+            Config.QUEUE_NAME = bucket_name
         else:
             Config.STORAGE_BUCKET_NAME = self._server_id
+            Config.QUEUE_NAME = self._server_id
 
         init_config("server")
 
-        LOGGER.info(f' \n\nServer Info:\n\tRabbitMQ Exchange : {self._server_id}'
-                    f'\n\tS3 Bucket: {self._server_id}'
+        LOGGER.info(f' \n\nServer Info:\n\tRabbitMQ Exchange : {Config.TRAINING_EXCHANGE}'
+                    f'\n\tS3 Bucket: {Config.STORAGE_BUCKET_NAME}'
                     f'\n\n')
 
         # Initialize dependencies
@@ -261,6 +261,7 @@ class Server(QueueConnector):
                 except Exception as e:
                     message = ErrorMessage(str(e), None)
                     LOGGER.info("*" * 20)
+                    LOGGER.info(e)
                     LOGGER.info("THIS IS THE INTENDED MESSAGE")
                     LOGGER.info("*" * 20)
                     self.__notify_error_to_client(message)

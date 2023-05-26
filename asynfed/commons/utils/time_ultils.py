@@ -1,5 +1,5 @@
 
-import datetime
+from datetime import datetime
 
 
 def time_diff(time_str_1: str, time_str_2: str) -> float:
