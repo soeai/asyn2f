@@ -8,6 +8,7 @@ from asynfed.commons.messages.client_notify_model_to_server import ClientNotifyM
 from asynfed.commons.messages.server_init_response_to_client import ServerInitResponseToClient
 from asynfed.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
 from asynfed.commons.utils.queue_connector import QueueConnector
+from asynfed.commons.utils.time_ultils import time_diff, time_now
 from .objects import Worker
 from .server_storage_connector import ServerStorage
 from .strategies import Strategy
@@ -16,7 +17,7 @@ import threading
 
 from ..commons.messages.error_message import ErrorMessage
 
-from pynput import keyboard
+# from pynput import keyboard
 
 lock = threading.Lock()
 
@@ -38,6 +39,11 @@ class Server(QueueConnector):
         self._is_downloading = False
         self._is_new_global_model = False
 
+        # Record arive time for calculate dynamic waiting time for server.
+        self._start_time = None
+        self._first_arrival = None
+        self._latest_arrival = None
+
         if test:
             self._server_id = 'test-client-tensorflow-mnist'
         else:
@@ -45,18 +51,19 @@ class Server(QueueConnector):
 
         # All this information was decided by server to prevent conflict
         # because multiple server can use the same RabbitMQ, S3 server.
-        Config.QUEUE_NAME = self._server_id
         Config.TRAINING_EXCHANGE = self._server_id
         
         if test:
             Config.STORAGE_BUCKET_NAME = bucket_name
+            Config.QUEUE_NAME = bucket_name
         else:
             Config.STORAGE_BUCKET_NAME = self._server_id
+            Config.QUEUE_NAME = self._server_id
 
         init_config("server")
 
-        LOGGER.info(f' \n\nServer Info:\n\tRabbitMQ Exchange : {self._server_id}'
-                    f'\n\tS3 Bucket: {self._server_id}'
+        LOGGER.info(f' \n\nServer Info:\n\tRabbitMQ Exchange : {Config.TRAINING_EXCHANGE}'
+                    f'\n\tS3 Bucket: {Config.STORAGE_BUCKET_NAME}'
                     f'\n\n')
 
         # Initialize dependencies
@@ -142,8 +149,18 @@ class Server(QueueConnector):
                 self.__notify_error_to_client(error_message)
 
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
+            
             client_notify_message = ClientNotifyModelToServer()
             client_notify_message.deserialize(body.decode())
+            
+            if self._strategy.current_version == client_notify_message.global_model_version_used:
+                if self._first_arrival == None:
+                    self._first_arrival = time_now()
+                    self._latest_arrival = time_now()
+                
+                elif self._first_arrival != None:
+                    self._latest_arrival = time_now()
+            
             # take the info here
             # save client qod, loss and size
             print(f'Receive new model from client [{client_notify_message.client_id}]!')
@@ -180,6 +197,11 @@ class Server(QueueConnector):
             RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
             message.serialize()
         )
+        # Get the starting time of the epoch and reset vars
+        self._start_time = time_now()
+        self._first_arrival = None
+        self._latest_arrival = None
+        
 
     def __notify_error_to_client(self, message):
         # Send notify message to client.
@@ -188,6 +210,8 @@ class Server(QueueConnector):
             RoutingRules.SERVER_ERROR_TO_CLIENT,
             message.serialize()
         )
+        
+        
 
     def __response_to_client_init_connect(self, message):
         # Send response message to client.
@@ -237,6 +261,7 @@ class Server(QueueConnector):
                 except Exception as e:
                     message = ErrorMessage(str(e), None)
                     LOGGER.info("*" * 20)
+                    LOGGER.info(e)
                     LOGGER.info("THIS IS THE INTENDED MESSAGE")
                     LOGGER.info("*" * 20)
                     self.__notify_error_to_client(message)
@@ -246,6 +271,16 @@ class Server(QueueConnector):
 
     def __update(self):
         self._strategy.aggregate(self._worker_manager)
+        
+        # calculate dynamic time ratial only when 
+        if None not in [self._start_time, self._first_arrival, self._latest_arrival]:
+            t1 = time_diff(self._start_time, self._first_arrival)
+            t2 = time_diff(self._start_time, self._latest_arrival)
+            
+            # get avg complete time of current epoch
+            self._t = (t2 + t1) / 2
+            
+        
 
     def __is_stop_condition(self):
         self._strategy.is_completed()
