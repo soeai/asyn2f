@@ -44,3 +44,6 @@ cd training_process/client
 python3 run_client.py
 ```
 
+## run client docker file
+- must create .env file within the same folder as docker-compose file (or modify the docker-compose to define the location of the .env file)
+- in the .env file, define at least profile_path and the profile.json must be created before runtime 
