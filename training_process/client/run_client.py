@@ -46,10 +46,12 @@ if args.training_exchange:
 # Preprocessing data
 # mnist dataset
 # Set the file paths for the MNIST digit dataset files
-train_images_path = f'{root}/{os.getenv("x_train_path")}'
-train_labels_path = f'{root}/{os.getenv("y_train_path")}'
-test_images_path = f'{root}/{os.getenv("x_test_path")}'
-test_labels_path = f'{root}/{os.getenv("y_test_path")}'
+train_images_path = os.path.join(root, os.getenv("x_train_path"))
+train_labels_path = os.path.join(root, os.getenv("y_train_path"))
+test_images_path = os.path.join(root, os.getenv("x_test_path"))
+test_labels_path = os.path.join(root, os.getenv("y_test_path"))
+
+
 
 if os.getenv("batch_size"):
     Config.BATCH_SIZE = int(os.getenv("batch_size"))

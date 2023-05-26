@@ -31,10 +31,10 @@ class TensorflowImageDataPreprocessing():
 
         # make it to be a smaller dataset
         # Take a portion of the whole dataset as a way to simulate various data owner behavior
-        start = 0
-        datasize = 10000
-        x = x[start: start + datasize]
-        y = y[start: start + datasize]
+        # start = 0
+        # datasize = 10000
+        # x = x[start: start + datasize]
+        # y = y[start: start + datasize]
         
         if split:
             # split training dataset into train set and test set (user may not choose this option if its training dataset is too small)
