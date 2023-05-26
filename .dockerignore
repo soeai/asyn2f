@@ -11,6 +11,8 @@ training_process/client/data
 training_process/client/weights
 profile.json
 
+asynfed/server
+
 test
 deploy_client
 weights
