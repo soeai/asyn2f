@@ -17,7 +17,6 @@ class AsynFL(Strategy):
 
     def __init__(self):
         super().__init__()
-        self.alpha: Dict = {}
 
     def select_client(self, all_clients) -> List[str]:
         return all_clients

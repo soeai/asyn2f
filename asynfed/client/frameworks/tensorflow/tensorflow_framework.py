@@ -17,7 +17,7 @@ class TensorflowFramework(ModelWrapper):
     # Tensorflow Model must be an inheritant of class tensorflow.keras.Model
     # model, data_size, train_ds is required
     # test_ds is optional
-    def __init__(self, model: Model, data_size, train_ds, test_ds):
+    def __init__(self, model: Model, data_size: int = 10, qod: float = 0.5, train_ds = None, test_ds = None):
         super().__init__()
         '''
         - model must have an optimizer, a loss object, and trainining metric 
@@ -37,9 +37,9 @@ class TensorflowFramework(ModelWrapper):
         '''
         self.model = model
         self.data_size = data_size
+        self.qod = qod
         self.train_ds = train_ds
-        if test_ds:
-            self.test_ds = test_ds
+        self.test_ds = test_ds
 
     def set_weights(self, weights):
         return self.model.set_weights(weights)

@@ -284,7 +284,7 @@ class Server(QueueConnector):
             # get the only worker
             worker = next(iter(completed_workers.values))
             self._strategy.avg_loss = worker.loss
-            self._strategy.avg_qod = worker.qod.value * worker.data_desc.data_size / worker.loss
+            self._strategy.avg_qod = worker.qod.value
             self._strategy.global_model_update_data_size = worker.data_desc.data_size
 
             # copy the worker model weight to the global model folder

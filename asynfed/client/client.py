@@ -69,6 +69,7 @@ class Client(QueueConnector):
             "global_model_version": self._global_model_version,
             "local_epoch": self._local_epoch,
             "global_avg_loss": self._global_avg_loss,
+            "global_avg_qod": self._global_avg_qod,
             "global_model_update_data_size": self._global_model_update_data_size,
         }
         return data
