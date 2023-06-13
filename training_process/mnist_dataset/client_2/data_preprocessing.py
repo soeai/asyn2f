@@ -32,7 +32,7 @@ class TensorflowImageDataPreprocessing():
         # make it to be a smaller dataset
         # Take a portion of the whole dataset as a way to simulate various data owner behavior
         start = 0
-        datasize = 2000
+        datasize = 2500
         x = x[start: start + datasize]
         y = y[start: start + datasize]
         

@@ -22,7 +22,8 @@ class AsynFL(Strategy):
         return all_clients
 
     def compute_alpha(self, worker: Worker) -> float:
-        alpha  = worker.qod.value * worker.data_desc.data_size / worker.loss
+        # alpha  = worker.qod.value * worker.data_desc.data_size / worker.loss
+        alpha  = worker.qod * worker.data_size / worker.loss
         return alpha
 
     def aggregate(self, worker_manager: WorkerManager):
@@ -30,62 +31,29 @@ class AsynFL(Strategy):
         # Get all workers that has the weight version with server
         completed_workers: dict[str, Worker] = worker_manager.get_completed_workers()
         self.current_version += 1
-
         total_completed_worker = len(completed_workers)
-        print(f"Total worker: {total_completed_worker}")
-        print("The complete list of worker")
-        print(completed_workers)
-        # for w_id, worker in completed_workers:
-        #     print(worker)
+
         # calculate average quality of data, average loss and total datasize to notify client
-        # self.avg_qod = sum([worker.qod.value for w_id, worker in completed_workers.items()]) / total_completed_worker
-        # self.avg_loss = sum([worker.loss for w_id, worker in completed_workers.items()]) /  total_completed_worker
-        # self.global_model_update_data_size = sum([worker.data_desc.data_size for w_id, worker in completed_workers.items()])
+        self.avg_qod = sum([worker.qod for w_id, worker in completed_workers.items()]) / total_completed_worker
+        self.avg_loss = sum([worker.loss for w_id, worker in completed_workers.items()]) /  total_completed_worker
+        self.global_model_update_data_size = sum([worker.data_size for w_id, worker in completed_workers.items()])
 
-        # calculate alpha for aggregating process
-        sum_alpha = 0
-        total_qod = 0
-        total_loss = 0
-        total_datasize = 0
-
+        sum_alpha = 0.0
         print("*" * 20)
-        print("This is the calculated alpha before normalized")
+        print("Alpha before being normalized")
         for w_id, worker in completed_workers.items():
             worker.alpha = self.compute_alpha(worker)
-            print(f"{worker.worker_id} with alpha {worker.alpha}, qod: {worker.qod.value}, loss: {worker.loss}, datasize : {worker.data_desc.data_size}")
-
+            print(f"{worker.worker_id} with alpha {worker.alpha}, qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
             sum_alpha += worker.alpha
-            total_qod += worker.qod.value 
-            total_loss += worker.loss
-            total_datasize =+ worker.data_desc.data_size
-
-        print("-" * 20 )
-        for w_id in completed_workers:
-            print(f"{w_id} with alpha {completed_workers[w_id].alpha}, qod: {completed_workers[w_id].qod.value}, loss: {completed_workers[w_id].loss}, datasize : {completed_workers[w_id].data_desc.data_size}")
-        print("-" * 20 )
-        # for w_id, worker in completed_workers.items():
-        #     worker.alpha = self.compute_alpha(worker)
-        #     print(f"{worker.worker_id} with alpha {worker.alpha}, qod: {worker.qod.value}, loss: {worker.loss}, datasize : {worker.data_desc.data_size}")
-
-        #     sum_alpha += worker.alpha
-        #     total_qod += worker.qod.value 
-        #     total_loss += worker.loss
-        #     total_datasize =+ worker.data_desc.data_size
-
-        self.avg_loss = total_loss / total_completed_worker
-        self.avg_qod = total_qod / total_completed_worker
-        self.global_model_update_data_size = total_datasize
-          
         print(f"Total data: {self.global_model_update_data_size}, avg_loss: {self.avg_loss}, avg_qod: {self.avg_qod}")
         print("*" * 20)
 
+
         print("*" * 20)
-        print("This is the calculated alpha after normalized")
+        print("Alpha after being normalized")
         for w_id, worker in completed_workers.items():
             worker.alpha /= sum_alpha
             print(f"{w_id}: {worker.alpha}")
-            
-
         print("*" * 20)
 
         # Create a new weight with the same shape and type as a given weight.
@@ -111,7 +79,6 @@ class AsynFL(Strategy):
         with open(save_location, "wb") as f:
             pickle.dump(merged_weight, f)
         # print(merged_weight)
-
         
 
     def get_model_weights(self, file_path) -> ndarray:

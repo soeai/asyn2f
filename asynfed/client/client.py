@@ -7,7 +7,8 @@ from time import sleep
 from abc import abstractmethod
 from asynfed.client.client_storage_connector import ClientStorage
 from asynfed.commons.conf import RoutingRules, Config, init_config
-from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
+# from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
+from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo
 from asynfed.commons.messages import ServerInitResponseToClient
 from asynfed.commons.messages import ServerNotifyModelToClient
 from asynfed.commons.messages import ClientNotifyModelToServer
@@ -73,12 +74,13 @@ class Client(QueueConnector):
             "global_model_name": self._global_model_name,
             "global_model_version": self._global_model_version,
             "local_epoch": self._local_epoch,
-            # "global_model_update_data_size": self._global_model_update_data_size,
+            "global_model_update_data_size": self._global_model_update_data_size,
+            "global_avg_loss": self._global_avg_loss,
+            "global_avg_qod": self._global_avg_qod,
+
             # "local_data_size": self._local_data_size,
             # "local_qod": self._local_qod,
-            # "global_avg_qod": self._global_avg_qod,
             # "train_loss": self._train_loss,
-            # "global_avg_loss": self._global_avg_loss,
         }
         return data
 
@@ -102,12 +104,13 @@ class Client(QueueConnector):
                 self._global_model_name = data["global_model_name"]
                 self._global_model_version = data["global_model_version"]
                 self._local_epoch = data["local_epoch"]
-                # self._global_model_update_data_size = data["global_model_update_data_size"]
+                self._global_model_update_data_size = data["global_model_update_data_size"]
+                self._global_avg_loss = data["global_avg_loss"]
+                self._local_qod = data["local_qod"]
+                
                 # self._local_data_size = data["local_data_size"]
-                # self._local_qod = data["local_qod"]
                 # self._global_avg_qod = data["global_avg_qod"]
                 # self._train_loss = data["train_loss"]
-                # self._global_avg_loss = data["global_avg_loss"]
         except Exception as e:
             print(e)
 
@@ -269,8 +272,10 @@ class Client(QueueConnector):
             session_id=self._session_id,
             client_id=self._client_id,
             sys_info=SysInfo(),
-            data_desc=DataDesc(data_size= data_size),
-            qod=QoD(value= qod),
+            # data_desc=DataDesc(data_size= data_size),
+            # qod=QoD(value= qod),
+            data_size= data_size,
+            qod = qod
         )
         print("-" * 20)
         print("Init message of client")

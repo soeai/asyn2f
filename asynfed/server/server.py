@@ -105,8 +105,10 @@ class Server(QueueConnector):
                         session_id= session_id,
                         worker_id= worker_id,
                         sys_info= client_init_message.sys_info,
-                        data_desc= client_init_message.data_desc,
-                        qod= client_init_message.qod
+                        # data_desc= client_init_message.data_desc,
+                        # qod= client_init_message.qod
+                        data_size = client_init_message.data_size,
+                        qod = client_init_message.qod
                     )
                     with lock:
                         worker.access_key_id = access_key
@@ -150,13 +152,6 @@ class Server(QueueConnector):
                 self.__notify_error_to_client(error_message)
 
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
-            all_worker = self._worker_manager.get_all()
-            print("-" * 20)
-            for w_id in all_worker:
-                worker = all_worker[w_id]
-                print(f"worker_id: {worker.worker_id}, size: {worker.data_desc.data_size}, qod: {worker.qod.value}")
-            print("-" * 20)
-            
             client_notify_message = ClientNotifyModelToServer()
             client_notify_message.deserialize(body.decode())
             
@@ -168,8 +163,6 @@ class Server(QueueConnector):
                 elif self._first_arrival != None:
                     self._latest_arrival = time_now()
             
-            # take the info here
-            # save client qod, loss and size
             print(f'Receive new model from client [{client_notify_message.client_id}]!')
 
             # Download model!
@@ -291,14 +284,12 @@ class Server(QueueConnector):
             # worker = next(iter(completed_workers.values))
             for w_id, worker in completed_workers.items():
                 self._strategy.avg_loss = worker.loss
-                self._strategy.avg_qod = worker.qod.value
-                self._strategy.global_model_update_data_size = worker.data_desc.data_size
+                self._strategy.avg_qod = worker.qod
+                self._strategy.global_model_update_data_size = worker.data_size
             
-
-            print("Working properly....")
-            print("*" * 10)
-            print(f"Avg loss, avg qod, global datasize: {self._strategy.avg_loss}, {self._strategy.avg_qod}, {self._strategy.global_model_update_data_size}")
-            print("*" * 10)
+            # print("*" * 10)
+            # print(f"Avg loss, avg qod, global datasize: {self._strategy.avg_loss}, {self._strategy.avg_qod}, {self._strategy.global_model_update_data_size}")
+            # print("*" * 10)
 
             # copy the worker model weight to the global model folder
             import shutil

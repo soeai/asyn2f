@@ -75,8 +75,8 @@ test_ds = data_preprocessing.test_ds
 evaluate_ds = data_preprocessing.evaluate_ds
 # ------------oOo--------------------
 
-qod = 0.2
-data_size = 6000
+qod = 0.5
+data_size = 3000
 
 
 # define model
