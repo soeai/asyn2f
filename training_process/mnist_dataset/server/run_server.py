@@ -30,5 +30,5 @@ else:
     bucket_name= 'test-client-tensorflow-mnist'
 
 strategy = AsynFL()
-fedasync_server = Server(strategy, t=100, test = True, bucket_name= bucket_name)
+fedasync_server = Server(strategy, t=20, test = True, bucket_name= bucket_name)
 fedasync_server.run()

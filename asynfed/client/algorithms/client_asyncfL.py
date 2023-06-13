@@ -39,7 +39,6 @@ class ClientAsyncFl(Client):
     def train(self):
         # training nonstop until the server command to do so
         # or the client attempt to quit
-        self._local_epoch = 0
 
         # before training, load the global model to set to be the client model weights 
         file_name = self._global_model_name.split('/')[-1]
@@ -142,10 +141,16 @@ class ClientAsyncFl(Client):
                         timestamp=datetime.now().timestamp(),
                         model_id=filename,
                         weight_file=remote_file_path,
-                        global_model_version_used=self._current_local_version,
+                        # global_model_version_used=self._current_local_version,
+                        global_model_version_used=self._global_model_version,
                         performance= self._train_acc,
                         loss_value= self._train_loss,
                     )
+
+                    print("*" * 20)
+                    print("Client Notify Model to Server")
+                    print(message)
+                    print("*" * 20)
                     self.notify_model_to_server(message.serialize())
                     LOGGER.info("ClientModel End Training, notify new model to server.")
                     self.update_profile()

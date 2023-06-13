@@ -75,14 +75,14 @@ test_ds = data_preprocessing.test_ds
 evaluate_ds = data_preprocessing.evaluate_ds
 # ------------oOo--------------------
 
-qod = 0.45
-
+qod = 0.2
+data_size = 6000
 
 
 # define model
 lenet_model = LeNet(input_features = (32, 32, 1), output_features = 10)
 # define framework
-tensorflow_framework = TensorflowFramework(model = lenet_model, data_size= Config.DATA_SIZE, qod= qod, train_ds= train_ds, test_ds= test_ds)
+tensorflow_framework = TensorflowFramework(model = lenet_model, data_size= data_size , qod= qod, train_ds= train_ds, test_ds= test_ds)
 
 tf_client = ClientAsyncFl(model=tensorflow_framework)
 tf_client.run()

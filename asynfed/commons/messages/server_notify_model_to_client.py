@@ -9,7 +9,7 @@ class ServerNotifyModelToClient(Message):
                  global_model_version=None,
                  global_model_update_data_size= 0,
                  avg_loss=1,
-                 avg_qod = 0.5,
+                 avg_qod = 0.8,
                  ):
         super().__init__()
         # list of chosen client to start training
