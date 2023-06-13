@@ -17,33 +17,49 @@ class AsynFL(Strategy):
 
     def __init__(self):
         super().__init__()
-        self.alpha: Dict = {}
 
     def select_client(self, all_clients) -> List[str]:
         return all_clients
 
     def compute_alpha(self, worker: Worker) -> float:
-        return 1
+        # alpha  = worker.qod.value * worker.data_desc.data_size / worker.loss
+        alpha  = worker.qod * worker.data_size / worker.loss
+        return alpha
 
     def aggregate(self, worker_manager: WorkerManager):
         # calculate avg, loss and datasize here
         # Get all workers that has the weight version with server
         completed_workers: dict[str, Worker] = worker_manager.get_completed_workers()
         self.current_version += 1
+        total_completed_worker = len(completed_workers)
 
-        sum_alpha = sum([completed_workers[w_id].alpha for w_id in completed_workers])
+        # calculate average quality of data, average loss and total datasize to notify client
+        self.avg_qod = sum([worker.qod for w_id, worker in completed_workers.items()]) / total_completed_worker
+        self.avg_loss = sum([worker.loss for w_id, worker in completed_workers.items()]) /  total_completed_worker
+        self.global_model_update_data_size = sum([worker.data_size for w_id, worker in completed_workers.items()])
 
-        alpha = {}
-        for w_id in completed_workers:
-            alpha[w_id] = self.compute_alpha(completed_workers[w_id]) / sum_alpha
-            self.total_qod += completed_workers[w_id].qod.value
-            self.global_model_update_data_size += completed_workers[w_id].batch_size
-            self.avg_loss += completed_workers[w_id].loss / len(completed_workers)
+        sum_alpha = 0.0
+        print("*" * 20)
+        print("Alpha before being normalized")
+        for w_id, worker in completed_workers.items():
+            worker.alpha = self.compute_alpha(worker)
+            print(f"{worker.worker_id} with alpha {worker.alpha}, qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
+            sum_alpha += worker.alpha
+        print(f"Total data: {self.global_model_update_data_size}, avg_loss: {self.avg_loss}, avg_qod: {self.avg_qod}")
+        print("*" * 20)
+
+
+        print("*" * 20)
+        print("Alpha after being normalized")
+        for w_id, worker in completed_workers.items():
+            worker.alpha /= sum_alpha
+            print(f"{w_id}: {worker.alpha}")
+        print("*" * 20)
 
         # Create a new weight with the same shape and type as a given weight.
         merged_weight = None
-        for cli_id in completed_workers:
-            weight_file = completed_workers[cli_id].get_weight_file_path()
+        for cli_id, worker in completed_workers.items():
+            weight_file = worker.get_weight_file_path()
 
             # Load the array from the specified file using the numpy.load function
             weight = self.get_model_weights(weight_file)
@@ -52,8 +68,8 @@ class AsynFL(Strategy):
                 merged_weight = copy(weight)
             else:
                 for layers in range(len(weight)):
-                    merged_weight[layers] += 1 / len(completed_workers) * (
-                            alpha[cli_id] / (self.current_version - completed_workers[cli_id].current_version)) * \
+                    merged_weight[layers] += 1 / total_completed_worker * (
+                            worker.alpha / (self.current_version - worker.current_version)) * \
                                              weight[layers]
 
         # save weight file.
@@ -63,6 +79,7 @@ class AsynFL(Strategy):
         with open(save_location, "wb") as f:
             pickle.dump(merged_weight, f)
         # print(merged_weight)
+        
 
     def get_model_weights(self, file_path) -> ndarray:
         print("*" * 10)

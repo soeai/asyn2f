@@ -1,5 +1,6 @@
 from asynfed.commons.conf import Config
-from asynfed.commons.messages.client_init_connect_to_server import SysInfo, DataDesc, QoD
+# from asynfed.commons.messages.client_init_connect_to_server import SysInfo, DataDesc, QoD
+from asynfed.commons.messages.client_init_connect_to_server import SysInfo
 
 
 class Worker:
@@ -8,23 +9,26 @@ class Worker:
     - Add more properties to this class.
     """
 
-    def __init__(self, session_id: str, worker_id: str, sys_info: SysInfo = None, data_desc: DataDesc = None, qod: QoD = None) -> None:
+    # def __init__(self, session_id: str, worker_id: str, sys_info: SysInfo = None, data_desc: DataDesc = None, qod: QoD = None) -> None:
+    def __init__(self, session_id: str, worker_id: str, sys_info: SysInfo = None, data_size: int = 10, qod: float = 0.1) -> None:
         # Properties
         self.session_id = session_id
         self.worker_id = worker_id
         self.sys_info = sys_info
-        self.data_desc = data_desc
-        self.qod = qod
-        self.weight_file = ""
-        self.n_update = 0
         self.current_version = 0
-        self.alpha = 0.0
-        self.batch_size = 0
-        self.performance = 0.0
-        self.loss = 0.0
         self.is_completed = False
         self.access_key_id = None
         self.secret_key_id = None
+        self.n_update = 0
+        self.weight_file = ""
+        self.performance = 0.0
+        # info needed for aggregating
+        # self.data_desc = data_desc
+        self.qod = qod
+        self.data_size = data_size
+        # loss change from update time to update time
+        self.loss = 0.0
+
 
     def get_weight_file_path(self):
         filename = self.weight_file.split('/')[-1]
@@ -45,5 +49,6 @@ class Worker:
         """
         Implement toString function here!
         """
-        return f"Worker: {self.worker_id} | n_update: {self.n_update} | current_version: {self.current_version} | alpha: {self.alpha} | performance: {self.performance} | loss: {self.loss}"
+        # return f"Worker: {self.worker_id} | n_update: {self.n_update} | current_version: {self.current_version} | qod: {self.qod.value} | datasize: {self.data_desc.data_size} | performance: {self.performance} | loss: {self.loss}"
+        return f"Worker: {self.worker_id} | n_update: {self.n_update} | current_version: {self.current_version} | qod: {self.qod} | datasize: {self.data_size} | performance: {self.performance} | loss: {self.loss}"
 

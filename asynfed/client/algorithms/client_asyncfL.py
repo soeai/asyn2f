@@ -31,11 +31,14 @@ class ClientAsyncFl(Client):
         '''
         self.model = model
         self._local_data_size = self.model.data_size
+        self._local_qod = self.model.qod
+        self._train_acc = 0.0
+        self._train_loss = 0.0
+
 
     def train(self):
         # training nonstop until the server command to do so
         # or the client attempt to quit
-        self._local_epoch = 0
 
         # before training, load the global model to set to be the client model weights 
         file_name = self._global_model_name.split('/')[-1]
@@ -87,7 +90,7 @@ class ClientAsyncFl(Client):
                 # get the previous weights before the new training process within each batch
                 self.model.previous_weights = self.model.get_weights()
                 # training normally
-                train_acc, train_loss = self.model.fit(images, labels)
+                self._train_acc, self._train_loss = self.model.fit(images, labels)
 
                 # merging when receiving a new global model
                 if self._new_model_flag:
@@ -108,27 +111,15 @@ class ClientAsyncFl(Client):
 
                 if self.model.test_ds:
                     for test_images, test_labels in self.model.test_ds:
-                        test_acc, test_loss = self.model.evaluate(test_images, test_labels)
-            # calculate alpha before notifying new local model to server
-            alpha = 0.5
+                        self._test_acc, self._test_loss = self.model.evaluate(test_images, test_labels)
 
-            # if there is a test dataset 
-            # --> send acc and loss of test dataset
-            if self.model.test_ds:
-                acc = test_acc
-                loss = test_loss
-            else:
-                acc = train_acc
-                loss = train_loss
-                test_acc = 0
-                test_loss = None
 
             LOGGER.info(
                 f'Epoch: {self._local_epoch}'
-                f'\tLast Batch Train Accuracy: {train_acc * 100}, '
-                f'\tLast Batch Train Loss: {train_loss}, '
-                f'\tLast Batch Test Accuracy: {test_acc * 100}'
-                f'\tLast Batch Test Loss: {test_loss}, '
+                f'\tLast Batch Train Accuracy: {self._train_acc * 100}, '
+                f'\tLast Batch Train Loss: {self._train_loss}, '
+                f'\tLast Batch Test Accuracy: {self._test_acc * 100}'
+                f'\tLast Batch Test Loss: {self._test_loss}, '
             )
 
             # Save weights locally after training
@@ -150,11 +141,16 @@ class ClientAsyncFl(Client):
                         timestamp=datetime.now().timestamp(),
                         model_id=filename,
                         weight_file=remote_file_path,
-                        global_model_version_used=self._current_local_version,
-                        performance=acc,
-                        loss_value=loss,
-                        alpha = alpha,
+                        # global_model_version_used=self._current_local_version,
+                        global_model_version_used=self._global_model_version,
+                        performance= self._train_acc,
+                        loss_value= self._train_loss,
                     )
+
+                    print("*" * 20)
+                    print("Client Notify Model to Server")
+                    print(message)
+                    print("*" * 20)
                     self.notify_model_to_server(message.serialize())
                     LOGGER.info("ClientModel End Training, notify new model to server.")
                     self.update_profile()
@@ -184,10 +180,20 @@ class ClientAsyncFl(Client):
         # get the direction list (matrix)
         self.model.direction = [np.multiply(a, b) for a, b in zip(e_local, e_global)]
 
-        # calculate alpha variable to ready for the merging process
-        # alpha depend on qod, loss and sum of datasize from the server
-        # now, just calculate alpha based on the size (local dataset size / local dataset size + server dataset size)
-        alpha = (self._local_data_size) / (self._local_data_size + self._global_model_update_data_size)
+        # Calculate alpha variable to ready for the merging process
+        # alpha depend on 
+        # qod, loss and data size from both the server and the local client
+        # qod
+        local_qod = self._local_qod
+        global_qod = self._global_avg_qod
+        # data size
+        local_size = self._local_data_size
+        global_size = self._global_model_update_data_size
+        # loss
+        local_loss = self._train_loss
+        global_loss = self._global_avg_loss
+        # calculate alpha
+        alpha = ( (local_qod*local_size) / (local_qod*local_size + global_qod*global_size) + local_loss/(local_loss + global_loss) )
 
         # create a blank array to store the result
         self.model.merged_weights = [np.zeros(layer.shape) for layer in self.model.current_weights]

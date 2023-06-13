@@ -7,11 +7,12 @@ from time import sleep
 from abc import abstractmethod
 from asynfed.client.client_storage_connector import ClientStorage
 from asynfed.commons.conf import RoutingRules, Config, init_config
-from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
+# from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
+from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo
 from asynfed.commons.messages import ServerInitResponseToClient
 from asynfed.commons.messages import ServerNotifyModelToClient
+from asynfed.commons.messages import ClientNotifyModelToServer
 from asynfed.commons.utils import QueueConnector
-import dotenv
 
 
 LOGGER = logging.getLogger(__name__)
@@ -25,18 +26,24 @@ class Client(QueueConnector):
 
         # Dependencies
         self._local_data_size = 0
+        self._local_qod = 0.0
+        self._train_loss = 0.0
 
         self._previous_local_version = 0
-        self._current_local_version = -1
+        self._current_local_version = 0
 
         self._global_model_version = None
 
-        self._local_epoch = 0
 
-        self._global_avg_loss = None
-        self._global_model_update_data_size = None
         self._global_model_name = None
         self._storage_connector = None
+
+
+        self._local_epoch = 0
+        # merging process
+        self._global_avg_loss = None
+        self._global_avg_qod = None
+        self._global_model_update_data_size = None
 
         # variables.
         self._client_id = ""
@@ -64,12 +71,16 @@ class Client(QueueConnector):
         data = {
             "session_id": self._session_id,
             "client_id": self._client_id,
-            "local_data_size": self._local_data_size,
             "global_model_name": self._global_model_name,
             "global_model_version": self._global_model_version,
             "local_epoch": self._local_epoch,
-            "global_avg_loss": self._global_avg_loss,
             "global_model_update_data_size": self._global_model_update_data_size,
+            "global_avg_loss": self._global_avg_loss,
+            "global_avg_qod": self._global_avg_qod,
+
+            # "local_data_size": self._local_data_size,
+            # "local_qod": self._local_qod,
+            # "train_loss": self._train_loss,
         }
         return data
 
@@ -90,12 +101,16 @@ class Client(QueueConnector):
                 data = json.load(json_file)
                 self._session_id = data["session_id"]
                 self._client_id = data["client_id"]
-                self._local_data_size = data["local_data_size"]
                 self._global_model_name = data["global_model_name"]
                 self._global_model_version = data["global_model_version"]
                 self._local_epoch = data["local_epoch"]
-                self._global_avg_loss = data["global_avg_loss"]
                 self._global_model_update_data_size = data["global_model_update_data_size"]
+                self._global_avg_loss = data["global_avg_loss"]
+                self._local_qod = data["local_qod"]
+                
+                # self._local_data_size = data["local_data_size"]
+                # self._global_avg_qod = data["global_avg_qod"]
+                # self._train_loss = data["train_loss"]
         except Exception as e:
             print(e)
 
@@ -119,7 +134,7 @@ class Client(QueueConnector):
             Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
         )
-        self.publish_init_message()
+        self.publish_init_message(data_size= self._local_data_size, qod = self._local_qod)
         self.start_consuming()
 
     def on_message(self, channel, basic_deliver, properties, body):
@@ -167,6 +182,7 @@ class Client(QueueConnector):
                 self._is_registered = True
 
                 # if local model version is smaller than the global model version and client's id is in the chosen ids
+                # for the time it back to the training process
                 if self._current_local_version < self._global_model_version:
                     LOGGER.info("Detect new global version.")
 
@@ -196,6 +212,9 @@ class Client(QueueConnector):
             msg.deserialize(decoded)
 
             LOGGER.info("Receive global model notify............")
+            print("*" * 20)
+            print(msg)
+            print("*" * 20)
             with lock:
                 # ----- receive and load global message ----
                 self._global_chosen_list = msg.chosen_id
@@ -208,6 +227,9 @@ class Client(QueueConnector):
                 self._global_model_update_data_size = msg.global_model_update_data_size
                 self._global_avg_loss = msg.avg_loss
                 self._global_avg_qod = msg.avg_qod
+                print("*" * 20)
+                print(f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
+                print("*" * 20)
 
                 # save the previous local version of the global model to log it to file
                 self._previous_local_version = self._current_local_version
@@ -244,15 +266,21 @@ class Client(QueueConnector):
         )
 
 
-    def publish_init_message(self, data_size = 10000, qod = 0.1):
+    def publish_init_message(self, data_size = 10000, qod = 0.2):
         message = ClientInit(
             client_identifier=self._client_identifier,
             session_id=self._session_id,
             client_id=self._client_id,
             sys_info=SysInfo(),
-            data_desc=DataDesc(data_size= data_size),
-            qod=QoD(qod= qod),
+            # data_desc=DataDesc(data_size= data_size),
+            # qod=QoD(value= qod),
+            data_size= data_size,
+            qod = qod
         )
+        print("-" * 20)
+        print("Init message of client")
+        print(message)
+        print("-" * 20)
         self.init_connect_to_server(message.serialize())
 
     def start_training_thread(self):

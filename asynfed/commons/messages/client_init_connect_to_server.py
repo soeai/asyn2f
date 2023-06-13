@@ -15,18 +15,18 @@ class SysInfo(Message):
         self.mac_add = mac_add
 
 
-class DataDesc(Message):
-    def __init__(self, name: str = "", desc: str = "", data_size: str = ""):
-        self.name = name
-        self.desc = desc
-        self.data_size = data_size
+# class DataDesc(Message):
+#     def __init__(self, name: str = "", desc: str = "", data_size: int = 10):
+#         self.name = name
+#         self.desc = desc
+#         self.data_size = data_size
 
 
-class QoD(Message):
-    def __init__(self, schema: str = "", comment: str = "", qod: float = 0.0):
-        self.schema = schema
-        self.comment = comment
-        self.value = qod
+# class QoD(Message):
+#     def __init__(self, schema: str = "", comment: str = "", value: float = 0.5):
+#         self.schema = schema
+#         self.comment = comment
+#         self.value = value
 
 
 class ClientInit(Message):
@@ -36,13 +36,19 @@ class ClientInit(Message):
         session_id: str = "",
         client_id: str = "",
         sys_info: SysInfo = SysInfo(),
-        data_desc: DataDesc = DataDesc(),
-        qod: QoD = QoD(),
+        # data_desc: DataDesc = DataDesc(),
+        # qod: QoD = QoD(),
+
+        qod: float = 0.0,
+        data_size: int = 10,
     ):
         super().__init__()
         self.client_identifier = client_identifier
         self.session_id = session_id
         self.client_id = client_id
         self.sys_info = sys_info
-        self.data_desc = data_desc
+        # self.data_desc = data_desc
+        # self.qod = qod
+
+        self.data_size = data_size
         self.qod = qod

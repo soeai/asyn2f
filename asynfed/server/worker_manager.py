@@ -22,12 +22,30 @@ class WorkerManager:
         self.history_state: Dict[int, Dict[str, Worker]] = {}
 
     def add_worker(self, worker: Worker) -> None:
+
+        # print("^" * 20)
+        # print("before add new worker")
+        # for w_id, w in self.worker_pool.items():
+        #     # print(f"worker_id: {w.worker_id}, size: {w.data_desc.data_size}, qod: {w.qod.value}, loss: {w.loss}, per: {w.performance}")
+        #     print(f"worker_id: {w.worker_id}, size: {w.data_size}, qod: {w.qod}, loss: {w.loss}, per: {w.performance}")
+        #     print(f"worker_session: {w.session_id}")
+        # print("^" * 20)
+
         """Add a Worker to the worker_pools attribute.
         Args:
             worker (Worker): The Worker object to add.
         """
         LOGGER.info(f"New worker added, ID: {worker.worker_id}")
         self.worker_pool[worker.worker_id] = worker
+
+        # print("^" * 20)
+        # print("after add new worker")
+        # for w_id, w in self.worker_pool.items():
+        #     # print(f"worker_id: {w.worker_id}, size: {w.data_desc.data_size}, qod: {w.qod.value}, loss: {w.loss}, per: {w.performance}")
+        #     print(f"worker_id: {w.worker_id}, size: {w.data_size}, qod: {w.qod}, loss: {w.loss}, per: {w.performance}")
+        #     print(f"worker_session: {w.session_id}")
+        # print("^" * 20)
+
 
     def total(self) -> int:
         """Get the total number of Workers.
@@ -47,12 +65,11 @@ class WorkerManager:
     def add_local_update(self, message: ClientNotifyModelToServer):
         # update worker states with information from local worker.
         client_id = message.client_id
-        self.worker_pool[client_id].loss = message.loss_value
-        self.worker_pool[client_id].current_version = message.global_model_version_used
         self.worker_pool[client_id].weight_file = message.weight_file
-        self.worker_pool[client_id].batch_size = message.batch_size
-        self.worker_pool[client_id].alpha = message.alpha
+        self.worker_pool[client_id].current_version = message.global_model_version_used
+        self.worker_pool[client_id].loss = message.loss_value
         self.worker_pool[client_id].is_completed = True
+
 
     def update_worker_after_training(self):
         for worker in self.worker_pool:

@@ -12,7 +12,10 @@ worker_manager = WorkerManager()
 for i in range(2):
     worker = Worker("worker" + str(i), "", "")
     worker.weight_file = "weights.pkl"
+<<<<<<< HEAD
     worker.alpha = 1
+=======
+>>>>>>> modify_framework
     worker.worker_id = str(uuid.uuid4())
     worker.current_version = 1
     worker_manager.add_worker(worker)

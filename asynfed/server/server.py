@@ -44,6 +44,7 @@ class Server(QueueConnector):
         self._first_arrival = None
         self._latest_arrival = None
 
+
         if test:
             self._server_id = 'test-client-tensorflow-mnist'
         else:
@@ -101,11 +102,13 @@ class Server(QueueConnector):
 
                     # Add worker to Worker Manager.
                     worker = Worker(
-                        session_id=session_id,
-                        worker_id=worker_id,
-                        sys_info=client_init_message.sys_info,
-                        data_desc=client_init_message.data_desc,
-                        qod=client_init_message.qod
+                        session_id= session_id,
+                        worker_id= worker_id,
+                        sys_info= client_init_message.sys_info,
+                        # data_desc= client_init_message.data_desc,
+                        # qod= client_init_message.qod
+                        data_size = client_init_message.data_size,
+                        qod = client_init_message.qod
                     )
                     with lock:
                         worker.access_key_id = access_key
@@ -149,7 +152,6 @@ class Server(QueueConnector):
                 self.__notify_error_to_client(error_message)
 
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
-            
             client_notify_message = ClientNotifyModelToServer()
             client_notify_message.deserialize(body.decode())
             
@@ -161,8 +163,6 @@ class Server(QueueConnector):
                 elif self._first_arrival != None:
                     self._latest_arrival = time_now()
             
-            # take the info here
-            # save client qod, loss and size
             print(f'Receive new model from client [{client_notify_message.client_id}]!')
 
             # Download model!
@@ -246,15 +246,19 @@ class Server(QueueConnector):
                 print(f'No local update found, sleep for {self._t} seconds...')
                 # Sleep for t seconds.
                 sleep(self._t)
+            # elif n_local_updates == 1:
+            #     print("Hello")
             elif n_local_updates > 0:
                 try:
                     print(f'Found {n_local_updates} local update(s)')
                     print('Start update global model')
-                    self.__update()
-                    # calculate average qod here, within the self.__update function
-                    self._avg_qod = 0.1
-
+                    # calculate self._strategy.avg_qod and self._strategy.avg_loss 
+                    # and self_strategy.global_model_update_data_size
+                    # within the self.__update function
+                    # self.__update()
+                    self.__update(n_local_updates)
                     self.__publish_global_model()
+
 
                     # Clear worker queue after aggregation.
                     self._worker_manager.update_worker_after_training()
@@ -268,9 +272,38 @@ class Server(QueueConnector):
 
         self.stop()
         # thread.join()
+    # def 
 
-    def __update(self):
-        self._strategy.aggregate(self._worker_manager)
+    def __update(self, n_local_updates):
+        if n_local_updates == 1:
+            self._strategy.current_version += 1
+            print("Only one update from client, passing the model to all other client in the network...")
+            completed_workers: dict[str, Worker] = self._worker_manager.get_completed_workers()
+
+            # get the only worker
+            # worker = next(iter(completed_workers.values))
+            for w_id, worker in completed_workers.items():
+                self._strategy.avg_loss = worker.loss
+                self._strategy.avg_qod = worker.qod
+                self._strategy.global_model_update_data_size = worker.data_size
+            
+            # print("*" * 10)
+            # print(f"Avg loss, avg qod, global datasize: {self._strategy.avg_loss}, {self._strategy.avg_qod}, {self._strategy.global_model_update_data_size}")
+            # print("*" * 10)
+
+            # copy the worker model weight to the global model folder
+            import shutil
+            local_weight_file = worker.get_weight_file_path()
+            save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self._strategy.get_global_model_filename()
+            shutil.copy(local_weight_file, save_location)
+
+                        
+        else:
+            print("Aggregating process...")
+        # calculate self._strategy.avg_qod and self_strategy.avg_loss 
+        # and self_strategy.global_model_update_data_size
+        # within the self._strategy.aggregate function
+            self._strategy.aggregate(self._worker_manager)
         
         # calculate dynamic time ratial only when 
         if None not in [self._start_time, self._first_arrival, self._latest_arrival]:
@@ -279,7 +312,6 @@ class Server(QueueConnector):
             
             # get avg complete time of current epoch
             self._t = (t2 + t1) / 2
-            
         
 
     def __is_stop_condition(self):
@@ -294,15 +326,19 @@ class Server(QueueConnector):
         # Construct message
         msg = ServerNotifyModelToClient(
             chosen_id=[],
-            model_id=self._strategy.model_id,
+            model_id= self._strategy.model_id,
 
-            global_model_version=self._strategy.current_version,
-            global_model_name=f'{self._strategy.model_id}_v{self._strategy.current_version}.pkl',
-
-            global_model_update_data_size=self._strategy.global_model_update_data_size,
-            avg_loss=self._strategy.avg_loss,
-            avg_qod= self._avg_qod
+            global_model_version= self._strategy.current_version,
+            global_model_name= f'{self._strategy.model_id}_v{self._strategy.current_version}.pkl',
+            # values obtained after each update time
+            global_model_update_data_size= self._strategy.global_model_update_data_size,
+            avg_loss= self._strategy.avg_loss,
+            avg_qod= self._strategy.avg_qod,
         )
+        print("*" * 20)
+        print("Notify model from server")
+        print(msg)
+        print("*" * 20)
         # Send message
         self.__notify_global_model_to_client(msg)
 
