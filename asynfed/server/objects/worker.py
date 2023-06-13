@@ -13,18 +13,19 @@ class Worker:
         self.session_id = session_id
         self.worker_id = worker_id
         self.sys_info = sys_info
-        self.data_desc = data_desc
-        self.qod = qod
-        self.weight_file = ""
-        self.n_update = 0
         self.current_version = 0
-        self.alpha = 0.0
-        self.batch_size = 0
-        self.performance = 0.0
-        self.loss = 0.0
         self.is_completed = False
         self.access_key_id = None
         self.secret_key_id = None
+        self.n_update = 0
+        self.weight_file = ""
+        self.performance = 0.0
+        # info needed for aggregating
+        self.data_desc = data_desc
+        self.qod = qod
+        # loss change from update time to update time
+        self.loss = 0.0
+
 
     def get_weight_file_path(self):
         filename = self.weight_file.split('/')[-1]

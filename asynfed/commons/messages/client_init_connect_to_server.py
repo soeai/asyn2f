@@ -16,17 +16,17 @@ class SysInfo(Message):
 
 
 class DataDesc(Message):
-    def __init__(self, name: str = "", desc: str = "", data_size: str = ""):
+    def __init__(self, name: str = "", desc: str = "", data_size: int = 10):
         self.name = name
         self.desc = desc
         self.data_size = data_size
 
 
 class QoD(Message):
-    def __init__(self, schema: str = "", comment: str = "", qod: float = 0.0):
+    def __init__(self, schema: str = "", comment: str = "", value: float = 0.5):
         self.schema = schema
         self.comment = comment
-        self.value = qod
+        self.value = value
 
 
 class ClientInit(Message):

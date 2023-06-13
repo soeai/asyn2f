@@ -251,7 +251,7 @@ class Client(QueueConnector):
             client_id=self._client_id,
             sys_info=SysInfo(),
             data_desc=DataDesc(data_size= data_size),
-            qod=QoD(qod= qod),
+            qod=QoD(value= qod),
         )
         self.init_connect_to_server(message.serialize())
 
