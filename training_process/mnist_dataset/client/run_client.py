@@ -1,10 +1,11 @@
 import os
 import sys
-root = os.path.dirname(os.path.dirname(os.getcwd()))
-sys.path.append(root)
+from dotenv import load_dotenv
+import argparse
 
-import os, sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
+# run locally without install asynfed package
+root = os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))
+sys.path.append(root)
 from asynfed.client.algorithms.client_asyncfL import ClientAsyncFl
 from asynfed.commons.conf import Config
 
@@ -14,24 +15,16 @@ from data_preprocessing import TensorflowImageDataPreprocessing
 from Lenet import LeNet
 
 
-# load env variables
-from dotenv import load_dotenv
-import argparse
-
-
 # Create an argument parser
 parser = argparse.ArgumentParser(description='Example script with command-line arguments.')
 # Add arguments
 parser.add_argument('--queue_url', dest='queue_url', type=str, help='specify the url of RabbitMQ server')
 parser.add_argument('--training_exchange', dest='training_exchange', type=str, help='define training exchange to connect to rabbitMQ server')
-
 # Parse the arguments
 args = parser.parse_args()
 
-
 # load env variables
 load_dotenv()
-
 
 Config.QUEUE_URL = os.getenv("queue_url")
 if args.queue_url:
@@ -41,7 +34,6 @@ Config.TRAINING_EXCHANGE = os.getenv("training_exchange")
 if args.training_exchange:
     Config.TRAINING_EXCHANGE = args.training_exchange
 
-
 # ------------oOo--------------------
 # Preprocessing data
 # mnist dataset
@@ -50,7 +42,6 @@ train_images_path = os.path.join(root, os.getenv("x_train_path"))
 train_labels_path = os.path.join(root, os.getenv("y_train_path"))
 test_images_path = os.path.join(root, os.getenv("x_test_path"))
 test_labels_path = os.path.join(root, os.getenv("y_test_path"))
-
 
 
 if os.getenv("batch_size"):
