@@ -22,12 +22,28 @@ class WorkerManager:
         self.history_state: Dict[int, Dict[str, Worker]] = {}
 
     def add_worker(self, worker: Worker) -> None:
+
+        print("^" * 20)
+        print("before add new worker")
+        for w_id, w in self.worker_pool.items():
+            print(f"worker_id: {w.worker_id}, size: {w.data_desc.data_size}, qod: {w.qod.value}, loss: {w.loss}, per: {w.performance}")
+        print("^" * 20)
+
+        print("\n\n")
+
         """Add a Worker to the worker_pools attribute.
         Args:
             worker (Worker): The Worker object to add.
         """
         LOGGER.info(f"New worker added, ID: {worker.worker_id}")
         self.worker_pool[worker.worker_id] = worker
+
+        print("^" * 20)
+        print("after add new worker")
+        for w_id, w in self.worker_pool.items():
+            print(f"worker_id: {w.worker_id}, size: {w.data_desc.data_size}, qod: {w.qod.value}, loss: {w.loss}, per: {w.performance}")
+        print("^" * 20)
+
 
     def total(self) -> int:
         """Get the total number of Workers.

@@ -295,7 +295,6 @@ class Server(QueueConnector):
                 self._strategy.global_model_update_data_size = worker.data_desc.data_size
             
 
-
             print("Working properly....")
             print("*" * 10)
             print(f"Avg loss, avg qod, global datasize: {self._strategy.avg_loss}, {self._strategy.avg_qod}, {self._strategy.global_model_update_data_size}")
