@@ -1,5 +1,6 @@
 from asynfed.commons.conf import Config
 from asynfed.commons.messages.client_init_connect_to_server import SysInfo, DataDesc, QoD
+from asynfed.commons.utils.time_ultils import time_now
 
 
 class Worker:
@@ -25,6 +26,10 @@ class Worker:
         self.is_completed = False
         self.access_key_id = None
         self.secret_key_id = None
+
+        self.is_active = True
+        self.join_at = time_now()
+        self.last_ping = time_now()
 
     def get_weight_file_path(self):
         filename = self.weight_file.split('/')[-1]

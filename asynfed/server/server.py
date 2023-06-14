@@ -6,8 +6,10 @@ from asynfed.commons.conf import RoutingRules, Config, init_config
 from asynfed.commons.messages.client_init_connect_to_server import ClientInit
 from asynfed.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 from asynfed.commons.messages.client_notify_training_process import ClientNotifyTrainingProcess
-from asynfed.commons.messages.server_init_response_to_client import ServerInitResponseToClient
 from asynfed.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
+from asynfed.commons.messages.client_ping import ClientPing
+from asynfed.commons.messages.server_init_response_to_client import ServerInitResponseToClient
+from asynfed.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
 from asynfed.commons.utils.queue_connector import QueueConnector
 from asynfed.commons.utils.time_ultils import time_diff, time_now
 from asynfed.server.visualizer import Visualizer
@@ -71,12 +73,12 @@ class Server(QueueConnector):
         # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
         self._cloud_storage: ServerStorage = ServerStorage()
-        self._visualizer = Visualizer(
-                url=Config.INFLUXDB_URL,
-                token=Config.INFLUXDB_TOKEN,
-                org=Config.INFLUXDB_ORG,
-                bucket_name=bucket_name,
-                )
+        # self._visualizer = Visualizer(
+        #     url=Config.INFLUXDB_URL,
+        #     token=Config.INFLUXDB_TOKEN,
+        #     org=Config.INFLUXDB_ORG,
+        #     bucket_name=bucket_name,
+        # )
 
         self.delete_bucket_on_exit = True
 
@@ -178,12 +180,18 @@ class Server(QueueConnector):
                 self._cloud_storage.download(remote_file_path=client_notify_message.weight_file,
                                              local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + client_notify_message.model_id)
                 self._worker_manager.add_local_update(client_notify_message)
+
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_TRAINING_PROCESS_TO_SERVER:
             client_notify_message = ClientNotifyTrainingProcess()
             client_notify_message.deserialize(body.decode())
-            self._visualizer.write_training_process_data(client_notify_message)
-            print(client_notify_message)
+            # self._visualizer.write_training_process_data(client_notify_message)
             # self._worker_manager.update_training_process(client_notify_message)
+
+        if method.routing_key == RoutingRules.CLIENT_PING_TO_SERVER:
+            client_ping_message = ClientPing()
+            client_ping_message.deserialize(body.decode())
+            self._worker_manager.get_worker_by_id(client_ping_message.client_id).last_ping = client_ping_message.time
+
 
     def setup(self):
         # Declare exchange, queue, binding.
@@ -204,60 +212,25 @@ class Server(QueueConnector):
             Config.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_NOTIFY_TRAINING_PROCESS_TO_SERVER
         )
+        self._channel.queue_bind(
+            Config.QUEUE_NAME,
+            Config.TRAINING_EXCHANGE,
+            RoutingRules.CLIENT_PING_TO_SERVER
+        )
 
         self._channel.queue_purge(Config.QUEUE_NAME)
 
         self.start_consuming()
-
-    def __notify_global_model_to_client(self, message):
-        # Send notify message to client.
-        self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
-            message.serialize()
-        )
-        # Get the starting time of the epoch and reset vars
-        self._start_time = time_now()
-        self._first_arrival = None
-        self._latest_arrival = None
-        
-
-    def __notify_error_to_client(self, message):
-        # Send notify message to client.
-        self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.SERVER_ERROR_TO_CLIENT,
-            message.serialize()
-        )
-        
-        
-
-    def __response_to_client_init_connect(self, message):
-        # Send response message to client.
-        self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT,
-            message.serialize()
-        )
-
     def run(self):
 
         # create 1 thread to listen on the queue.
         consuming_thread = threading.Thread(target=self.run_queue,
                                             name="fedasync_server_consuming_thread")
-
-        # run the consuming thread!.
         consuming_thread.start()
 
-        # thread = threading.Thread(target=keyboard_thread)
-        # thread.start()
-
         while not self.__is_stop_condition() and not self._closing:
-            #
-            # if not thread.is_alive():
-            #     if self.delete_bucket_on_exit:
-            #         self._cloud_storage.delete_bucket()
-            #     self.stop()
+            self._worker_manager.update_active_workers()
+            print(self._worker_manager.list_all_active_workers())
 
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
@@ -287,6 +260,7 @@ class Server(QueueConnector):
 
         self.stop()
         # thread.join()
+
 
     def __update(self):
         self._strategy.aggregate(self._worker_manager)
@@ -325,18 +299,35 @@ class Server(QueueConnector):
         # Send message
         self.__notify_global_model_to_client(msg)
 
-#
-# def on_press(key):
-#     if key == keyboard.Key.esc:
-#         return False
-#
-#
-# def keyboard_thread():
-#     # Create a listener instance
-#     listener = keyboard.Listener(on_press=on_press)
-#
-#     # Start the listener
-#     listener.start()
-#
-#     # Wait for the listener to finish (blocking operation)
-#     listener.join()
+
+    def __notify_global_model_to_client(self, message):
+        # Send notify message to client.
+        self._channel.basic_publish(
+            Config.TRAINING_EXCHANGE,
+            RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
+            message.serialize()
+        )
+        # Get the starting time of the epoch and reset vars
+        self._start_time = time_now()
+        self._first_arrival = None
+        self._latest_arrival = None
+        
+
+    def __notify_error_to_client(self, message):
+        # Send notify message to client.
+        self._channel.basic_publish(
+            Config.TRAINING_EXCHANGE,
+            RoutingRules.SERVER_ERROR_TO_CLIENT,
+            message.serialize()
+        )
+        
+        
+
+    def __response_to_client_init_connect(self, message):
+        # Send response message to client.
+        self._channel.basic_publish(
+            Config.TRAINING_EXCHANGE,
+            RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT,
+            message.serialize()
+        )
+

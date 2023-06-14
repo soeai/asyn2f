@@ -16,6 +16,7 @@ class RoutingRules:
     CLIENT_INIT_SEND_TO_SERVER: str = "client.init.send.to.server"
     CLIENT_NOTIFY_MODEL_TO_SERVER: str = "client.notify.update"
     CLIENT_NOTIFY_TRAINING_PROCESS_TO_SERVER: str = "client.notify.training.process"
+    CLIENT_PING_TO_SERVER: str = "client.ping"
 
     # at Server Queue
     SERVER_INIT_RESPONSE_TO_CLIENT: str = "server.init.reply"

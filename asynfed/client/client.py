@@ -10,7 +10,9 @@ from asynfed.commons.conf import RoutingRules, Config, init_config
 from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
 from asynfed.commons.messages import ServerInitResponseToClient
 from asynfed.commons.messages import ServerNotifyModelToClient
+from asynfed.commons.messages.client_ping import ClientPing
 from asynfed.commons.utils import QueueConnector
+from asynfed.commons.utils.time_ultils import time_now
 import dotenv
 
 
@@ -45,6 +47,7 @@ class Client(QueueConnector):
         self._client_identifier = str(uuid.uuid4())
         self._new_model_flag = False
         self._is_registered = False
+        self._ping_interval = 30
 
         # if there is no profile.json file, then create a new one.
         if not os.path.exists("profile.json"):
@@ -185,6 +188,8 @@ class Client(QueueConnector):
                     # start 1 thread to train model.
                     self.update_profile()
                     self.start_training_thread()
+                self.start_ping_thread()
+                print('Start ping thread.')
 
         elif (
                 basic_deliver.routing_key == RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT
@@ -271,3 +276,25 @@ class Client(QueueConnector):
 
             self._is_training = True
             training_thread.start()
+
+    def start_ping_thread(self):
+        ping_thread = threading.Thread(
+            target=self._ping,
+            name="client_ping_thread")
+        ping_thread.start()
+
+    def _ping(self):
+        while True:
+            message = ClientPing(
+                client_id=self._client_id,
+                time = time_now()
+            )
+
+            self._channel.basic_publish(
+                Config.TRAINING_EXCHANGE,
+                RoutingRules.CLIENT_PING_TO_SERVER,
+                message.serialize()
+            )
+            print("Ping to server.")
+            sleep(self._ping_interval)
+

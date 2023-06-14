@@ -1,5 +1,8 @@
+from datetime import datetime
 import logging
 from typing import Dict, List
+
+from asynfed.commons.utils.time_ultils import time_now
 from .objects import Worker
 from ..commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 
@@ -66,3 +69,15 @@ class WorkerManager:
 
     def list_all_worker_session_id(self) -> List:
         return [self.worker_pool[worker_id].session_id for worker_id in self.worker_pool.keys()]
+
+    def list_all_active_workers(self) -> List:
+        return [self.worker_pool[worker_id] for worker_id in self.worker_pool.keys() if self.worker_pool[worker_id].is_active == True]
+
+    def update_active_workers(self):
+        # if time now minus last seen less than 5 mins then set it inactive
+        for worker_id in self.worker_pool.keys():
+            if self.worker_pool[worker_id].is_active == True:
+                now = datetime.strptime(time_now(), "%Y-%m-%d %H:%M:%S")
+                last_seen = datetime.strptime(self.worker_pool[worker_id].last_ping, "%Y-%m-%d %H:%M:%S")
+                if (now - last_seen).total_seconds() > 300:
+                    self.worker_pool[worker_id].is_active = False

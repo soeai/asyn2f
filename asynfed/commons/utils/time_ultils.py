@@ -39,9 +39,9 @@ def time_now():
         The current time in the format "%m/%d/%Y, %H:%M:%S".
     """
     # Get the current datetime object
-    now = datetime.now()
+    now = datetime.utcnow()
 
     # Format the datetime object as a string and return it
-    return now.strftime("%m/%d/%Y, %H:%M:%S")
+    return now.strftime("%Y-%m-%d %H:%M:%S")
 
 
