@@ -5,13 +5,14 @@ import numpy as np
 import pickle
 from asynfed.commons.conf import Config
 from asynfed.commons.messages import ClientNotifyModelToServer
+from asynfed.commons.messages.client_notify_training_process import ClientNotifyTrainingProcess
 
 from ..client import Client
 from ..ModelWrapper import ModelWrapper
 from asynfed.commons.conf import Config
 
-
 LOGGER = logging.getLogger(__name__)
+
 
 # This is the proposed federated asynchronous training algorithm of our paper
 # More algorithms can be found at other files in this directory 
@@ -42,7 +43,7 @@ class ClientAsyncFl(Client):
         global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + file_name
         with open(global_model_path, "rb") as f:
             self.model.global_weights = pickle.load(f)
-            
+
         # for tensorflow model, there is some conflict in the dimension of 
         # an initialized model and al already trained one
         # temporarily fixed this problem
@@ -71,10 +72,13 @@ class ClientAsyncFl(Client):
             batch_size = Config.BATCH_SIZE
             tracking_point = Config.TRACKING_POINT
             multiplier = 1
+            # calculate alpha before notifying new local model to server
+            alpha = 0.5
 
             # training per several epoch
             LOGGER.info(f"Enter epoch {self._local_epoch}")
             for images, labels in self.model.train_ds:
+                print(f'\tbatch {batch_num+1}/{self.model.data_size // batch_size}')
                 batch_num += 1
                 # Tracking the training process every x samples 
                 # x define by user
@@ -109,8 +113,23 @@ class ClientAsyncFl(Client):
                 if self.model.test_ds:
                     for test_images, test_labels in self.model.test_ds:
                         test_acc, test_loss = self.model.evaluate(test_images, test_labels)
-            # calculate alpha before notifying new local model to server
-            alpha = 0.5
+
+                # send process message to the server
+                message = ClientNotifyTrainingProcess(
+                    client_id=self._client_id,
+                    timestamp= str(datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")),
+                    global_model_version_used=self._current_local_version,
+                    epoch=self._local_epoch,
+                    alpha=alpha,
+                    dataset_size=self._local_data_size,
+                    batch_size=batch_size,
+                    current_batch_num=batch_num+1,
+                    train_acc=train_acc,
+                    train_loss=train_loss,
+                )
+                self.notify_training_process_to_server(message.serialize())
+                sleep(10)
+
 
             # if there is a test dataset 
             # --> send acc and loss of test dataset
@@ -139,7 +158,6 @@ class ClientAsyncFl(Client):
             # Print the weight location
             LOGGER.info(f'Saved weights to {save_location}')
 
-
             # Upload the weight to the storage (the remote server)
             remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
             while True:
@@ -153,7 +171,7 @@ class ClientAsyncFl(Client):
                         global_model_version_used=self._current_local_version,
                         performance=acc,
                         loss_value=loss,
-                        alpha = alpha,
+                        alpha=alpha,
                     )
                     self.notify_model_to_server(message.serialize())
                     LOGGER.info("ClientModel End Training, notify new model to server.")
@@ -177,10 +195,12 @@ class ClientAsyncFl(Client):
             e_local = self.model.current_weights
         else:
             # perform calculation normally for all the other cases
-            e_local = [layer_a - layer_b for layer_a, layer_b in zip(self.model.current_weights, self.model.previous_weights)]
+            e_local = [layer_a - layer_b for layer_a, layer_b in
+                       zip(self.model.current_weights, self.model.previous_weights)]
 
         # the different between the global weights and the current weights
-        e_global = [layer_a - layer_b for layer_a, layer_b in zip(self.model.global_weights, self.model.current_weights)]
+        e_global = [layer_a - layer_b for layer_a, layer_b in
+                    zip(self.model.global_weights, self.model.current_weights)]
         # get the direction list (matrix)
         self.model.direction = [np.multiply(a, b) for a, b in zip(e_local, e_global)]
 
@@ -195,13 +215,14 @@ class ClientAsyncFl(Client):
         # updating the value of each parameter to get the new local weights (from merging process)
         # set the index to move to the next layer
         i = 0
-        for (local_layer, global_layer, direction_layer) in zip(self.model.current_weights, self.model.global_weights, self.model.direction):
+        for (local_layer, global_layer, direction_layer) in zip(self.model.current_weights, self.model.global_weights,
+                                                                self.model.direction):
             # access each element in each layer
             # np.where(condition, true, false)
-            merged_layer = np.where(direction_layer >=0, global_layer, (1 - alpha) * global_layer + alpha * local_layer)
+            merged_layer = np.where(direction_layer >= 0, global_layer,
+                                    (1 - alpha) * global_layer + alpha * local_layer)
             self.model.merged_weights[i] = merged_layer
             i += 1
 
         # set the merged_weights to be the current weights of the model
         self.model.set_weights(self.model.merged_weights)
-

@@ -236,6 +236,13 @@ class Client(QueueConnector):
             message
         )
 
+    def notify_training_process_to_server(self, message):
+        self._channel.basic_publish(
+            Config.TRAINING_EXCHANGE,
+            RoutingRules.CLIENT_NOTIFY_TRAINING_PROCESS_TO_SERVER,
+            message
+        )
+
     def init_connect_to_server(self, message):
         self._channel.basic_publish(
             Config.TRAINING_EXCHANGE,

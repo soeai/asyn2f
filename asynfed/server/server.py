@@ -5,10 +5,12 @@ from pika import BasicProperties
 from asynfed.commons.conf import RoutingRules, Config, init_config
 from asynfed.commons.messages.client_init_connect_to_server import ClientInit
 from asynfed.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
+from asynfed.commons.messages.client_notify_training_process import ClientNotifyTrainingProcess
 from asynfed.commons.messages.server_init_response_to_client import ServerInitResponseToClient
-from asynfed.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
+from asynfed.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
 from asynfed.commons.utils.queue_connector import QueueConnector
 from asynfed.commons.utils.time_ultils import time_diff, time_now
+from asynfed.server.visualizer import Visualizer
 from .objects import Worker
 from .server_storage_connector import ServerStorage
 from .strategies import Strategy
@@ -69,6 +71,12 @@ class Server(QueueConnector):
         # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
         self._cloud_storage: ServerStorage = ServerStorage()
+        self._visualizer = Visualizer(
+                url=Config.INFLUXDB_URL,
+                token=Config.INFLUXDB_TOKEN,
+                org=Config.INFLUXDB_ORG,
+                bucket_name=bucket_name,
+                )
 
         self.delete_bucket_on_exit = True
 
@@ -170,6 +178,12 @@ class Server(QueueConnector):
                 self._cloud_storage.download(remote_file_path=client_notify_message.weight_file,
                                              local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + client_notify_message.model_id)
                 self._worker_manager.add_local_update(client_notify_message)
+        elif method.routing_key == RoutingRules.CLIENT_NOTIFY_TRAINING_PROCESS_TO_SERVER:
+            client_notify_message = ClientNotifyTrainingProcess()
+            client_notify_message.deserialize(body.decode())
+            self._visualizer.write_training_process_data(client_notify_message)
+            print(client_notify_message)
+            # self._worker_manager.update_training_process(client_notify_message)
 
     def setup(self):
         # Declare exchange, queue, binding.
@@ -184,6 +198,11 @@ class Server(QueueConnector):
             Config.QUEUE_NAME,
             Config.TRAINING_EXCHANGE,
             RoutingRules.CLIENT_INIT_SEND_TO_SERVER
+        )
+        self._channel.queue_bind(
+            Config.QUEUE_NAME,
+            Config.TRAINING_EXCHANGE,
+            RoutingRules.CLIENT_NOTIFY_TRAINING_PROCESS_TO_SERVER
         )
 
         self._channel.queue_purge(Config.QUEUE_NAME)

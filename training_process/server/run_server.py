@@ -13,6 +13,10 @@ Config.QUEUE_URL = os.getenv("queue_url")
 Config.STORAGE_ACCESS_KEY = os.getenv("access_key")
 Config.STORAGE_SECRET_KEY = os.getenv("secret_key")
 
+Config.INFLUXDB_URL = os.getenv("INFLUXDB_URL")
+Config.INFLUXDB_TOKEN = os.getenv("INFLUXDB_TOKEN")
+Config.INFLUXDB_ORG = os.getenv("INFLUXDB_ORG")
+
 print(os.getenv("access_key"))
 print(os.getenv("secret_key"))
 
