@@ -6,11 +6,11 @@ __pycache__/
 
 # Environments
 venv/
-.env
+# .env
 
 # IDE/Editor Specific
-.idea/
-.vscode/
+.idea/*
+.vscode/*
 
 # Log Files
 logs
