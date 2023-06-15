@@ -56,7 +56,12 @@ class ClientAsyncFl(Client):
         self.model.set_weights(self.model.global_weights)
 
         # officially start the training process
-        while True:
+        # while True:
+        # quit after a number of epoch
+        # or after a sufficient period of time
+        from datetime import datetime
+        start_time = datetime.now()
+        for i in range(self.model.epoch):
             self._local_epoch += 1
             # for epoch in range(EPOCHS):
             LOGGER.info("*" * 40)
@@ -154,6 +159,15 @@ class ClientAsyncFl(Client):
                     self.notify_model_to_server(message.serialize())
                     LOGGER.info("ClientModel End Training, notify new model to server.")
                     self.update_profile()
+                    break
+
+            # break before completing the intended number of epoch
+            # if the total training time excess some degree
+            # set by client
+            if self.model.delta_time:
+                delta_time = datetime.now() - start_time
+                delta_time_in_minute = delta_time.total_seconds() / 60
+                if delta_time_in_minute >= self.model.delta_time:
                     break
 
     def __merge(self):
