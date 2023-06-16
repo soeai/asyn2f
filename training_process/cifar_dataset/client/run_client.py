@@ -10,9 +10,10 @@ from asynfed.client.algorithms.client_asyncfL import ClientAsyncFl
 from asynfed.commons.conf import Config
 
 # tensorflow 
-from asynfed.client.frameworks.tensorflow.tensorflow_framework import TensorflowFramework
-from data_preprocessing import TensorflowImageDataPreprocessing
-from Lenet import LeNet
+# from asynfed.client.frameworks.tensorflow.tensorflow_framework import TensorflowFramework
+from custom_tensorflow_framework import CustomTensorflowFramework
+from data_preprocessing import load_training_dataset
+from VGG16 import VGG16
 
 
 # Create an argument parser
@@ -35,13 +36,6 @@ if args.training_exchange:
     Config.TRAINING_EXCHANGE = args.training_exchange
 
 # ------------oOo--------------------
-# Preprocessing data
-# mnist dataset
-# Set the file paths for the MNIST digit dataset files
-train_images_path = os.path.join(root, os.getenv("x_train_path"))
-train_labels_path = os.path.join(root, os.getenv("y_train_path"))
-test_images_path = os.path.join(root, os.getenv("x_test_path"))
-test_labels_path = os.path.join(root, os.getenv("y_test_path"))
 
 
 if os.getenv("batch_size"):
@@ -53,6 +47,17 @@ if os.getenv("data_size"):
     Config.DATA_SIZE = int(os.getenv("data_size"))
 else:
     Config.DATA_SIZE = 60000
+
+if os.getenv("epoch"):
+    Config.EPOCH = int(os.getenv("epoch"))
+else:
+    Config.EPOCH = 5
+
+if os.getenv("delta_time"):
+    Config.DELTA_TIME = int(os.getenv("delta_time"))
+else:
+    Config.DELTA_TIME = 15
+
 
 # for tracking process when training
 if os.getenv("tracking_point"):
@@ -66,27 +71,21 @@ else:
     Config.SLEEPING_TIME= 3
 
 # preprocessing data to be ready for low level tensorflow training process
-data_preprocessing = TensorflowImageDataPreprocessing(train_images_path=train_images_path, train_labels_path=train_labels_path, 
-                                                      height = 28, width = 28, batch_size=Config.BATCH_SIZE, split=True, fract=0.2,
-                                                      evaluate_images_path=test_images_path, evaluate_labels_path=test_labels_path)
-# define dataset
-train_ds = data_preprocessing.train_ds
-test_ds = data_preprocessing.test_ds
-evaluate_ds = data_preprocessing.evaluate_ds
-# ------------oOo--------------------
+# Preprocessing data
+# mnist dataset
+# Set the file paths for the MNIST digit dataset files
+data_path = "../../data/cifar_data/chunks/chunk_1.pickle"
+train_ds, test_ds = load_training_dataset(train_dataset_path= data_path)
 
+
+# set qod
 qod = 0.45
-epoch = 10
-delta_time = 15
-
-
-
 
 
 # define model
-lenet_model = LeNet(input_features = (28, 28, 1), output_features = 10)
+vgg_model = VGG16(input_features = (32, 32, 3), output_features = 10)
 # define framework
-tensorflow_framework = TensorflowFramework(model = lenet_model, epoch= epoch, delta_time= delta_time, data_size= Config.DATA_SIZE, qod= qod, train_ds= train_ds, test_ds= test_ds)
+tensorflow_framework = CustomTensorflowFramework(model = vgg_model, epoch= Config.EPOCH, delta_time= Config.DELTA_TIME, data_size= Config.DATA_SIZE, qod= qod, train_ds= train_ds, test_ds= test_ds)
 
 tf_client = ClientAsyncFl(model=tensorflow_framework)
 tf_client.run()

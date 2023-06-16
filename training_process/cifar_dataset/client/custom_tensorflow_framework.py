@@ -22,18 +22,18 @@ class CustomTensorflowFramework(TensorflowFramework):
     # Tensorflow Model must be an inheritant of class tensorflow.keras.Model
     # model, data_size, train_ds is required
     # test_ds is optional
-    def __init__(self, model: Model, data_size: int = 10, qod: float = 0.9, train_ds = None, test_ds = None):
-        super().__init__(model = model, data_size = data_size, qod = qod, train_ds = train_ds, test_ds = test_ds)
+    def __init__(self, model: Model, epoch: int = 5, data_size: int = 10, qod: float = 0.9, train_ds = None, test_ds = None, delta_time: int = 15):
+        super().__init__(model = model, epoch = epoch, data_size = data_size, qod = qod, train_ds = train_ds, test_ds = test_ds, delta_time= delta_time)
 
     @tf.function
     def train_step(self, images, labels):
-
-        
         with tf.GradientTape() as tape:
             # training=True is only needed if there are layers with different
             # behavior during training versus inference (e.g. Dropout).
             predictions = self.model(images, training=True)
+            # predictions = self.model(images)
             loss = self.model.loss_object(labels, predictions)
+
         gradients = tape.gradient(loss, self.model.trainable_variables)
         self.model.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
         self.model.train_loss(loss)

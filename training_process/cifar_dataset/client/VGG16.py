@@ -1,7 +1,7 @@
 
 
 import tensorflow as tf
-from tensorflow.keras.layers import Model, Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
 from asynfed.client.frameworks.tensorflow.tensorflow_sequential_model import TensorflowSequentialModel
 
 class VGG16(TensorflowSequentialModel):
