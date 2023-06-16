@@ -17,7 +17,7 @@ class TensorflowFramework(ModelWrapper):
     # Tensorflow Model must be an inheritant of class tensorflow.keras.Model
     # model, data_size, train_ds is required
     # test_ds is optional
-    def __init__(self, model: Model, data_size: int = 10, qod: float = 0.9, train_ds = None, test_ds = None):
+    def __init__(self, model: Model, epoch: int = 10, data_size: int = 10, qod: float = 0.9, train_ds = None, test_ds = None, delta_time = 15):
         super().__init__()
         '''
         - model must have an optimizer, a loss object, and trainining metric 
@@ -36,6 +36,8 @@ class TensorflowFramework(ModelWrapper):
             for tensorflow framework can be found at tensorflow_sequential_model.py
         '''
         self.model = model
+        self.epoch = epoch
+        self.delta_time = delta_time
         self.data_size = data_size
         self.qod = qod
         self.train_ds = train_ds

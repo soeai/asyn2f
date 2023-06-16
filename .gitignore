@@ -3,14 +3,15 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.ipynb_checkpoints/
 
 # Environments
 venv/
 .env
 
 # IDE/Editor Specific
-.idea/
-.vscode/
+.idea/*
+.vscode/*
 
 # Log Files
 logs
@@ -35,3 +36,5 @@ dist
 # Test Profiles
 profile.json
 
+# notebook file for exploring
+experiment

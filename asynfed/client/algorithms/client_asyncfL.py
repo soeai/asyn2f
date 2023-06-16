@@ -56,7 +56,12 @@ class ClientAsyncFl(Client):
         self.model.set_weights(self.model.global_weights)
 
         # officially start the training process
-        while True:
+        # while True:
+        # quit after a number of epoch
+        # or after a sufficient period of time
+        from datetime import datetime
+        start_time = datetime.now()
+        for i in range(self.model.epoch):
             self._local_epoch += 1
             # for epoch in range(EPOCHS):
             LOGGER.info("*" * 40)
@@ -156,6 +161,15 @@ class ClientAsyncFl(Client):
                     self.update_profile()
                     break
 
+            # break before completing the intended number of epoch
+            # if the total training time excess some degree
+            # set by client
+            if self.model.delta_time:
+                delta_time = datetime.now() - start_time
+                delta_time_in_minute = delta_time.total_seconds() / 60
+                if delta_time_in_minute >= self.model.delta_time:
+                    break
+
     def __merge(self):
         LOGGER.info("MERGER weights.")
         # updating the value of each parameter of the local model
@@ -194,6 +208,7 @@ class ClientAsyncFl(Client):
         global_loss = self._global_avg_loss
         # calculate alpha
         alpha = ( (local_qod*local_size) / (local_qod*local_size + global_qod*global_size) + local_loss/(local_loss + global_loss) )
+        alpha = alpha / 2
 
         # create a blank array to store the result
         self.model.merged_weights = [np.zeros(layer.shape) for layer in self.model.current_weights]

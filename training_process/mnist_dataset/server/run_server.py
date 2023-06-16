@@ -24,6 +24,8 @@ print(os.getenv("secret_key"))
 # Config.TMP_GLOBAL_MODEL_FOLDER = os.getenv("global_model_folder")
 # Config.LOG_PATH = os.getenv("log_path")
 
+
+
 if os.getenv("bucket_name"):
     bucket_name = os.getenv("bucket_name")
 else:

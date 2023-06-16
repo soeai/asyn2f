@@ -22,7 +22,6 @@ class AsynFL(Strategy):
         return all_clients
 
     def compute_alpha(self, worker: Worker) -> float:
-        # alpha  = worker.qod.value * worker.data_desc.data_size / worker.loss
         alpha  = worker.qod * worker.data_size / worker.loss
         return alpha
 

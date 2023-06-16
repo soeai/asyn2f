@@ -47,6 +47,9 @@ class Config:
     BATCH_SIZE=128
     DATA_SIZE=60000
 
+    EPOCH = 5
+    DELTA_TIME = 15
+
 
 def check_valid_config(side="server"):
     LOGGER.info("Check config")

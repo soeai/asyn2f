@@ -32,7 +32,7 @@ test_labels_path = './data/mnist_data/t10k-labels-idx1-ubyte.gz'
 
 
 Config.QUEUE_URL = "amqp://guest:guest@13.214.37.45:5672/%2F"
-Config.TRAINING_EXCHANGE = "test-server01234561011010101"
+# Config.TRAINING_EXCHANGE = "test-server01234561011010101"
 if args.training_exchange:
     Config.TRAINING_EXCHANGE = args.training_exchange
 

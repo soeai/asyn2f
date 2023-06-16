@@ -30,7 +30,7 @@ class Server(QueueConnector):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, t: int = 15, test= True, bucket_name = 'test-client-tensorflow-mnist') -> None:
+    def __init__(self, strategy: Strategy, t: int = 15, test= True, training_exchange: str = "test-client-tensorflow-cifar10", bucket_name = 'test-client-tensorflow-cifar10') -> None:
         # Server variables
         super().__init__()
         self._t = t
@@ -46,7 +46,7 @@ class Server(QueueConnector):
 
 
         if test:
-            self._server_id = 'test-client-tensorflow-mnist'
+            self._server_id = training_exchange
         else:
             self._server_id = f'server-{str(uuid.uuid4())}'
 
@@ -105,8 +105,6 @@ class Server(QueueConnector):
                         session_id= session_id,
                         worker_id= worker_id,
                         sys_info= client_init_message.sys_info,
-                        # data_desc= client_init_message.data_desc,
-                        # qod= client_init_message.qod
                         data_size = client_init_message.data_size,
                         qod = client_init_message.qod
                     )

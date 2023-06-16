@@ -26,7 +26,6 @@ class WorkerManager:
         # print("^" * 20)
         # print("before add new worker")
         # for w_id, w in self.worker_pool.items():
-        #     # print(f"worker_id: {w.worker_id}, size: {w.data_desc.data_size}, qod: {w.qod.value}, loss: {w.loss}, per: {w.performance}")
         #     print(f"worker_id: {w.worker_id}, size: {w.data_size}, qod: {w.qod}, loss: {w.loss}, per: {w.performance}")
         #     print(f"worker_session: {w.session_id}")
         # print("^" * 20)
@@ -41,7 +40,6 @@ class WorkerManager:
         # print("^" * 20)
         # print("after add new worker")
         # for w_id, w in self.worker_pool.items():
-        #     # print(f"worker_id: {w.worker_id}, size: {w.data_desc.data_size}, qod: {w.qod.value}, loss: {w.loss}, per: {w.performance}")
         #     print(f"worker_id: {w.worker_id}, size: {w.data_size}, qod: {w.qod}, loss: {w.loss}, per: {w.performance}")
         #     print(f"worker_session: {w.session_id}")
         # print("^" * 20)
