@@ -11,10 +11,10 @@ class Visualizer():
         self.client = InfluxDBClient(url=url, token=token, org=org)
         self.test = test
         self.bucket_name = bucket_name
+        self.create_bucket(bucket_name)
 
-        self._create_bucket(bucket_name)
 
-    def _create_bucket(self, bucket_name):
+    def create_bucket(self, bucket_name):
         try:
             bucket_api = self.client.buckets_api()
             bucket_api.create_bucket(bucket_name=bucket_name)
@@ -22,7 +22,7 @@ class Visualizer():
             if 'already exists' in e.message:
                 pass
             else:
-                raise e
+                print("Error: {}".format(e))
 
     def write_training_process_data(self, training_data):
         write_api = self.client.write_api(write_options=SYNCHRONOUS)

@@ -165,7 +165,7 @@ class ClientAsyncFl(Client):
                     # After training, notify new model to the server.
                     message = ClientNotifyModelToServer(
                         client_id=self._client_id,
-                        timestamp=datetime.now().timestamp(),
+                        timestamp=datetime.utcnow().timestamp(),
                         model_id=filename,
                         weight_file=remote_file_path,
                         global_model_version_used=self._current_local_version,

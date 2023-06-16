@@ -73,12 +73,13 @@ class Server(QueueConnector):
         # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
         self._cloud_storage: ServerStorage = ServerStorage()
-        # self._visualizer = Visualizer(
-        #     url=Config.INFLUXDB_URL,
-        #     token=Config.INFLUXDB_TOKEN,
-        #     org=Config.INFLUXDB_ORG,
-        #     bucket_name=bucket_name,
-        # )
+        print('=='*30, Config.STORAGE_BUCKET_NAME, '=='*30)
+        self._visualizer = Visualizer(
+            url=Config.INFLUXDB_URL,
+            token=Config.INFLUXDB_TOKEN,
+            org=Config.INFLUXDB_ORG,
+            bucket_name=Config.STORAGE_BUCKET_NAME,
+        )
 
         self.delete_bucket_on_exit = True
 
@@ -184,8 +185,7 @@ class Server(QueueConnector):
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_TRAINING_PROCESS_TO_SERVER:
             client_notify_message = ClientNotifyTrainingProcess()
             client_notify_message.deserialize(body.decode())
-            # self._visualizer.write_training_process_data(client_notify_message)
-            # self._worker_manager.update_training_process(client_notify_message)
+            self._visualizer.write_training_process_data(client_notify_message)
 
         if method.routing_key == RoutingRules.CLIENT_PING_TO_SERVER:
             client_ping_message = ClientPing()

@@ -79,5 +79,5 @@ class WorkerManager:
             if self.worker_pool[worker_id].is_active == True:
                 now = datetime.strptime(time_now(), "%Y-%m-%d %H:%M:%S")
                 last_seen = datetime.strptime(self.worker_pool[worker_id].last_ping, "%Y-%m-%d %H:%M:%S")
-                if (now - last_seen).total_seconds() > 300:
+                if (now - last_seen).total_seconds() > 60:
                     self.worker_pool[worker_id].is_active = False

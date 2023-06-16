@@ -18,7 +18,7 @@ def time_diff(time_str_1: str, time_str_2: str) -> float:
         The time difference between the two time strings in seconds.
     """
     # Define the time format
-    time_format = "%m/%d/%Y, %H:%M:%S"
+    time_format = "%Y-%m-%d %H:%M:%S"
 
     # Convert the time strings to datetime objects
     t1 = datetime.strptime(time_str_1, time_format)
