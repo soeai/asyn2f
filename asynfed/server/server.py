@@ -105,8 +105,6 @@ class Server(QueueConnector):
                         session_id= session_id,
                         worker_id= worker_id,
                         sys_info= client_init_message.sys_info,
-                        # data_desc= client_init_message.data_desc,
-                        # qod= client_init_message.qod
                         data_size = client_init_message.data_size,
                         qod = client_init_message.qod
                     )

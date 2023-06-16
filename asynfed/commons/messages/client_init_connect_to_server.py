@@ -36,8 +36,6 @@ class ClientInit(Message):
         session_id: str = "",
         client_id: str = "",
         sys_info: SysInfo = SysInfo(),
-        # data_desc: DataDesc = DataDesc(),
-        # qod: QoD = QoD(),
 
         qod: float = 0.0,
         data_size: int = 10,
@@ -47,8 +45,6 @@ class ClientInit(Message):
         self.session_id = session_id
         self.client_id = client_id
         self.sys_info = sys_info
-        # self.data_desc = data_desc
-        # self.qod = qod
 
         self.data_size = data_size
         self.qod = qod

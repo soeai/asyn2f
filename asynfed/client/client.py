@@ -7,7 +7,6 @@ from time import sleep
 from abc import abstractmethod
 from asynfed.client.client_storage_connector import ClientStorage
 from asynfed.commons.conf import RoutingRules, Config, init_config
-# from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo, DataDesc, QoD
 from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo
 from asynfed.commons.messages import ServerInitResponseToClient
 from asynfed.commons.messages import ServerNotifyModelToClient
@@ -272,8 +271,6 @@ class Client(QueueConnector):
             session_id=self._session_id,
             client_id=self._client_id,
             sys_info=SysInfo(),
-            # data_desc=DataDesc(data_size= data_size),
-            # qod=QoD(value= qod),
             data_size= data_size,
             qod = qod
         )
