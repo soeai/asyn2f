@@ -74,10 +74,6 @@ if tf.config.list_physical_devices('GPU'):
 else:
     print("There is no gpu or your tensorflow is not built in with gpu support")
 
-# augmented data
-augmentations_per_image = 10
-train_ds = generate_augmented_data(train_ds, batch_size= Config.BATCH_SIZE, augmentations_per_image= augmentations_per_image)
-
 # set qod
 qod = 0.45
 
@@ -88,6 +84,11 @@ qod = 0.45
 # Set the file paths for the MNIST digit dataset files
 data_path = "../../data/cifar_data/chunks/chunk_1.pickle"
 train_ds, test_ds, data_size = load_training_dataset(train_dataset_path= data_path)
+
+
+# # augmented data
+# augmentations_per_image = 10
+# train_ds = generate_augmented_data(train_ds, batch_size= Config.BATCH_SIZE, augmentations_per_image= augmentations_per_image)
 
 
 # set qod
