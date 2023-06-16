@@ -29,8 +29,17 @@ print(os.getenv("secret_key"))
 if os.getenv("bucket_name"):
     bucket_name = os.getenv("bucket_name")
 else:
-    bucket_name= 'test-client-tensorflow-mnist'
+    # bucket_name= 'test-client-tensorflow-mnist'
+    bucket_name= 'test-client-tensorflow-cifar10'
+
+
+if os.getenv("training_exchange"):
+    training_exchange = os.getenv("training_exchange")
+else:
+    # training_exchange= 'test-client-tensorflow-mnist'
+    training_exchange= 'test-client-tensorflow-cifar10'
+
 
 strategy = AsynFL()
-fedasync_server = Server(strategy, t=20, test = True, bucket_name= bucket_name)
+fedasync_server = Server(strategy, t=20, test = True, training_exchange=  training_exchange, bucket_name= bucket_name)
 fedasync_server.run()
