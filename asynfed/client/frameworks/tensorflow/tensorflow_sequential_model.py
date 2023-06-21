@@ -59,7 +59,7 @@ class TensorflowSequentialModel(Model):
         pass 
     
     @abstractmethod
-    def create_optimizer(self):
+    def create_optimizer(self, learning_rate_fn):
         '''
         - must return an optimizer object
         - optimizers in tf.keras.optimizers

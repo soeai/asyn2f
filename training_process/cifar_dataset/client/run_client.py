@@ -13,8 +13,8 @@ from asynfed.commons.conf import Config
 from asynfed.client.frameworks.tensorflow.tensorflow_framework import TensorflowFramework
 from data_preprocessing import *
 from VGG16 import VGG16
-
-
+from resnet import Resnet
+from utils import *
 # Create an argument parser
 parser = argparse.ArgumentParser(description='Example script with command-line arguments.')
 # Add arguments
@@ -94,11 +94,21 @@ train_ds, test_ds, data_size = load_training_dataset(train_dataset_path= data_pa
 # set qod
 qod = 0.45
 
+print('==> Preparing data...')
+train_images, train_labels, test_images, test_labels = get_dataset()
+mean, std = get_mean_and_std(train_images)
+train_images = normalize(train_images, mean, std)
+test_images = normalize(test_images, mean, std)
+
+train_ds = dataset_generator(train_images, train_labels, args.batch_size)
+test_ds = tf.data.Dataset.from_tensor_slices((test_images, test_labels)).\
+        batch(args.batch_size).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 # define model
-vgg_model = VGG16(input_features = (32, 32, 3), output_features = 10)
+# vgg_model = VGG16(input_features = (32, 32, 3), output_features = 10)
+model = Resnet(input_features = (32, 32, 3), output_features = 10, lr=1e-1, decay_steps=Config.EPOCH * Config.DATA_SIZE/Config.BATCH_SIZE)
 # define framework
-tensorflow_framework = TensorflowFramework(model = vgg_model, epoch= Config.EPOCH, delta_time= Config.DELTA_TIME, data_size= data_size, qod= qod, train_ds= train_ds, test_ds= test_ds)
+tensorflow_framework = TensorflowFramework(model = model, epoch= Config.EPOCH, delta_time= Config.DELTA_TIME, data_size= data_size, qod= qod, train_ds= train_ds, test_ds= test_ds)
 
 tf_client = ClientAsyncFl(model=tensorflow_framework)
 tf_client.run()

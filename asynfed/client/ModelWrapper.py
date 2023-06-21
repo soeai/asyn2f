@@ -5,7 +5,7 @@ class ModelWrapper(ABC):
     # model, data_size, train_ds is require
     # test_ds is optional
 
-    def __int__(self, model, epoch, data_size, qod, train_ds, test_ds, delta_time):
+    def __int__(self, model, epoch, data_size, qod, train_ds, test_ds, delta_time, regularization, lambda_value):
         # self.epoch = epoch
         # self.delta_time = delta_time
         pass
