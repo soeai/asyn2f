@@ -116,6 +116,10 @@ tensorflow_framework = TensorflowFramework(model = model, epoch= Config.EPOCH, d
 for epoch in range(200):
     batch_num = 0
     multiplier = 1
+    train_acc = 0
+    train_loss = 0
+    test_acc = 0
+    test_loss = 0
     for images, labels in tensorflow_framework.train_ds:
         batch_num += 1
         # Tracking the training process every x samples
@@ -128,16 +132,20 @@ for epoch in range(200):
         # get the previous weights before the new training process within each batch
         # self.model.previous_weights = self.model.get_weights()
         # training normally
-        train_acc, train_loss = tensorflow_framework.fit(images, labels)
+        _acc, _loss= tensorflow_framework.fit(images, labels)
+        train_acc += train_acc
+        train_loss += train_loss
 
         if tensorflow_framework.test_ds:
             for test_images, test_labels in tensorflow_framework.test_ds:
-                test_acc, test_loss = tensorflow_framework.evaluate(test_images, test_labels)
+                _acc_test, _loss_test = tensorflow_framework.evaluate(test_images, test_labels)
+                test_acc += _acc_test
+                test_loss += _loss_test
 
     print(
         f'Epoch: {epoch}'
-        f'\tLast Batch Train Accuracy: {train_acc * 100}, '
-        f'\tLast Batch Train Loss: {train_loss}, '
-        f'\tLast Batch Test Accuracy: {test_acc * 100}'
-        f'\tLast Batch Test Loss: {test_loss}, '
+        f'\tLast Batch Train Accuracy: {train_acc/batch_num * 100}, '
+        f'\tLast Batch Train Loss: {train_loss/batch_num}, '
+        f'\tLast Batch Test Accuracy: {test_acc/batch_num * 100}'
+        f'\tLast Batch Test Loss: {test_loss/batch_num}, '
     )
