@@ -100,9 +100,9 @@ mean, std = get_mean_and_std(train_images)
 train_images = normalize(train_images, mean, std)
 test_images = normalize(test_images, mean, std)
 
-train_ds = dataset_generator(train_images, train_labels, args.batch_size)
+train_ds = dataset_generator(train_images, train_labels, Config.BATCH_SIZE)
 test_ds = tf.data.Dataset.from_tensor_slices((test_images, test_labels)).\
-        batch(args.batch_size).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+        batch(Config.BATCH_SIZE).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
 # define model
 # vgg_model = VGG16(input_features = (32, 32, 3), output_features = 10)
