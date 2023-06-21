@@ -12,8 +12,9 @@ from tensorflow.keras import Model
     can be found at project_dir/training_process/client/Lenet.py
 '''
 class TensorflowSequentialModel(Model):
-    def __init__(self, input_features, output_features):
+    def __init__(self, input_features, output_features, learning_rate_fn):
         super().__init__()
+        self.learning_rate_fn = learning_rate_fn
         self.create_model(input_features, output_features)
         # loss
         self.loss_object = self.create_loss_object()

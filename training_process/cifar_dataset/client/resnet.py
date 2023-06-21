@@ -104,11 +104,12 @@ class BottleNeck(tf.keras.Model):
 
 
 class Resnet(TensorflowSequentialModel):
-    def __init__(self, input_features, output_features, lr, decay_steps, model_type="resnet18"):
-        super().__init__(input_features=input_features, output_features=output_features)
+    def __init__(self, input_features, output_features, lr, decay_steps):
+        super().__init__(input_features=input_features, output_features=output_features,
+                         learning_rate_fn=tf.keras.experimental.CosineDecay(lr, decay_steps=decay_steps))
         self.in_channels = 64
-        self.num_classes = output_features
-        self.model_type = model_type
+        # self.num_classes = output_features
+        # self.model_type = model_type
         self.conv1 = None
         self.bn1 = None
         self.layer1 = None
@@ -118,21 +119,21 @@ class Resnet(TensorflowSequentialModel):
         self.avg_pool2d = None
         self.flatten = None
         self.fc = None
-        self.learning_rate_fn =  tf.keras.experimental.CosineDecay(lr, decay_steps=decay_steps)
+        # self.learning_rate_fn =
 
     def create_model(self, input_features, output_features):
-        if self.model_type == "resnet18":
-            block = BasicBlock
-            num_blocks = [2, 2, 2, 2]
-        elif self.model_type == "resnet34":
-            block = BasicBlock
-            num_blocks = [3, 4, 6, 3]
-        elif self.model_type == "resnet50":
-            block = BottleNeck
-            num_blocks = [3, 4, 6, 3]
-        elif self.model_type == "resnet101":
-            block = BottleNeck
-            num_blocks = [3, 4, 23, 3]
+        # if self.model_type == "resnet18":
+        block = BasicBlock
+        num_blocks = [2, 2, 2, 2]
+        # elif self.model_type == "resnet34":
+        #     block = BasicBlock
+        #     num_blocks = [3, 4, 6, 3]
+        # elif self.model_type == "resnet50":
+        #     block = BottleNeck
+        #     num_blocks = [3, 4, 6, 3]
+        # elif self.model_type == "resnet101":
+        #     block = BottleNeck
+        #     num_blocks = [3, 4, 23, 3]
 
         self.conv1 = layers.Conv2D(64, kernel_size=3, strides=1, padding='same', use_bias=False)
         self.bn1 = layers.BatchNormalization()
@@ -142,7 +143,7 @@ class Resnet(TensorflowSequentialModel):
         self.layer4 = self._make_layer(block, 512, num_blocks[3], strides=2)
         self.avg_pool2d = layers.AveragePooling2D(pool_size=4)
         self.flatten = layers.Flatten()
-        self.fc = layers.Dense(self.num_classes, activation='softmax')
+        self.fc = layers.Dense(10, activation='softmax')
 
     def call(self, x):
         out = tf.keras.activations.relu(self.bn1(self.conv1(x)))
