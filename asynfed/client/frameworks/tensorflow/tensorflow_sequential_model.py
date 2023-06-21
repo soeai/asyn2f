@@ -11,15 +11,17 @@ from tensorflow.keras import Model
 - sample of how to create a specific tensorflow sequential model 
     can be found at project_dir/training_process/client/Lenet.py
 '''
+
+
 class TensorflowSequentialModel(Model):
-    def __init__(self, input_features, output_features, learning_rate_fn):
+    def __init__(self, input_features, output_features, learning_rate_fn, in_chanels = 64):
         super().__init__()
-        self.learning_rate_fn = learning_rate_fn
+        self.in_channels = in_chanels
         self.create_model(input_features, output_features)
         # loss
         self.loss_object = self.create_loss_object()
         # optimizer
-        self.optimizer = self.create_optimizer()
+        self.optimizer = self.create_optimizer(learning_rate_fn)
         # metric
         self.train_performance, self.train_loss = self.create_train_metric()
         self.test_performance, self.test_loss = self.create_test_metric()

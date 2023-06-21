@@ -107,7 +107,7 @@ class Resnet(TensorflowSequentialModel):
     def __init__(self, input_features, output_features, lr, decay_steps):
         super().__init__(input_features=input_features, output_features=output_features,
                          learning_rate_fn=tf.keras.experimental.CosineDecay(lr, decay_steps=decay_steps))
-        self.in_channels = 64
+        # self.in_channels = 64
         # self.num_classes = output_features
         # self.model_type = model_type
         self.conv1 = None
@@ -159,8 +159,8 @@ class Resnet(TensorflowSequentialModel):
     def create_loss_object(self):
         return tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-    def create_optimizer(self):
-        self.optimizer = tf.keras.optimizers.SGD(learning_rate=self.learning_rate_fn, momentum=0.9)
+    def create_optimizer(self, learning_rate_fn):
+        self.optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
 
     def create_train_metric(self):
         return tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy'), tf.keras.metrics.Mean(
