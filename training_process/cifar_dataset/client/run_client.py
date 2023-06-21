@@ -75,15 +75,15 @@ else:
     print("There is no gpu or your tensorflow is not built in with gpu support")
 
 # set qod
-qod = 0.45
+# qod = 0.45
 
 
 # preprocessing data to be ready for low level tensorflow training process
 # Preprocessing data
 # mnist dataset
 # Set the file paths for the MNIST digit dataset files
-data_path = "../../data/cifar_data/chunks/chunk_1.pickle"
-train_ds, test_ds, data_size = load_training_dataset(train_dataset_path= data_path)
+# data_path = "../../data/cifar_data/chunks/chunk_1.pickle"
+# train_ds, test_ds, data_size = load_training_dataset(train_dataset_path= data_path)
 
 
 # # augmented data
@@ -109,6 +109,35 @@ test_ds = tf.data.Dataset.from_tensor_slices((test_images, test_labels)).\
 model = Resnet(input_features = (32, 32, 3), output_features = 10, lr=1e-1, decay_steps=Config.EPOCH * Config.DATA_SIZE/Config.BATCH_SIZE)
 # define framework
 tensorflow_framework = TensorflowFramework(model = model, epoch= Config.EPOCH, delta_time= Config.DELTA_TIME, data_size= data_size, qod= qod, train_ds= train_ds, test_ds= test_ds)
+#
+# tf_client = ClientAsyncFl(model=tensorflow_framework)
+# tf_client.run()
 
-tf_client = ClientAsyncFl(model=tensorflow_framework)
-tf_client.run()
+for epoch in range(200):
+    batch_num = 0
+    multiplier = 1
+    for images, labels in tensorflow_framework.train_ds:
+        batch_num += 1
+        # Tracking the training process every x samples
+        # x define by user
+        total_trained_sample = batch_num * Config.BATCH_SIZE
+        if total_trained_sample > tracking_point:
+            multiplier += 1
+            tracking_point = tracking_point * multiplier
+
+        # get the previous weights before the new training process within each batch
+        # self.model.previous_weights = self.model.get_weights()
+        # training normally
+        train_acc, train_loss = tensorflow_framework.fit(images, labels)
+
+        if tensorflow_framework.test_ds:
+            for test_images, test_labels in tensorflow_framework.test_ds:
+                test_acc, test_loss = tensorflow_framework.evaluate(test_images, test_labels)
+
+    print(
+        f'Epoch: {epoch}'
+        f'\tLast Batch Train Accuracy: {train_acc * 100}, '
+        f'\tLast Batch Train Loss: {train_loss}, '
+        f'\tLast Batch Test Accuracy: {test_acc * 100}'
+        f'\tLast Batch Test Loss: {test_loss}, '
+    )
