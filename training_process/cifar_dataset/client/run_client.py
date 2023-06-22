@@ -106,7 +106,7 @@ test_ds = tf.data.Dataset.from_tensor_slices((test_images, test_labels)).\
 
 # define model
 # vgg_model = VGG16(input_features = (32, 32, 3), output_features = 10)
-model = Resnet18(input_features = (32, 32, 3), output_features = 10, lr=1e-1, decay_steps=Config.EPOCH * Config.DATA_SIZE / Config.BATCH_SIZE)
+model = Resnet18(input_features = (32, 32, 3), output_features = 10, lr=1e-1, decay_steps=int(Config.EPOCH * Config.DATA_SIZE / Config.BATCH_SIZE))
 # define framework
 tensorflow_framework = TensorflowFramework(model = model, epoch= Config.EPOCH, delta_time= Config.DELTA_TIME, data_size= Config.DATA_SIZE, qod= qod, train_ds= train_ds, test_ds= test_ds, regularization='l2')
 #
@@ -127,7 +127,7 @@ for epoch in range(Config.EPOCH):
     for test_images, test_labels in tensorflow_framework.test_ds:
         test_acc, test_loss = tensorflow_framework.evaluate(test_images, test_labels)
 
-    print("Epoch {} - Train Acc: {:.2f} -- Train Loss {} Test Acc {:.3f}  Test Loss {}".format(epoch+1,
+    print("Epoch {} - Train Acc: {:.2f} -- Train Loss {} Test Acc {:.2f}  Test Loss {}".format(epoch+1,
                                                                                        train_acc * 100,
                                                                                        train_loss,
                                                                                        test_acc * 100,
