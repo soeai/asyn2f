@@ -41,7 +41,15 @@ else:
     # training_exchange= 'test-client-tensorflow-mnist'
     training_exchange= 'test-client-tensorflow-cifar10'
 
+# # load test dataset
+# from data_preprocessing import preprocess_dataset
+# default_testing_dataset_path = "../../data/cifar_data/test_set.pickle"
+# test_ds, _ = preprocess_dataset(default_testing_dataset_path, training = False)
+
+
 
 strategy = AsynFL()
 fedasync_server = Server(strategy, t= 20, test = True, training_exchange= training_exchange, bucket_name= bucket_name)
+
+
 fedasync_server.run()

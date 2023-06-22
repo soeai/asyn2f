@@ -10,7 +10,7 @@ from ..client import Client
 from ..ModelWrapper import ModelWrapper
 from asynfed.commons.conf import Config
 
-
+import os
 LOGGER = logging.getLogger(__name__)
 
 # This is the proposed federated asynchronous training algorithm of our paper
@@ -109,9 +109,20 @@ class ClientAsyncFl(Client):
                     self.model.current_weights = self.model.get_weights()
                     # load global weights from file
                     global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + self._global_model_name
+                    while not os.path.isfile(global_model_path):
+                        print("*" * 20)
+                        sleep(5)
+                        print("Sleep 5 second when the model is not ready, then retry")
+                        print("*" * 20)
+
                     with open(global_model_path, "rb") as f:
                         self.model.global_weights = pickle.load(f)
                     LOGGER.info(f"New model ? - {self._new_model_flag}")
+
+                    # # print out the performance of the global model
+                    # for test_images, test_labels in self.model.test_ds:
+                    #     self._test_acc, self._test_loss = self.model.evaluate(test_images, test_labels)
+
                     LOGGER.info(
                         f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._current_local_version}, current global version {self._previous_local_version}")
                     # merging
