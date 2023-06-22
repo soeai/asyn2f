@@ -115,9 +115,9 @@ tensorflow_framework = TensorflowFramework(model = model, epoch= Config.EPOCH, d
 
 for epoch in range(Config.EPOCH):
     tensorflow_framework.model.train_loss.reset_states()
-    tensorflow_framework.model.train_accuracy.reset_states()
+    tensorflow_framework.model.train_performance.reset_states()
     tensorflow_framework.model.test_loss.reset_states()
-    tensorflow_framework.model.test_accuracy.reset_states()
+    tensorflow_framework.model.test_performance.reset_states()
     for images, labels in tensorflow_framework.train_ds:
         # get the previous weights before the new training process within each batch
         # self.model.previous_weights = self.model.get_weights()
