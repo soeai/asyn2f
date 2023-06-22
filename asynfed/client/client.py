@@ -5,8 +5,9 @@ import threading
 import uuid
 from time import sleep
 from abc import abstractmethod
+from asynfed.client import ModelWrapper
 from asynfed.client.client_storage_connector import ClientStorage
-from asynfed.commons.conf import RoutingRules, Config, init_config
+from asynfed.commons.conf import ClientRoles, RoutingRules, Config, init_config
 from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo
 from asynfed.commons.messages import ServerInitResponseToClient
 from asynfed.commons.messages import ServerNotifyModelToClient
@@ -36,7 +37,7 @@ class Client(QueueConnector):
 
         self._global_model_name = None
         self._storage_connector = None
-
+        
 
         self._local_epoch = 0
         # merging process
@@ -47,11 +48,11 @@ class Client(QueueConnector):
         # variables.
         self._client_role = role
         self._client_id = ""
-        self._is_worker_thread_instancr_started = False
         self._session_id = ""
         self._client_identifier = str(uuid.uuid4())
         self._new_model_flag = False
         self._is_registered = False
+        self._worker_thread: threading.Thread = None
 
         # if there is no profile.json file, then create a new one.
         if not os.path.exists("profile.json"):
@@ -66,7 +67,11 @@ class Client(QueueConnector):
     @abstractmethod
     def train(self):
         pass
+    @abstractmethod
+    def test(self):
+        pass
 
+    
     def create_message(self):
         data = {
             "session_id": self._session_id,
@@ -281,13 +286,25 @@ class Client(QueueConnector):
         print("-" * 20)
         self.init_connect_to_server(message.serialize())
 
-    def start_training_thread(self):
-        if not self._is_worker_thread_instancr_started:
-            
-            LOGGER.info("Start training thread.")
-            training_thread = threading.Thread(
-                target=self.train,
-                name="client_training_thread")
+    def dispose(self):
+        if self._worker_thread != None:
+            self._worker_thread.stop();
+            self._worker_thread = None
 
-            self._is_worker_thread_instancr_started = True
+    def start_worker_thread(self):
+        if self._worker_thread == None:
+            
+            # default is train function
+            target_func = self.train;
+            LOGGER.info("Start training thread.")
+            
+            if self._client_role == ClientRoles.TESTER:
+                # if tester => run test.
+                target_func = self.test
+                
+            training_thread = threading.Thread(
+                target=target_func,
+                name="client_training_thread"
+            )
+            
             training_thread.start()

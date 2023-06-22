@@ -17,7 +17,7 @@ LOGGER = logging.getLogger(__name__)
 # More algorithms can be found at other files in this directory 
 class ClientAsyncFl(Client):
     def __init__(self, model: ModelWrapper, role: str):
-        super().__init__(role)
+        super().__init__(role, model)
         '''
         - model must be an instance of an inheritant of class ModelWrapper
         - model.train_ds: require
