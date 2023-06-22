@@ -108,7 +108,7 @@ test_ds = tf.data.Dataset.from_tensor_slices((test_images, test_labels)).\
 # vgg_model = VGG16(input_features = (32, 32, 3), output_features = 10)
 model = Resnet18(input_features = (32, 32, 3), output_features = 10, lr=1e-1, decay_steps=Config.EPOCH * Config.DATA_SIZE / Config.BATCH_SIZE)
 # define framework
-tensorflow_framework = TensorflowFramework(model = model, epoch= Config.EPOCH, delta_time= Config.DELTA_TIME, data_size= Config.DATA_SIZE, qod= qod, train_ds= train_ds, test_ds= test_ds)
+tensorflow_framework = TensorflowFramework(model = model, epoch= Config.EPOCH, delta_time= Config.DELTA_TIME, data_size= Config.DATA_SIZE, qod= qod, train_ds= train_ds, test_ds= test_ds, regularization='l2')
 #
 # tf_client = ClientAsyncFl(model=tensorflow_framework)
 # tf_client.run()
