@@ -103,44 +103,21 @@ class BottleNeck(tf.keras.Model):
 #         return tf.keras.Sequential(layer)
 
 
-class Resnet(TensorflowSequentialModel):
+class Resnet18(TensorflowSequentialModel):
     def __init__(self, input_features, output_features, lr, decay_steps):
         super().__init__(input_features=input_features, output_features=output_features,
                          learning_rate_fn=tf.keras.experimental.CosineDecay(lr, decay_steps=decay_steps))
-        # self.in_channels = 64
-        # self.num_classes = output_features
-        # self.model_type = model_type
-        self.conv1 = None
-        self.bn1 = None
-        self.layer1 = None
-        self.layer2 = None
-        self.layer3 = None
-        self.layer4 = None
-        self.avg_pool2d = None
-        self.flatten = None
-        self.fc = None
-        # self.learning_rate_fn =
 
     def create_model(self, input_features, output_features):
-        # if self.model_type == "resnet18":
-        block = BasicBlock
+        self.in_channels = 64
         num_blocks = [2, 2, 2, 2]
-        # elif self.model_type == "resnet34":
-        #     block = BasicBlock
-        #     num_blocks = [3, 4, 6, 3]
-        # elif self.model_type == "resnet50":
-        #     block = BottleNeck
-        #     num_blocks = [3, 4, 6, 3]
-        # elif self.model_type == "resnet101":
-        #     block = BottleNeck
-        #     num_blocks = [3, 4, 23, 3]
 
         self.conv1 = layers.Conv2D(64, kernel_size=3, strides=1, padding='same', use_bias=False)
         self.bn1 = layers.BatchNormalization()
-        self.layer1 = self._make_layer(block, 64, num_blocks[0], strides=1)
-        self.layer2 = self._make_layer(block, 128, num_blocks[1], strides=2)
-        self.layer3 = self._make_layer(block, 256, num_blocks[2], strides=2)
-        self.layer4 = self._make_layer(block, 512, num_blocks[3], strides=2)
+        self.layer1 = self._make_layer(BasicBlock, 64, num_blocks[0], strides=1)
+        self.layer2 = self._make_layer(BasicBlock, 128, num_blocks[1], strides=2)
+        self.layer3 = self._make_layer(BasicBlock, 256, num_blocks[2], strides=2)
+        self.layer4 = self._make_layer(BasicBlock, 512, num_blocks[3], strides=2)
         self.avg_pool2d = layers.AveragePooling2D(pool_size=4)
         self.flatten = layers.Flatten()
         self.fc = layers.Dense(10, activation='softmax')
@@ -157,17 +134,17 @@ class Resnet(TensorflowSequentialModel):
         return out
 
     def create_loss_object(self):
-        return tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        return tf.keras.losses.CategoricalCrossentropy()
 
     def create_optimizer(self, learning_rate_fn):
-        self.optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
+        return tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
 
     def create_train_metric(self):
-        return tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy'), tf.keras.metrics.Mean(
+        return tf.keras.metrics.CategoricalAccuracy(name='train_accuracy'), tf.keras.metrics.Mean(
             name='train_loss')
 
     def create_test_metric(self):
-        return tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy'), tf.keras.metrics.Mean(name='test_loss')
+        return tf.keras.metrics.CategoricalAccuracy(name='test_accuracy'), tf.keras.metrics.Mean(name='test_loss')
 
     def get_train_performance(self):
         return float(self.train_performance.result())

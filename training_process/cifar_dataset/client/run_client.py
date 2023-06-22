@@ -13,7 +13,7 @@ from asynfed.commons.conf import Config
 from asynfed.client.frameworks.tensorflow.tensorflow_framework import TensorflowFramework
 from data_preprocessing import *
 from VGG16 import VGG16
-from resnet import Resnet
+from resnet18 import Resnet18
 from utils import *
 # Create an argument parser
 parser = argparse.ArgumentParser(description='Example script with command-line arguments.')
@@ -45,12 +45,12 @@ else:
 if os.getenv("data_size"):
     Config.DATA_SIZE = int(os.getenv("data_size"))
 else:
-    Config.DATA_SIZE = 60000
+    Config.DATA_SIZE = 50000
 
 if os.getenv("epoch"):
     Config.EPOCH = int(os.getenv("epoch"))
 else:
-    Config.EPOCH = 5
+    Config.EPOCH = 200
 
 if os.getenv("delta_time"):
     Config.DELTA_TIME = int(os.getenv("delta_time"))
@@ -106,46 +106,29 @@ test_ds = tf.data.Dataset.from_tensor_slices((test_images, test_labels)).\
 
 # define model
 # vgg_model = VGG16(input_features = (32, 32, 3), output_features = 10)
-model = Resnet(input_features = (32, 32, 3), output_features = 10, lr=1e-1, decay_steps=Config.EPOCH * Config.DATA_SIZE/Config.BATCH_SIZE)
+model = Resnet18(input_features = (32, 32, 3), output_features = 10, lr=1e-1, decay_steps=Config.EPOCH * Config.DATA_SIZE / Config.BATCH_SIZE)
 # define framework
-tensorflow_framework = TensorflowFramework(model = model, epoch= Config.EPOCH, delta_time= Config.DELTA_TIME, data_size= data_size, qod= qod, train_ds= train_ds, test_ds= test_ds)
+tensorflow_framework = TensorflowFramework(model = model, epoch= Config.EPOCH, delta_time= Config.DELTA_TIME, data_size= Config.DATA_SIZE, qod= qod, train_ds= train_ds, test_ds= test_ds)
 #
 # tf_client = ClientAsyncFl(model=tensorflow_framework)
 # tf_client.run()
 
-for epoch in range(200):
-    batch_num = 0
-    multiplier = 1
-    train_acc = 0
-    train_loss = 0
-    test_acc = 0
-    test_loss = 0
+for epoch in range(Config.EPOCH):
+    tensorflow_framework.train_loss.reset_states()
+    tensorflow_framework.train_accuracy.reset_states()
+    tensorflow_framework.test_loss.reset_states()
+    tensorflow_framework.test_accuracy.reset_states()
     for images, labels in tensorflow_framework.train_ds:
-        batch_num += 1
-        # Tracking the training process every x samples
-        # x define by user
-        total_trained_sample = batch_num * Config.BATCH_SIZE
-        if total_trained_sample > tracking_point:
-            multiplier += 1
-            tracking_point = tracking_point * multiplier
-
         # get the previous weights before the new training process within each batch
         # self.model.previous_weights = self.model.get_weights()
         # training normally
-        _acc, _loss= tensorflow_framework.fit(images, labels)
-        train_acc += train_acc
-        train_loss += train_loss
+        train_acc, train_loss= tensorflow_framework.fit(images, labels)
 
-        if tensorflow_framework.test_ds:
-            for test_images, test_labels in tensorflow_framework.test_ds:
-                _acc_test, _loss_test = tensorflow_framework.evaluate(test_images, test_labels)
-                test_acc += _acc_test
-                test_loss += _loss_test
+    for test_images, test_labels in tensorflow_framework.test_ds:
+        test_acc, test_loss = tensorflow_framework.evaluate(test_images, test_labels)
 
-    print(
-        f'Epoch: {epoch}'
-        f'\tLast Batch Train Accuracy: {train_acc/batch_num * 100}, '
-        f'\tLast Batch Train Loss: {train_loss/batch_num}, '
-        f'\tLast Batch Test Accuracy: {test_acc/batch_num * 100}'
-        f'\tLast Batch Test Loss: {test_loss/batch_num}, '
-    )
+    print("Epoch {} - Train Acc: {:.2f} -- Train Loss {} Test Acc {:.3f}  Test Loss {}".format(epoch+1,
+                                                                                       train_acc * 100,
+                                                                                       train_loss,
+                                                                                       test_acc * 100,
+                                                                                       test_loss))

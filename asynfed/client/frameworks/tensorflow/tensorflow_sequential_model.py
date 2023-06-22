@@ -14,9 +14,8 @@ from tensorflow.keras import Model
 
 
 class TensorflowSequentialModel(Model):
-    def __init__(self, input_features, output_features, learning_rate_fn, in_chanels = 64):
+    def __init__(self, input_features, output_features, learning_rate_fn):
         super().__init__()
-        self.in_channels = in_chanels
         self.create_model(input_features, output_features)
         # loss
         self.loss_object = self.create_loss_object()
