@@ -76,14 +76,15 @@ class ClientAsyncFl(Client):
             # Tracking the training process every x samples 
             # x define by user
             batch_size = Config.BATCH_SIZE
-            tracking_point = Config.TRACKING_POINT
+            tracking_period = Config.TRACKING_POINT
+            tracking_point = tracking_period
+
             multiplier = 1
             # reset loss and per after each epoch
-            self.model.reset_train_loss
-            self.model.reset_train_performance
-            self.model.reset_test_loss
-            self.model.reset_test_performance
-
+            self.model.reset_train_loss()
+            self.model.reset_train_performance()
+            self.model.reset_test_loss()
+            self.model.reset_test_performance()
 
             # training per several epoch
             LOGGER.info(f"Enter epoch {self._local_epoch}")
@@ -95,7 +96,7 @@ class ClientAsyncFl(Client):
                 if total_trained_sample > tracking_point:
                     LOGGER.info(f"Training up to {total_trained_sample} samples")
                     multiplier += 1
-                    tracking_point = tracking_point * multiplier
+                    tracking_point = tracking_period * multiplier
 
                 # get the previous weights before the new training process within each batch
                 self.model.previous_weights = self.model.get_weights()
@@ -130,10 +131,11 @@ class ClientAsyncFl(Client):
                     # changing flag status
                     self._new_model_flag = False
 
-                if self.model.test_ds:
-                    for test_images, test_labels in self.model.test_ds:
-                        self._test_acc, self._test_loss = self.model.evaluate(test_images, test_labels)
-
+            if self.model.test_ds:
+                for test_images, test_labels in self.model.test_ds:
+                    self._test_acc, self._test_loss = self.model.evaluate(test_images, test_labels)
+            else:
+                self._test_acc, self._test_loss = 0, 0
 
             LOGGER.info(
                 f'Epoch: {self._local_epoch}'
