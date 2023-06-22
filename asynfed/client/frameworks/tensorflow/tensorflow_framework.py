@@ -59,6 +59,18 @@ class TensorflowFramework(ModelWrapper):
         self.test_step(x, y)
         return self.model.get_test_performance(), self.model.get_test_loss()
 
+    def reset_train_loss(self):
+        self.model.train_loss.reset_states()
+    
+    def reset_train_performance(self):
+        self.model.train_performance.reset_states()
+    
+    def reset_test_loss(self):
+        self.model.test_loss.reset_states()
+    
+    def reset_test_performance(self):
+        self.model.test_performance.reset_states()
+   
     @tf.function
     def train_step(self, images, labels):
         with tf.GradientTape() as tape:
@@ -69,7 +81,8 @@ class TensorflowFramework(ModelWrapper):
             if self.regularization == "l2":
                 l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in self.model.trainable_variables])
                 loss += l2_loss * self.lambda_value
-        gradients = tape.gradient(loss, self.model.trainable_variables)
+            gradients = tape.gradient(loss, self.model.trainable_variables)
+            
         self.model.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
         self.model.train_loss(loss)
         self.model.train_performance(labels, predictions)
@@ -83,3 +96,4 @@ class TensorflowFramework(ModelWrapper):
         self.model.test_loss(t_loss)
         self.model.test_performance(labels, predictions)
 
+ 

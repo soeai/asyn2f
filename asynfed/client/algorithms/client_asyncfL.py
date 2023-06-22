@@ -55,6 +55,9 @@ class ClientAsyncFl(Client):
             break
         self.model.set_weights(self.model.global_weights)
 
+        LOGGER.info("*" * 40)
+        LOGGER.info("ClientModel Start Training")
+        LOGGER.info("*" * 40)
         # officially start the training process
         # while True:
         # quit after a number of epoch
@@ -63,10 +66,6 @@ class ClientAsyncFl(Client):
         start_time = datetime.now()
         for i in range(self.model.epoch):
             self._local_epoch += 1
-            # for epoch in range(EPOCHS):
-            LOGGER.info("*" * 40)
-            LOGGER.info("ClientModel Start Training")
-            LOGGER.info("*" * 40)
             # since the current mnist model is small, set some sleeping time
             # to avoid overhead for the queue exchange and storage server
             LOGGER.info(f"Sleep for {Config.SLEEPING_TIME} seconds to avoid overhead")
@@ -79,13 +78,19 @@ class ClientAsyncFl(Client):
             batch_size = Config.BATCH_SIZE
             tracking_point = Config.TRACKING_POINT
             multiplier = 1
+            # reset loss and per after each epoch
+            self.model.reset_train_loss
+            self.model.reset_train_performance
+            self.model.reset_test_loss
+            self.model.reset_test_performance
+
 
             # training per several epoch
             LOGGER.info(f"Enter epoch {self._local_epoch}")
             for images, labels in self.model.train_ds:
-                batch_num += 1
                 # Tracking the training process every x samples 
                 # x define by user
+                batch_num += 1
                 total_trained_sample = batch_num * batch_size
                 if total_trained_sample > tracking_point:
                     LOGGER.info(f"Training up to {total_trained_sample} samples")

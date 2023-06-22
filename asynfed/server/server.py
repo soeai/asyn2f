@@ -161,7 +161,10 @@ class Server(QueueConnector):
                 elif self._first_arrival != None:
                     self._latest_arrival = time_now()
             
+            print("*" * 20)
             print(f'Receive new model from client [{client_notify_message.client_id}]!')
+            print(f'Performance and Loss: {client_notify_message.performance}, {client_notify_message.loss_value}')
+            print("*" * 20)
 
             # Download model!
             with lock:
