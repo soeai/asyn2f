@@ -16,8 +16,8 @@ LOGGER = logging.getLogger(__name__)
 # This is the proposed federated asynchronous training algorithm of our paper
 # More algorithms can be found at other files in this directory 
 class ClientAsyncFl(Client):
-    def __init__(self, model: ModelWrapper):
-        super().__init__()
+    def __init__(self, model: ModelWrapper, role: str):
+        super().__init__(role)
         '''
         - model must be an instance of an inheritant of class ModelWrapper
         - model.train_ds: require

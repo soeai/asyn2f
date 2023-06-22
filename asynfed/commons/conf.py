@@ -7,6 +7,10 @@ import os
 LOGGER = logging.getLogger(__name__)
 
 
+class ClientRoles:
+    TESTER = "tester"
+    WORKER = "WORKER"
+
 class RoutingRules:
     # at ClientModel Queue
     SERVER_ERROR_TO_CLIENT = "error.message"

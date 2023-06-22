@@ -20,7 +20,7 @@ lock = threading.Lock()
 
 
 class Client(QueueConnector):
-    def __init__(self):
+    def __init__(self, role):
         super().__init__()
 
         # Dependencies
@@ -45,8 +45,9 @@ class Client(QueueConnector):
         self._global_model_update_data_size = None
 
         # variables.
+        self._client_role = role
         self._client_id = ""
-        self._is_training = False
+        self._is_worker_thread_instancr_started = False
         self._session_id = ""
         self._client_identifier = str(uuid.uuid4())
         self._new_model_flag = False
@@ -281,11 +282,12 @@ class Client(QueueConnector):
         self.init_connect_to_server(message.serialize())
 
     def start_training_thread(self):
-        if not self._is_training:
+        if not self._is_worker_thread_instancr_started:
+            
             LOGGER.info("Start training thread.")
             training_thread = threading.Thread(
                 target=self.train,
                 name="client_training_thread")
 
-            self._is_training = True
+            self._is_worker_thread_instancr_started = True
             training_thread.start()

@@ -8,8 +8,9 @@ class Worker:
     - Add more properties to this class.
     """
 
-    def __init__(self, session_id: str, worker_id: str, sys_info: SysInfo = None, data_size: int = 10, qod: float = 0.1) -> None:
+    def __init__(self, role, session_id: str, worker_id: str, sys_info: SysInfo = None, data_size: int = 10, qod: float = 0.1) -> None:
         # Properties
+        self.role = role
         self.session_id = session_id
         self.worker_id = worker_id
         self.sys_info = sys_info
