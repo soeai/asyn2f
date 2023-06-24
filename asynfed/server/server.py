@@ -160,17 +160,19 @@ class Server(QueueConnector):
                 
                 elif self._first_arrival != None:
                     self._latest_arrival = time_now()
-            
-            print("*" * 20)
-            print(f'Receive new model from client [{client_notify_message.client_id}]!')
-            print(f'Performance and Loss: {client_notify_message.performance}, {client_notify_message.loss_value}')
-            print("*" * 20)
 
             # Download model!
             with lock:
                 self._cloud_storage.download(remote_file_path=client_notify_message.weight_file,
                                              local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + client_notify_message.model_id)
                 self._worker_manager.add_local_update(client_notify_message)
+                
+            print("*" * 20)
+            print(f'Receive new model from client [{client_notify_message.client_id}]!')
+            print(self._worker_manager.worker_pool[client_notify_message.client_id].data_size)
+            print(self._worker_manager.worker_pool[client_notify_message.client_id].is_completed)
+            print(f'Performance and Loss: {client_notify_message.performance}, {client_notify_message.loss_value}')
+            print("*" * 20)
 
     def setup(self):
         # Declare exchange, queue, binding.
@@ -258,11 +260,11 @@ class Server(QueueConnector):
                     # within the self.__update function
                     # self.__update()
                     self.__update(n_local_updates)
+                    # Clear worker queue after aggregation.
+                    # self._worker_manager.update_worker_after_training()
                     self.__publish_global_model()
 
 
-                    # Clear worker queue after aggregation.
-                    self._worker_manager.update_worker_after_training()
                 except Exception as e:
                     message = ErrorMessage(str(e), None)
                     LOGGER.info("*" * 20)
@@ -284,9 +286,11 @@ class Server(QueueConnector):
             # get the only worker
             # worker = next(iter(completed_workers.values))
             for w_id, worker in completed_workers.items():
+                print(w_id)
                 self._strategy.avg_loss = worker.loss
                 self._strategy.avg_qod = worker.qod
                 self._strategy.global_model_update_data_size = worker.data_size
+                worker.is_completed = False
             
             # print("*" * 10)
             # print(f"Avg loss, avg qod, global datasize: {self._strategy.avg_loss}, {self._strategy.avg_qod}, {self._strategy.global_model_update_data_size}")
@@ -312,7 +316,7 @@ class Server(QueueConnector):
             t2 = time_diff(self._start_time, self._latest_arrival)
             
             # get avg complete time of current epoch
-            self._t = (t2 + t1) / 2
+            self._t = (t2 + t1) / 2 + 2 * t1
         
 
     def __is_stop_condition(self):

@@ -44,6 +44,8 @@ class AsynFL(Strategy):
             worker.alpha = self.compute_alpha(worker)
             print(f"{worker.worker_id} with alpha {worker.alpha}, qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
             sum_alpha += worker.alpha
+            # reset state after update
+            worker.is_completed = False
         print(f"Total data: {self.global_model_update_data_size}, avg_loss: {self.avg_loss}, avg_qod: {self.avg_qod}")
         print("*" * 20)
 

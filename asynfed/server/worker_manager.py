@@ -69,9 +69,9 @@ class WorkerManager:
         self.worker_pool[client_id].is_completed = True
 
 
-    def update_worker_after_training(self):
-        for worker in self.worker_pool:
-            self.worker_pool[worker].is_completed = False
+    # def update_worker_after_training(self):
+    #     for worker in self.worker_pool:
+    #         self.worker_pool[worker].is_completed = False
 
     def get_completed_workers(self) -> Dict:
         return {worker_id: self.worker_pool[worker_id] for worker_id in self.worker_pool if self.worker_pool[worker_id].is_completed == True}

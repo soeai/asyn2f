@@ -49,7 +49,7 @@ else:
 
 
 strategy = AsynFL()
-fedasync_server = Server(strategy, t= 20, test = True, training_exchange= training_exchange, bucket_name= bucket_name)
+fedasync_server = Server(strategy, t= 40, test = True, training_exchange= training_exchange, bucket_name= bucket_name)
 
 
 fedasync_server.run()
