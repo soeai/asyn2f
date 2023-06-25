@@ -35,25 +35,69 @@ class ClientAsyncFl(Client):
         self._train_acc = 0.0
         self._train_loss = 0.0
 
+    def _get_model_dim_ready(self):
+       for images, labels in self.model.train_ds:
+            self.model.fit(images, labels)
+            break
+       
+    def _load_weights_from_file(self, file_name, folder):
+        full_path = folder + file_name
+        # with open(full_path, "rb") as f:
+        #     weights = pickle.load(f)
+        while not os.path.isfile(full_path):
+            print("*" * 20)
+            sleep(5)
+            print("Sleep 5 second when the model is not ready, then retry")
+            print("*" * 20)
+
+        with open(full_path, "rb") as f:
+            weights = pickle.load(f)
+        return weights
 
     def train(self):
-        # training nonstop until the server command to do so
-        # or the client attempt to quit
-
-        # before training, load the global model to set to be the client model weights 
-        file_name = self._global_model_name.split('/')[-1]
-        global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + file_name
-        with open(global_model_path, "rb") as f:
-            self.model.global_weights = pickle.load(f)
-            
         # for tensorflow model, there is some conflict in the dimension of 
         # an initialized model and al already trained one
         # temporarily fixed this problem
         # by training the model before loading the global weights
-        for images, labels in self.model.train_ds:
-            self.model.fit(images, labels)
-            break
-        self.model.set_weights(self.model.global_weights)
+        self._get_model_dim_ready()
+
+        # check whether the client rejoin or training from the begining
+        if self._local_epoch <= 1:
+        # check whether there is more than one local model
+        # if just 1 or 0, go with the global model
+        # load the global model to set to be the client model weights 
+            LOGGER.info("Load global model to be current local model")
+            global_model_filename = self._global_model_name.split('/')[-1]
+            self.model.global_weights = self._load_weights_from_file(global_model_filename, Config.TMP_GLOBAL_MODEL_FOLDER)
+            self.model.set_weights(self.model.global_weights)
+        
+        # when client rejoin the training process
+        else:
+            print("*" * 20)
+            LOGGER.info("Rejoin the training process")
+            LOGGER.info("Loading the local weight...")
+            # load current local weight
+            current_local_model_filename = f'{self._client_id}_v{self._local_epoch}.pkl'
+            current_local_weights = self._load_weights_from_file(current_local_model_filename, Config.TMP_LOCAL_MODEL_FOLDER)
+            LOGGER.info("Loaded. ")
+            print("*" * 20)
+            self.model.set_weights(current_local_weights)
+
+            # if the receive global model version is equal to the save global model version
+            # just load the save current local version
+            if self._save_global_model_version == self._global_model_version:
+                LOGGER.info("The receive global model is equal to the save global model. Just load the current local weight and continue training")
+            else:
+                LOGGER.info("The receive global model is newer than the save one. Merging process needed.")
+                # merge these weight
+                previous_local_model_filename = f'{self._client_id}_v{self._local_epoch - 1}.pkl'
+                previous_local_weights = self._load_weights_from_file(previous_local_model_filename, Config.TMP_LOCAL_MODEL_FOLDER)
+                self.model.previous_weights = previous_local_weights
+                self.model.current_weights = current_local_weights
+                global_model_filename = self._global_model_name.split('/')[-1]
+                self.model.global_weights = self._load_weights_from_file(global_model_filename, Config.TMP_GLOBAL_MODEL_FOLDER)
+                self.__merge()
+
 
         LOGGER.info("*" * 40)
         LOGGER.info("ClientModel Start Training")
@@ -65,7 +109,6 @@ class ClientAsyncFl(Client):
         from datetime import datetime
         start_time = datetime.now()
         for i in range(self.model.epoch):
-            self._local_epoch += 1
             # since the current mnist model is small, set some sleeping time
             # to avoid overhead for the queue exchange and storage server
             LOGGER.info(f"Sleep for {Config.SLEEPING_TIME} seconds to avoid overhead")
@@ -130,12 +173,15 @@ class ClientAsyncFl(Client):
                     self.__merge()
                     # changing flag status
                     self._new_model_flag = False
+                
 
             if self.model.test_ds:
                 for test_images, test_labels in self.model.test_ds:
                     self._test_acc, self._test_loss = self.model.evaluate(test_images, test_labels)
             else:
                 self._test_acc, self._test_loss = 0, 0
+
+            
 
             LOGGER.info(
                 f'Epoch: {self._local_epoch}'
@@ -145,6 +191,7 @@ class ClientAsyncFl(Client):
                 f'\tLast Batch Test Loss: {self._test_loss}, '
             )
 
+
             # Save weights locally after training
             filename = f'{self._client_id}_v{self._local_epoch}.pkl'
             save_location = Config.TMP_LOCAL_MODEL_FOLDER + filename
@@ -153,6 +200,8 @@ class ClientAsyncFl(Client):
             # Print the weight location
             LOGGER.info(f'Saved weights to {save_location}')
 
+            # Only when the local model is save, local epoch is updated
+            self._local_epoch += 1
 
             # Upload the weight to the storage (the remote server)
             remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
@@ -206,6 +255,8 @@ class ClientAsyncFl(Client):
         else:
             # perform calculation normally for all the other cases
             e_local = [layer_a - layer_b for layer_a, layer_b in zip(self.model.current_weights, self.model.previous_weights)]
+
+        # e_local = [layer_a - layer_b for layer_a, layer_b in zip(self.model.current_weights, self.model.previous_weights)]
 
         # the different between the global weights and the current weights
         e_global = [layer_a - layer_b for layer_a, layer_b in zip(self.model.global_weights, self.model.current_weights)]
