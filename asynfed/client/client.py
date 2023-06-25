@@ -71,11 +71,13 @@ class Client(QueueConnector):
             "session_id": self._session_id,
             "client_id": self._client_id,
             "global_model_name": self._global_model_name,
-            "global_model_version": self._global_model_version,
-            "local_epoch": self._local_epoch,
-            "global_model_update_data_size": self._global_model_update_data_size,
-            "global_avg_loss": self._global_avg_loss,
-            "global_avg_qod": self._global_avg_qod,
+            "local_epoch": self._local_epoch - 1,
+            "local_qod": self._local_qod,
+            "save_global_model_version": self._global_model_version,
+            "save_global_model_update_data_size": self._global_model_update_data_size,
+            "save_global_avg_loss": self._global_avg_loss,
+            "save_global_avg_qod": self._global_avg_qod,
+
 
             # "local_data_size": self._local_data_size,
             # "local_qod": self._local_qod,
@@ -101,14 +103,15 @@ class Client(QueueConnector):
                 self._session_id = data["session_id"]
                 self._client_id = data["client_id"]
                 self._global_model_name = data["global_model_name"]
-                self._global_model_version = data["global_model_version"]
                 self._local_epoch = data["local_epoch"]
-                self._global_model_update_data_size = data["global_model_update_data_size"]
-                self._global_avg_loss = data["global_avg_loss"]
                 self._local_qod = data["local_qod"]
+
+                self._save_global_model_version = data["save_global_model_version"]
+                self._save_global_model_update_data_size = data["save_global_model_update_data_size"]
+                self._save_global_avg_loss = data["save_global_avg_loss"]
+                self._save_global_avg_qod = data["save_global_avg_qod"]
                 
                 # self._local_data_size = data["local_data_size"]
-                # self._global_avg_qod = data["global_avg_qod"]
                 # self._train_loss = data["train_loss"]
         except Exception as e:
             print(e)
