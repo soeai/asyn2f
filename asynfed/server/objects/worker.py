@@ -8,8 +8,10 @@ class Worker:
     - Add more properties to this class.
     """
 
-    def __init__(self, session_id: str, worker_id: str, sys_info: SysInfo = None, data_size: int = 10, qod: float = 0.1) -> None:
+    def __init__(self, session_id: str, worker_id: str, sys_info: SysInfo = None, data_size: int = 10,
+                 qod: float = 0.1) -> None:
         # Properties
+        self.alpha = None
         self.session_id = session_id
         self.worker_id = worker_id
         self.sys_info = sys_info
@@ -25,7 +27,6 @@ class Worker:
         self.data_size = data_size
         # loss change from update time to update time
         self.loss = 0.0
-
 
     def get_weight_file_path(self):
         filename = self.weight_file.split('/')[-1]
@@ -47,4 +48,3 @@ class Worker:
         Implement toString function here!
         """
         return f"Worker: {self.worker_id} | n_update: {self.n_update} | current_version: {self.current_version} | qod: {self.qod} | datasize: {self.data_size} | performance: {self.performance} | loss: {self.loss}"
-

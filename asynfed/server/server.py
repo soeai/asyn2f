@@ -16,6 +16,7 @@ from .worker_manager import WorkerManager
 import threading
 
 from ..commons.messages.error_message import ErrorMessage
+from ..commons.utils.queue_connector_blocking import BlockingQueueConnector
 
 # from pynput import keyboard
 
@@ -30,7 +31,9 @@ class Server(QueueConnector):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, t: int = 15, test= True, training_exchange: str = "test-client-tensorflow-cifar10", bucket_name = 'test-client-tensorflow-cifar10') -> None:
+    def __init__(self, strategy: Strategy, t: int = 15, test=True,
+                 training_exchange: str = "test-client-tensorflow-cifar10",
+                 bucket_name='test-client-tensorflow-cifar10') -> None:
         # Server variables
         super().__init__()
         self._t = t
@@ -44,7 +47,6 @@ class Server(QueueConnector):
         self._first_arrival = None
         self._latest_arrival = None
 
-
         if test:
             self._server_id = training_exchange
         else:
@@ -53,7 +55,7 @@ class Server(QueueConnector):
         # All this information was decided by server to prevent conflict
         # because multiple server can use the same RabbitMQ, S3 server.
         Config.TRAINING_EXCHANGE = self._server_id
-        
+
         if test:
             Config.STORAGE_BUCKET_NAME = bucket_name
             Config.QUEUE_NAME = bucket_name
@@ -72,8 +74,6 @@ class Server(QueueConnector):
         self._cloud_storage: ServerStorage = ServerStorage()
 
         self.delete_bucket_on_exit = True
-
-        
 
     def on_message(self, channel, method, properties: BasicProperties, body):
 
@@ -102,11 +102,11 @@ class Server(QueueConnector):
 
                     # Add worker to Worker Manager.
                     worker = Worker(
-                        session_id= session_id,
-                        worker_id= worker_id,
-                        sys_info= client_init_message.sys_info,
-                        data_size = client_init_message.data_size,
-                        qod = client_init_message.qod
+                        session_id=session_id,
+                        worker_id=worker_id,
+                        sys_info=client_init_message.sys_info,
+                        data_size=client_init_message.data_size,
+                        qod=client_init_message.qod
                     )
                     with lock:
                         worker.access_key_id = access_key
@@ -152,13 +152,13 @@ class Server(QueueConnector):
         elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
             client_notify_message = ClientNotifyModelToServer()
             client_notify_message.deserialize(body.decode())
-            
+
             if self._strategy.current_version == client_notify_message.global_model_version_used:
-                if self._first_arrival == None:
+                if self._first_arrival is None:
                     self._first_arrival = time_now()
                     self._latest_arrival = time_now()
-                
-                elif self._first_arrival != None:
+
+                elif self._first_arrival is not None:
                     self._latest_arrival = time_now()
 
             # Download model!
@@ -166,13 +166,16 @@ class Server(QueueConnector):
                 self._cloud_storage.download(remote_file_path=client_notify_message.weight_file,
                                              local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + client_notify_message.model_id)
                 self._worker_manager.add_local_update(client_notify_message)
-                
+
             print("*" * 20)
             print(f'Receive new model from client [{client_notify_message.client_id}]!')
             print(self._worker_manager.worker_pool[client_notify_message.client_id].data_size)
             print(self._worker_manager.worker_pool[client_notify_message.client_id].is_completed)
             print(f'Performance and Loss: {client_notify_message.performance}, {client_notify_message.loss_value}')
             print("*" * 20)
+
+
+
 
     def setup(self):
         # Declare exchange, queue, binding.
@@ -204,7 +207,6 @@ class Server(QueueConnector):
         self._start_time = time_now()
         self._first_arrival = None
         self._latest_arrival = None
-        
 
     def __notify_error_to_client(self, message):
         # Send notify message to client.
@@ -213,8 +215,6 @@ class Server(QueueConnector):
             RoutingRules.SERVER_ERROR_TO_CLIENT,
             message.serialize()
         )
-        
-        
 
     def __response_to_client_init_connect(self, message):
         # Send response message to client.
@@ -275,7 +275,8 @@ class Server(QueueConnector):
 
         self.stop()
         # thread.join()
-    # def 
+
+    # def
 
     def __update(self, n_local_updates):
         if n_local_updates == 1:
@@ -291,7 +292,7 @@ class Server(QueueConnector):
                 self._strategy.avg_qod = worker.qod
                 self._strategy.global_model_update_data_size = worker.data_size
                 worker.is_completed = False
-            
+
             # print("*" * 10)
             # print(f"Avg loss, avg qod, global datasize: {self._strategy.avg_loss}, {self._strategy.avg_qod}, {self._strategy.global_model_update_data_size}")
             # print("*" * 10)
@@ -302,22 +303,21 @@ class Server(QueueConnector):
             save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self._strategy.get_global_model_filename()
             shutil.copy(local_weight_file, save_location)
 
-                        
+
         else:
             print("Aggregating process...")
-        # calculate self._strategy.avg_qod and self_strategy.avg_loss 
-        # and self_strategy.global_model_update_data_size
-        # within the self._strategy.aggregate function
+            # calculate self._strategy.avg_qod and self_strategy.avg_loss
+            # and self_strategy.global_model_update_data_size
+            # within the self._strategy.aggregate function
             self._strategy.aggregate(self._worker_manager)
-        
+
         # calculate dynamic time ratial only when 
         if None not in [self._start_time, self._first_arrival, self._latest_arrival]:
             t1 = time_diff(self._start_time, self._first_arrival)
             t2 = time_diff(self._start_time, self._latest_arrival)
-            
+
             # get avg complete time of current epoch
             self._t = (t2 + t1) / 2 + 2 * t1
-        
 
     def __is_stop_condition(self):
         self._strategy.is_completed()
@@ -331,14 +331,14 @@ class Server(QueueConnector):
         # Construct message
         msg = ServerNotifyModelToClient(
             chosen_id=[],
-            model_id= self._strategy.model_id,
+            model_id=self._strategy.model_id,
 
-            global_model_version= self._strategy.current_version,
-            global_model_name= f'{self._strategy.model_id}_v{self._strategy.current_version}.pkl',
+            global_model_version=self._strategy.current_version,
+            global_model_name=f'{self._strategy.model_id}_v{self._strategy.current_version}.pkl',
             # values obtained after each update time
-            global_model_update_data_size= self._strategy.global_model_update_data_size,
-            avg_loss= self._strategy.avg_loss,
-            avg_qod= self._strategy.avg_qod,
+            global_model_update_data_size=self._strategy.global_model_update_data_size,
+            avg_loss=self._strategy.avg_loss,
+            avg_qod=self._strategy.avg_qod,
         )
         print("*" * 20)
         print("Notify model from server")

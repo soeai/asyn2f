@@ -10,9 +10,7 @@ from asynfed.commons.conf import RoutingRules, Config, init_config
 from asynfed.commons.messages.client_init_connect_to_server import ClientInit, SysInfo
 from asynfed.commons.messages import ServerInitResponseToClient
 from asynfed.commons.messages import ServerNotifyModelToClient
-from asynfed.commons.messages import ClientNotifyModelToServer
 from asynfed.commons.utils import QueueConnector
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +22,11 @@ class Client(QueueConnector):
         super().__init__()
 
         # Dependencies
+        self._global_chosen_list = None
+        self._save_global_avg_qod = None
+        self._save_global_avg_loss = None
+        self._save_global_model_update_data_size = None
+        self._save_global_model_version = None
         self._local_data_size = 0
         self._local_qod = 0.0
         self._train_loss = 0.0
@@ -33,10 +36,8 @@ class Client(QueueConnector):
 
         self._global_model_version = None
 
-
         self._global_model_name = None
         self._storage_connector = None
-
 
         self._local_epoch = 0
         # merging process
@@ -52,6 +53,8 @@ class Client(QueueConnector):
         self._new_model_flag = False
         self._is_registered = False
 
+        Config.QUEUE_NAME = self._client_identifier
+
         # if there is no profile.json file, then create a new one.
         if not os.path.exists("profile.json"):
             self.create_profile()
@@ -60,7 +63,6 @@ class Client(QueueConnector):
 
         self.log: bool = True
         init_config("client")
-
 
     @abstractmethod
     def train(self):
@@ -77,7 +79,6 @@ class Client(QueueConnector):
             "save_global_model_update_data_size": self._global_model_update_data_size,
             "save_global_avg_loss": self._global_avg_loss,
             "save_global_avg_qod": self._global_avg_qod,
-
 
             # "local_data_size": self._local_data_size,
             # "local_qod": self._local_qod,
@@ -110,7 +111,7 @@ class Client(QueueConnector):
                 self._save_global_model_update_data_size = data["save_global_model_update_data_size"]
                 self._save_global_avg_loss = data["save_global_avg_loss"]
                 self._save_global_avg_qod = data["save_global_avg_qod"]
-                
+
                 # self._local_data_size = data["local_data_size"]
                 # self._train_loss = data["train_loss"]
         except Exception as e:
@@ -136,7 +137,7 @@ class Client(QueueConnector):
             Config.TRAINING_EXCHANGE,
             RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
         )
-        self.publish_init_message(data_size= self._local_data_size, qod = self._local_qod)
+        self.publish_init_message(data_size=self._local_data_size, qod=self._local_qod)
         self.start_consuming()
 
     def on_message(self, channel, basic_deliver, properties, body):
@@ -172,8 +173,6 @@ class Client(QueueConnector):
                 Config.STORAGE_SECRET_KEY = message.secret_key
                 Config.STORAGE_REGION_NAME = message.region_name
                 Config.STORAGE_BUCKET_NAME = message.bucket_name
-                Config.TRAINING_EXCHANGE = message.training_exchange
-                Config.QUEUE_NAME = self._client_id
                 Config.MONITOR_QUEUE = message.monitor_queue
 
                 self._storage_connector = ClientStorage()
@@ -230,7 +229,8 @@ class Client(QueueConnector):
                 self._global_avg_loss = msg.avg_loss
                 self._global_avg_qod = msg.avg_qod
                 print("*" * 20)
-                print(f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
+                print(
+                    f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
                 print("*" * 20)
 
                 # save the previous local version of the global model to log it to file
@@ -267,15 +267,14 @@ class Client(QueueConnector):
             message
         )
 
-
-    def publish_init_message(self, data_size = 10000, qod = 0.2):
+    def publish_init_message(self, data_size=10000, qod=0.2):
         message = ClientInit(
             client_identifier=self._client_identifier,
             session_id=self._session_id,
             client_id=self._client_id,
             sys_info=SysInfo(),
-            data_size= data_size,
-            qod = qod
+            data_size=data_size,
+            qod=qod
         )
         print("-" * 20)
         print("Init message of client")
