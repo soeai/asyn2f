@@ -114,8 +114,12 @@ class QueueConnector(ABC):
         ioloop.
 
         """
-        self._should_reconnect = True
-        self.stop()
+        if not self._closing:
+            # Create a new connection
+            self._connection = self._connect()
+
+            # There is now a new connection, needs a new ioloop to run
+            self._connection.ioloop.start()
 
     def _open_channel(self):
         """Open a new channel with RabbitMQ by issuing the Channel.Open RPC

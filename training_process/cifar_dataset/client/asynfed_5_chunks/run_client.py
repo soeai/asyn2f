@@ -65,7 +65,7 @@ else:
         Config.EPOCH = int(os.getenv("epoch"))
     else:
         # default batch size = 128
-        Config.EPOCH = 128
+        Config.EPOCH = 200
 # ------------oOo--------------------
 
 
@@ -143,7 +143,7 @@ print("-" * 20)
 model = Resnet18(input_features= (32, 32, 3), output_features= 10,
                  lr=1e-1, decay_steps=int(Config.EPOCH * data_size / Config.BATCH_SIZE))
 # define framework
-tensorflow_framework = TensorflowFramework(model = model, epoch= 200, data_size= data_size, train_ds= train_ds, test_ds= test_ds, regularization='l2', delta_time= 10000, qod= 0.45)
+tensorflow_framework = TensorflowFramework(model = model, epoch= Config.EPOCH, data_size= data_size, train_ds= train_ds, test_ds= test_ds, regularization='l2', delta_time= 10000, qod= 0.45)
 
 tf_client = ClientAsyncFl(model=tensorflow_framework)
 tf_client.run()

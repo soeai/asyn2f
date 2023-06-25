@@ -7,7 +7,7 @@ from asynfed.client.frameworks.tensorflow.tensorflow_sequential_model import Ten
 
 class LeNet(TensorflowSequentialModel):
     def __init__(self, input_features= (32, 32, 1), output_features =10):
-        super().__init__(input_features= input_features, output_features= output_features)
+        super().__init__(input_features= input_features, output_features= output_features, learning_rate_fn= None)
 
     def create_model(self, input_features, output_features):
         self.conv1 = Conv2D(6, kernel_size=(5, 5), strides=(1, 1), activation='tanh', input_shape= input_features,
@@ -35,7 +35,7 @@ class LeNet(TensorflowSequentialModel):
         loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
         return loss_object
     
-    def create_optimizer(self):
+    def create_optimizer(self, learning_rate_fn):
         optimizer = tf.keras.optimizers.Adam()
         return optimizer
 
