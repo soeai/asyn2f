@@ -94,6 +94,7 @@ class ClientAsyncFl(Client):
                 previous_local_weights = self._load_weights_from_file(previous_local_model_filename, Config.TMP_LOCAL_MODEL_FOLDER)
                 self.model.previous_weights = previous_local_weights
                 self.model.current_weights = current_local_weights
+                
                 global_model_filename = self._global_model_name.split('/')[-1]
                 self.model.global_weights = self._load_weights_from_file(global_model_filename, Config.TMP_GLOBAL_MODEL_FOLDER)
                 self.__merge()
