@@ -40,6 +40,8 @@ class ClientAsyncFl(Client):
         # training nonstop until the server command to do so
         # or the client attempt to quit
 
+        # check whether the client rejoin or training from the begining
+
         # before training, load the global model to set to be the client model weights 
         file_name = self._global_model_name.split('/')[-1]
         global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + file_name
