@@ -22,7 +22,7 @@ class Amqp_Consumer(object):
         self.channel.exchange_declare(exchange=self.exchange_name, exchange_type=self.exchange_type)
 
         # Declare a queue to receive prediction response
-        self.queue = self.channel.queue_declare(queue=configuration["in_queue"], exclusive=False)
+        self.queue = self.channel.queue_declare(queue=configuration["queue_name"], exclusive=False)
         self.queue_name = self.queue.method.queue
         # Binding the exchange to the queue with specific routing
         self.channel.queue_bind(exchange=self.exchange_name, queue=self.queue_name, routing_key=self.routing_key)

@@ -61,7 +61,7 @@ class Client(object):
 
         self.log: bool = True
         # init_config("client")
-
+        self.thread = threading.Thread(target=self._start_consumer)
         self.queue_concumer = Amqp_Consumer(config['queue_consumer'], self)
         self.queue_producer = Amqp_Producer(config['queue_producer'])
 
@@ -141,6 +141,13 @@ class Client(object):
         print(message)
         print("-" * 20)
         self.init_connect_to_server(message.serialize())
+
+    def _start_consumer(self):
+        self.queue_concumer.start()
+
+    # Run the client
+    def start_queue(self):
+        self.thread.start()
 
     def start_training_thread(self):
         if not self._is_training:
