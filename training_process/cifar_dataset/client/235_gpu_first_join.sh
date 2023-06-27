@@ -17,7 +17,7 @@ if [ -f "profile.json" ]; then
 fi
 
 # Activate conda environment
-conda activate asynfed
+source activate asynfed
 
 # Run the python file
 python run_client.py --chunk_index 3

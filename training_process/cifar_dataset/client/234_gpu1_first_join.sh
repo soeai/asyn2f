@@ -17,7 +17,9 @@ if [ -f "profile.json" ]; then
 fi
 
 # Activate conda environment
-conda activate asynfed
+conda init bash
+source activate asynfed
+
 
 # Run the python file
 python run_client.py --gpu_index 0 --chunk_index 1

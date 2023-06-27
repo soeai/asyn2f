@@ -17,7 +17,7 @@ cd asynfed_5_chunks_2
 # fi
 
 # Activate conda environment
-conda activate cpu
+source activate cpu
 
 # Run the python file
 python run_client.py --chunk_index 4

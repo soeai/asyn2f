@@ -17,7 +17,7 @@ cd asynfed_5_chunks
 # fi
 
 # Activate conda environment
-conda activate asynfed
+source activate asynfed
 
 # Run the python file
 python run_client.py --gpu_index 0 --chunk_index 1
