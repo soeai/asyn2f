@@ -119,7 +119,13 @@ class Client(QueueConnector):
 
     # Run the client
     def run(self):
-        self.run_queue()
+        # create 1 thread to listen on the queue.
+        consuming_thread = threading.Thread(target=self.run_queue,
+                                            name="fedasync_server_consuming_thread")
+
+        # run the consuming thread!.
+        consuming_thread.start()
+        # self.run_queue()
 
     def setup(self):
         # declare queue
