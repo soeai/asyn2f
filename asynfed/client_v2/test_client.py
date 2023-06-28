@@ -53,7 +53,7 @@ if __name__ == '__main__':
             'queue_name': 'server_queue',
             'exchange_name': 'test_exchange',
             'exchange_type': 'topic',
-            'routing_key': 'default',
+            'routing_key': 'worker.w1',
             'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu',
         },
         'queue_producer': {
@@ -62,7 +62,7 @@ if __name__ == '__main__':
             'queue_name': 'client_queue',
             'exchange_name': 'test_exchange',
             'exchange_type': 'topic',
-            'routing_key': 'default',
+            'routing_key': 'server.w1',
             'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu',
         },
     }

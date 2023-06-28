@@ -9,8 +9,8 @@ from asynfed.client.client_storage_connector import ClientStorage
 from asynfed.commons.conf import RoutingRules
 from asynfed.commons.messages import ClientInit
 from asynfed.commons.messages.client_init_connect_to_server import SysInfo
-from asynfed.commons.utils.queue_consume import Amqp_Consumer
-from asynfed.commons.utils.queue_produce import Amqp_Producer
+from asynfed.commons.utils.queue_consumer import AmqpConsumer
+from asynfed.commons.utils.queue_producer import AmqpProducer
 
 
 LOGGER = logging.getLogger(__name__)
@@ -63,8 +63,8 @@ class Client(object):
         self.log: bool = True
         # init_config("client")
         self.thread = threading.Thread(target=self._start_consumer)
-        self.queue_concumer = Amqp_Consumer(config['queue_consumer'], self)
-        self.queue_producer = Amqp_Producer(config['queue_producer'])
+        self.queue_concumer = AmqpConsumer(config['queue_consumer'], self)
+        self.queue_producer = AmqpProducer(config['queue_producer'])
 
     def on_message_handling(ch, method, props, body):
         pass
