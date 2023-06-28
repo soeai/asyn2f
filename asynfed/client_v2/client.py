@@ -70,7 +70,6 @@ class Client(object):
         self._new_model_flag = False
         self._is_registered = False
 
-        # Config.QUEUE_NAME = self._client_identifier
         self.config['queue_consumer']['queue_name'] = "queue_" + self._client_id
 
         # if there is no profile.json file, then create a new one.
