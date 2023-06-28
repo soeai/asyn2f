@@ -1,7 +1,7 @@
 import pika, json
 
 
-class Amqp_Consumer(object):
+class AmqpConsumer(object):
     # Init an amqp client handling the connection to amqp servier
     def __init__(self, configuration: dict, host_object: object = None):
         self.host_object = host_object
@@ -30,7 +30,7 @@ class Amqp_Consumer(object):
     def on_request(self, ch, method, props, body):
         # Process the data on request: sending back to host object
         if self.host_object != None:
-            self.host_object.on_message_handling(ch, method, props, body)
+            self.host_object.on_message_received(ch, method, props, body)
         else:
             mess = json.loads(str(body.decode("utf-8")))
             print(mess)

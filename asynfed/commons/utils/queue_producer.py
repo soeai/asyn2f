@@ -1,6 +1,6 @@
 import pika, uuid
 
-class Amqp_Producer(object):
+class AmqpProducer(object):
     # Init an amqp client handling the connection to amqp servier
     def __init__(self, configuration: dict, log: bool = False):
         """
@@ -26,7 +26,7 @@ class Amqp_Producer(object):
         # Init an Exchange
         self.channel.exchange_declare(exchange=self.exchange_name, exchange_type=self.exchange_type)
 
-    def send_data(self, body_mess, corr_id=None, routing_key=None, expiration=1000):
+    def send_message(self, body_mess, corr_id=None, routing_key=None, expiration=1000):
         # Sending data to desired destination
         # if sender is client, it will include the "reply_to" attribute to specify where to reply this message
         # if sender is server, it will reply the message to "reply_to" via default exchange
