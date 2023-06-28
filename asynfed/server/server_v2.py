@@ -1,3 +1,4 @@
+import json
 import logging
 import threading
 import uuid
@@ -24,11 +25,26 @@ class Server(object):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, config, t: int = 15, test=True,
-                 training_exchange: str = "test-client-tensorflow-cifar10",
-                 bucket_name='test-client-tensorflow-cifar10') -> None:
+    def __init__(self, strategy: Strategy, config, t: int = 15, istest=True) -> None:
         # Server variables
         super().__init__()
+
+        # config structure
+        # {
+        #     "server_id": "",
+        #     "bucket_name": ""
+        #     "queue_consumer": {
+        #             'exchange_name': 'asynfl_exchange',
+        #             'exchange_type': 'topic',
+        #             'routing_key': 'server.#',
+        #             'end_point': ''},
+        #     "queue_producer": {
+        #              'exchange_name': 'asynfl_exchange',
+        #             'exchange_type': 'topic',
+        #             'routing_key': 'client.#',
+        #             'end_point': ""}
+        # }
+
         self.config = config
         self._t = t
         self._strategy = strategy
@@ -41,8 +57,8 @@ class Server(object):
         self._first_arrival = None
         self._latest_arrival = None
 
-        if test:
-            self._server_id = training_exchange
+        if istest:
+            self._server_id = self.config['server_id']
         else:
             self._server_id = f'server-{str(uuid.uuid4())}'
 
@@ -50,16 +66,15 @@ class Server(object):
         # because multiple server can use the same RabbitMQ, S3 server.
         Config.TRAINING_EXCHANGE = self._server_id
 
-        if test:
-            Config.STORAGE_BUCKET_NAME = bucket_name
-            Config.QUEUE_NAME = bucket_name
+        if self.config['bucket_name'] is not None or self.config['bucket_name'] != "":
+            Config.STORAGE_BUCKET_NAME = self.config['bucket_name']
         else:
             Config.STORAGE_BUCKET_NAME = self._server_id
-            Config.QUEUE_NAME = self._server_id
 
         init_config("server")
 
-        LOGGER.info(f' \n\nServer Info:\n\tRabbitMQ Exchange : {Config.TRAINING_EXCHANGE}'
+        LOGGER.info(f'\n\nServer Info:\n\tQueue In : {self.config["queue_consumer"]}'
+                    f'\n\tQueue Out : {self.config["queue_producer"]}'
                     f'\n\tS3 Bucket: {Config.STORAGE_BUCKET_NAME}'
                     f'\n\n')
 
@@ -75,7 +90,10 @@ class Server(object):
 
     def __notify_global_model_to_client(self, message):
         # Send notify message to client.
-        self.queue_producer.send_message(message.serialize())
+        self.queue_producer.send_message(
+                {"type": Config.SERVER_NOTIFY_MESSAGE,
+                 "content": message.serialize()}
+        )
 
         # Get the starting time of the epoch and reset vars
         self._start_time = time_now()
@@ -88,7 +106,9 @@ class Server(object):
 
     def __response_to_client_init_connect(self, message):
         # Send response message to client.
-        self.queue_producer.send_message(message.serialize())
+        self.queue_producer.send_message({
+            "type": Config.SERVER_INIT_RESPONSE,
+            "content": message.serialize()})
 
     def _start_consumer(self):
         self.queue_concumer.start()
@@ -139,11 +159,12 @@ class Server(object):
         # thread.join()
 
     def on_message_handling(self, ch, method, props, body):
-        if method.routing_key == RoutingRules.CLIENT_INIT_SEND_TO_SERVER_V2:
+        receive_msg = json.loads(bytes.decode(body))
+        if receive_msg['type'] == Config.CLIENT_INIT_MESSAGE:
             try:
                 # Get message from Client
                 client_init_message: ClientInit = ClientInit()
-                client_init_message.deserialize(body.decode())
+                client_init_message.deserialize(receive_msg['content'])
                 LOGGER.info(f"client_msg: {client_init_message.__str__()} at {threading.current_thread()}")
 
                 # check if session is in the worker_manager.get_all_worker_session
@@ -207,12 +228,12 @@ class Server(object):
                 self.__response_to_client_init_connect(response)
 
             except Exception as e:
-                error_message = ErrorMessage(error_message=e.__str__(), client_id=body.decode["client_id"])
+                error_message = ErrorMessage(error_message=e.__str__(), client_id=receive_msg['content']['client_id'])
                 self.__notify_error_to_client(error_message)
 
-        elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
+        elif receive_msg['type'] == Config.CLIENT_NOTIFY_MESSAGE:
             client_notify_message = ClientNotifyModelToServer()
-            client_notify_message.deserialize(body.decode())
+            client_notify_message.deserialize(receive_msg['content'])
 
             if self._strategy.current_version == client_notify_message.global_model_version_used:
                 if self._first_arrival is None:

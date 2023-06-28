@@ -145,5 +145,7 @@ model = Resnet18(input_features= (32, 32, 3), output_features= 10,
 # define framework
 tensorflow_framework = TensorflowFramework(model = model, epoch= Config.EPOCH, data_size= data_size, train_ds= train_ds, test_ds= test_ds, regularization='l2', delta_time= 10000, qod= 0.45)
 
-tf_client = ClientAsyncFl(model=tensorflow_framework)
+config = {}
+
+tf_client = ClientAsyncFl(model=tensorflow_framework,config=config)
 tf_client.run()

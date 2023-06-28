@@ -13,11 +13,12 @@ from asynfed.commons.conf import Config
 import os
 LOGGER = logging.getLogger(__name__)
 
+
 # This is the proposed federated asynchronous training algorithm of our paper
 # More algorithms can be found at other files in this directory 
 class ClientAsyncFl(Client):
-    def __init__(self, model: ModelWrapper):
-        super().__init__()
+    def __init__(self, model: ModelWrapper, config):
+        super().__init__(config)
         '''
         - model must be an instance of an inheritant of class ModelWrapper
         - model.train_ds: require

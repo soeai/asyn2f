@@ -8,8 +8,8 @@ import uuid
 
 class ServerStorage(AWSConnector):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
         self.iam = boto3.client('iam', aws_access_key_id=Config.STORAGE_ACCESS_KEY,
                                 aws_secret_access_key=Config.STORAGE_SECRET_KEY)
@@ -25,7 +25,6 @@ class ServerStorage(AWSConnector):
             self._s3.put_object(Bucket=Config.STORAGE_BUCKET_NAME, Key='global-models/')
         except Exception as e:
             logging.error(e)
-
 
         self.client_name = f'client-{Config.STORAGE_BUCKET_NAME}'
 

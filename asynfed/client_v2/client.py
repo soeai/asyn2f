@@ -12,7 +12,6 @@ from asynfed.commons.messages.client_init_connect_to_server import SysInfo
 from asynfed.commons.utils.queue_consumer import AmqpConsumer
 from asynfed.commons.utils.queue_producer import AmqpProducer
 
-
 LOGGER = logging.getLogger(__name__)
 
 lock = threading.Lock()
@@ -20,7 +19,23 @@ lock = threading.Lock()
 
 class Client(object):
     def __init__(self, config):
+        # config structure
+        # {
+        #     "client_id": "",
+        #     "queue_consumer": {
+        #             'exchange_name': 'asynfl_exchange',
+        #             'exchange_type': 'topic',
+        #             'routing_key': 'server.#',
+        #             'end_point': ''},
+        #     "queue_producer": {
+        #              'queue_name': 'client_queue',
+        #             'exchange_name': 'test_exchange',
+        #             'exchange_type': 'topic',
+        #             'routing_key': 'client.#',
+        #             'end_point': ""}
+        # }
         self.config = config
+
         # Dependencies
         self._global_chosen_list = None
         self._save_global_avg_qod = None
@@ -46,7 +61,10 @@ class Client(object):
         self._global_model_update_data_size = None
 
         # variables.
-        self._client_id = str(uuid.uuid4())
+        if self.config['client_id'] is None:
+            self._client_id = str(uuid.uuid4())
+        else:
+            self._client_id = self.config['client_id']
         self._is_training = False
         self._session_id = ""
         self._new_model_flag = False
@@ -64,10 +82,15 @@ class Client(object):
         self.log: bool = True
 
         init_config("client")
-        
+
         self.thread_consumer = threading.Thread(target=self._start_consumer)
         self.queue_concumer = AmqpConsumer(self.config['queue_consumer'], self)
         self.queue_producer = AmqpProducer(self.config['queue_producer'])
+
+        LOGGER.info(f'\n\nClient Id: {self._client_id}'
+                    f'\n\tQueue In : {self.config["queue_consumer"]}'
+                    f'\n\tQueue Out : {self.config["queue_producer"]}'
+                    f'\n\n')
 
     def on_download(self, result):
         if result:
@@ -81,10 +104,11 @@ class Client(object):
 
     def on_message_handling(self, ch, method, props, body):
         # If message come from routing SERVER_INIT_RESPONSE_TO_CLIENT then save the model id.
-        if method.routing_key == RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT_V2:
+        receive_msg = json.loads(bytes.decode(body))
+
+        if receive_msg['type'] == Config.SERVER_INIT_RESPONSE:
             message = ServerInitResponseToClient()
-            decoded = json.loads(bytes.decode(body))
-            message.deserialize(decoded)
+            message.deserialize(receive_msg['content'])
 
             LOGGER.info(message.__dict__)
 
@@ -132,11 +156,11 @@ class Client(object):
                     # while True:
                     #     if \
                     self._storage_connector.download(
-                    remote_file_path=self._global_model_name,
-                    local_file_path=local_path)
-                        #     break
-                        # print("Download model failed. Retry in 5 seconds.")
-                        # sleep(5)
+                        remote_file_path=self._global_model_name,
+                        local_file_path=local_path)
+                    #     break
+                    # print("Download model failed. Retry in 5 seconds.")
+                    # sleep(5)
 
                     # start 1 thread to train model.
                     self.update_profile()
@@ -144,13 +168,12 @@ class Client(object):
                     # self.start_training_thread()
 
         elif (
-                method.routing_key == RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT
+                receive_msg['tyoe'] == Config.SERVER_NOTIFY_MESSAGE
                 and self._is_registered
         ):
             # download model.
-            decoded = json.loads(bytes.decode(body))
             msg = ServerNotifyModelToClient()
-            msg.deserialize(decoded)
+            msg.deserialize(receive_msg['content'])
 
             LOGGER.info("Receive global model notify............")
             print("*" * 20)
@@ -185,10 +208,10 @@ class Client(object):
                 # while True:
                 #     if \
                 self._storage_connector.download(remote_file_path=remote_path,
-                                                        local_file_path=local_path)
-                    #     break
-                    # print("Download model failed. Retry in 5 seconds.")
-                    # sleep(5)
+                                                 local_file_path=local_path)
+                #     break
+                # print("Download model failed. Retry in 5 seconds.")
+                # sleep(5)
                 # LOGGER.info(f"Successfully downloaded new global model, version {self._global_model_version}")
 
                 # # change the flag to true.
@@ -248,10 +271,15 @@ class Client(object):
             print(e)
 
     def notify_model_to_server(self, message):
-        self.queue_producer.send_data(message, routing_key=RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER)
+        self.queue_producer.send_data(
+            {"type": Config.CLIENT_NOTIFY_MESSAGE,
+             "content": message.serialize()}
+        )
 
     def init_connect_to_server(self, message):
-        self.queue_producer.send_data(message,routing_key=RoutingRules.CLIENT_INIT_SEND_TO_SERVER)
+        self.queue_producer.send_data(
+            {"type": Config.CLIENT_INIT_MESSAGE,
+             "content": message.serialize()})
 
     def publish_init_message(self, data_size=10000, qod=0.2):
         message = ClientInit(
