@@ -32,7 +32,6 @@ class SysInfo(Message):
 class ClientInit(Message):
     def __init__(
         self,
-        client_identifier: str = "",
         session_id: str = "",
         client_id: str = "",
         sys_info: SysInfo = SysInfo(),
@@ -41,7 +40,6 @@ class ClientInit(Message):
         data_size: int = 10,
     ):
         super().__init__()
-        self.client_identifier = client_identifier
         self.session_id = session_id
         self.client_id = client_id
         self.sys_info = sys_info

@@ -17,6 +17,13 @@ class RoutingRules:
     SERVER_INIT_RESPONSE_TO_CLIENT: str = "server.init.reply"
     SERVER_NOTIFY_MODEL_TO_CLIENT: str = "server.notify.global.model.to.client"
 
+    CLIENT_INIT_SEND_TO_SERVER_V2: str = "client.init."
+    CLIENT_NOTIFY_MODEL_TO_SERVER_V2: str = "client.notify."
+
+    # at Server Queue
+    SERVER_INIT_RESPONSE_TO_CLIENT_V2: str = "server.init."
+    SERVER_NOTIFY_MODEL_TO_CLIENT_v2: str = "server.notify."
+
 
 class Config:
     """

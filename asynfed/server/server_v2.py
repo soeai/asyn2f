@@ -1,41 +1,35 @@
 import logging
+import threading
 import uuid
 from time import sleep
-from pika import BasicProperties
-from asynfed.commons.conf import RoutingRules, Config, init_config
-from asynfed.commons.messages.client_init_connect_to_server import ClientInit
-from asynfed.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
-from asynfed.commons.messages.server_init_response_to_client import ServerInitResponseToClient
-from asynfed.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
-from asynfed.commons.utils.queue_connector import QueueConnector
+
+from asynfed.commons import Config
+from asynfed.commons.conf import RoutingRules, init_config
+from asynfed.commons.messages import ServerNotifyModelToClient, ClientNotifyModelToServer, ClientInit, \
+    ServerInitResponseToClient
+from asynfed.commons.messages.error_message import ErrorMessage
+from asynfed.commons.utils.queue_consumer import AmqpConsumer
+from asynfed.commons.utils.queue_producer import AmqpProducer
 from asynfed.commons.utils.time_ultils import time_diff, time_now
-from .objects import Worker
-from .server_storage_connector import ServerStorage
-from .strategies import Strategy
-from .worker_manager import WorkerManager
-import threading
-
-from ..commons.messages.error_message import ErrorMessage
-from ..commons.utils.queue_connector_blocking import BlockingQueueConnector
-
-# from pynput import keyboard
+from asynfed.server import Strategy, WorkerManager, ServerStorage
+from asynfed.server.objects import Worker
 
 lock = threading.Lock()
 
 LOGGER = logging.getLogger(__name__)
 
-
-class Server(QueueConnector):
+class Server(object):
     """
     - This is the abstract class for server, we delegate the stop condition to be decided by user.
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, t: int = 15, test=True,
+    def __init__(self, strategy: Strategy, config, t: int = 15, test=True,
                  training_exchange: str = "test-client-tensorflow-cifar10",
                  bucket_name='test-client-tensorflow-cifar10') -> None:
         # Server variables
         super().__init__()
+        self.config = config
         self._t = t
         self._strategy = strategy
         # variables
@@ -75,9 +69,77 @@ class Server(QueueConnector):
 
         self.delete_bucket_on_exit = True
 
-    def on_message(self, channel, method, properties: BasicProperties, body):
+        self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
+        self.queue_concumer = AmqpConsumer(self.config['queue_consumer'], self)
+        self.queue_producer = AmqpProducer(self.config['queue_producer'])
 
-        if method.routing_key == RoutingRules.CLIENT_INIT_SEND_TO_SERVER:
+    def __notify_global_model_to_client(self, message):
+        # Send notify message to client.
+        self.queue_producer.send_message(message.serialize())
+
+        # Get the starting time of the epoch and reset vars
+        self._start_time = time_now()
+        self._first_arrival = None
+        self._latest_arrival = None
+
+    def __notify_error_to_client(self, message):
+        # Send notify message to client.
+        pass
+
+    def __response_to_client_init_connect(self, message):
+        # Send response message to client.
+        self.queue_producer.send_message(message.serialize())
+
+    def _start_consumer(self):
+        self.queue_concumer.start()
+
+    def start(self):
+
+        # run the consuming thread!.
+        self.thread_consumer.start()
+
+        while not self.__is_stop_condition() and not self._closing:
+            #
+            # if not thread.is_alive():
+            #     if self.delete_bucket_on_exit:
+            #         self._cloud_storage.delete_bucket()
+            #     self.stop()
+
+            with lock:
+                n_local_updates = len(self._worker_manager.get_completed_workers())
+            if n_local_updates == 0:
+                print(f'No local update found, sleep for {self._t} seconds...')
+                # Sleep for t seconds.
+                sleep(self._t)
+            # elif n_local_updates == 1:
+            #     print("Hello")
+            elif n_local_updates > 0:
+                try:
+                    print(f'Found {n_local_updates} local update(s)')
+                    print('Start update global model')
+                    # calculate self._strategy.avg_qod and self._strategy.avg_loss
+                    # and self_strategy.global_model_update_data_size
+                    # within the self.__update function
+                    # self.__update()
+                    self.__update(n_local_updates)
+                    # Clear worker queue after aggregation.
+                    # self._worker_manager.update_worker_after_training()
+                    self.__publish_global_model()
+
+
+                except Exception as e:
+                    message = ErrorMessage(str(e), None)
+                    LOGGER.info("*" * 20)
+                    LOGGER.info(e)
+                    LOGGER.info("THIS IS THE INTENDED MESSAGE")
+                    LOGGER.info("*" * 20)
+                    self.__notify_error_to_client(message)
+
+        self.stop()
+        # thread.join()
+
+    def on_message_handling(self, ch, method, props, body):
+        if method.routing_key == RoutingRules.CLIENT_INIT_SEND_TO_SERVER_V2:
             try:
                 # Get message from Client
                 client_init_message: ClientInit = ClientInit()
@@ -92,8 +154,8 @@ class Server(QueueConnector):
                     worker_id = worker.worker_id
                     session_id = client_init_message.session_id
 
-                else:
-                    worker_id = str(uuid.uuid4())
+                elif client_init_message.client_id != '' or client_init_message.client_id != None:
+                    worker_id = client_init_message.client_id
                     session_id = str(uuid.uuid4())
 
                     # Get cloud storage keys
@@ -128,7 +190,6 @@ class Server(QueueConnector):
                 model_url = self._cloud_storage.get_newest_global_model()
                 # Build response message
                 response = ServerInitResponseToClient(
-                    # client_identifier=client_init_message.client_identifier,
                     session_id=session_id,
                     client_id=worker_id,
                     model_url=model_url,
@@ -174,110 +235,6 @@ class Server(QueueConnector):
             print(f'Performance and Loss: {client_notify_message.performance}, {client_notify_message.loss_value}')
             print("*" * 20)
 
-
-
-
-    def setup(self):
-        # Declare exchange, queue, binding.
-        self._channel.exchange_declare(exchange=Config.TRAINING_EXCHANGE, exchange_type=self.EXCHANGE_TYPE)
-        self._channel.queue_declare(queue=Config.QUEUE_NAME)
-        self._channel.queue_bind(
-            Config.QUEUE_NAME,
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER
-        )
-        self._channel.queue_bind(
-            Config.QUEUE_NAME,
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.CLIENT_INIT_SEND_TO_SERVER
-        )
-
-        self._channel.queue_purge(Config.QUEUE_NAME)
-
-        self.start_consuming()
-
-    def __notify_global_model_to_client(self, message):
-        # Send notify message to client.
-        self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
-            message.serialize()
-        )
-        # Get the starting time of the epoch and reset vars
-        self._start_time = time_now()
-        self._first_arrival = None
-        self._latest_arrival = None
-
-    def __notify_error_to_client(self, message):
-        # Send notify message to client.
-        self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.SERVER_ERROR_TO_CLIENT,
-            message.serialize()
-        )
-
-    def __response_to_client_init_connect(self, message):
-        # Send response message to client.
-        self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT,
-            message.serialize()
-        )
-
-    def start(self):
-
-        # create 1 thread to listen on the queue.
-        consuming_thread = threading.Thread(target=self.run_queue,
-                                            name="fedasync_server_consuming_thread")
-
-        # run the consuming thread!.
-        consuming_thread.start()
-
-        # thread = threading.Thread(target=keyboard_thread)
-        # thread.start()
-
-        while not self.__is_stop_condition() and not self._closing:
-            #
-            # if not thread.is_alive():
-            #     if self.delete_bucket_on_exit:
-            #         self._cloud_storage.delete_bucket()
-            #     self.stop()
-
-            with lock:
-                n_local_updates = len(self._worker_manager.get_completed_workers())
-            if n_local_updates == 0:
-                print(f'No local update found, sleep for {self._t} seconds...')
-                # Sleep for t seconds.
-                sleep(self._t)
-            # elif n_local_updates == 1:
-            #     print("Hello")
-            elif n_local_updates > 0:
-                try:
-                    print(f'Found {n_local_updates} local update(s)')
-                    print('Start update global model')
-                    # calculate self._strategy.avg_qod and self._strategy.avg_loss 
-                    # and self_strategy.global_model_update_data_size
-                    # within the self.__update function
-                    # self.__update()
-                    self.__update(n_local_updates)
-                    # Clear worker queue after aggregation.
-                    # self._worker_manager.update_worker_after_training()
-                    self.__publish_global_model()
-
-
-                except Exception as e:
-                    message = ErrorMessage(str(e), None)
-                    LOGGER.info("*" * 20)
-                    LOGGER.info(e)
-                    LOGGER.info("THIS IS THE INTENDED MESSAGE")
-                    LOGGER.info("*" * 20)
-                    self.__notify_error_to_client(message)
-
-        self.stop()
-        # thread.join()
-
-    # def
-
     def __update(self, n_local_updates):
         if n_local_updates == 1:
             self._strategy.current_version += 1
@@ -311,7 +268,7 @@ class Server(QueueConnector):
             # within the self._strategy.aggregate function
             self._strategy.aggregate(self._worker_manager)
 
-        # calculate dynamic time ratial only when 
+        # calculate dynamic time ratial only when
         if None not in [self._start_time, self._first_arrival, self._latest_arrival]:
             t1 = time_diff(self._start_time, self._first_arrival)
             t2 = time_diff(self._start_time, self._latest_arrival)
@@ -346,19 +303,3 @@ class Server(QueueConnector):
         print("*" * 20)
         # Send message
         self.__notify_global_model_to_client(msg)
-
-#
-# def on_press(key):
-#     if key == keyboard.Key.esc:
-#         return False
-#
-#
-# def keyboard_thread():
-#     # Create a listener instance
-#     listener = keyboard.Listener(on_press=on_press)
-#
-#     # Start the listener
-#     listener.start()
-#
-#     # Wait for the listener to finish (blocking operation)
-#     listener.join()

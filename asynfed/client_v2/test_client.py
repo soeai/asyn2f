@@ -19,7 +19,8 @@ class AmqpClient:
 
     def on_message_received(self, ch, method, props, body):
         msg_received = eval(body.decode('utf-8'))
-        
+        print("SERVER: " + method.routing_key)
+        print("SELF: " + self.config['queue_consumer']['routing_key'])
         if msg_received['message_type'] == 'response_connection':
             print(f" [x] Client received {msg_received}")
 
@@ -50,7 +51,7 @@ if __name__ == '__main__':
         'queue_consumer': {
             'host': 'gocktdwu',
             'port': 5672,
-            'queue_name': 'server_queue',
+            'queue_name': 'server_queue1',
             'exchange_name': 'test_exchange',
             'exchange_type': 'topic',
             'routing_key': 'worker.w1',

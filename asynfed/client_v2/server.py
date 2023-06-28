@@ -20,8 +20,12 @@ class AmqpServer:
         msg_received = eval(body.decode('utf-8'))
         print(f" [x] Server received {msg_received}")
 
+        # print(ch)
+        print(method.routing_key)
+        # print(props)
+
         if msg_received['message_type'] == 'init_connection':
-            self._handle_init_connection(msg_received)
+            self._handle_init_connection(msg_received, "worker." + str(method.routing_key).split(".")[1])
             print(f" [x] Server sent {msg_received}")
 
 
@@ -33,7 +37,7 @@ class AmqpServer:
     def start_amqp(self):
         self.amqp_thread.start()
 
-    def _handle_init_connection(self, msg_received):
+    def _handle_init_connection(self, msg_received, routing_key):
         client_profile = { "client_identifier": str(uuid4()),
             "session_id": msg_received['headers']['session_id'],
             "client_id": str(uuid4()) }
@@ -49,7 +53,8 @@ class AmqpServer:
 
         content = ResponseClientConnection(client_profile, storage_info, model_info, queue_info)
         message = message_v2.MessageV2(message_type="response_connection", content=content).to_json()
-        self.amqp_producer.send_message(message, routing_key='client_consumer')
+        print("send to client with key: " + routing_key)
+        self.amqp_producer.send_message(message,routing_key=routing_key)
 
 if __name__ == '__main__':
     config = {

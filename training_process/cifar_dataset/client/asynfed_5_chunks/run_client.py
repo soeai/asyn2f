@@ -9,7 +9,7 @@ sys.path.append(root)
 # training_path = f"{root}/training_process"
 # sys.path.append(training_path)
 # asynfed lib
-from asynfed.client.algorithms.client_asyncfL import ClientAsyncFl
+from asynfed.client_v2.algorithms.client_asyncfL import ClientAsyncFl
 from asynfed.commons.conf import Config
 
 # tensorflow 

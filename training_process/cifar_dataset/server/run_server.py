@@ -5,7 +5,7 @@ sys.path.append(root)
 
 # asynfed lib
 from asynfed.commons.conf import Config
-from asynfed.server.server import Server
+from asynfed.server.server_v2 import Server
 from asynfed.server.strategies.AsynFL import AsynFL
 
 # env config
@@ -70,9 +70,10 @@ else:
 # default_testing_dataset_path = "../../data/cifar_data/test_set.pickle"
 # test_ds, _ = preprocess_dataset(default_testing_dataset_path, training = False)
 
+config = {}
 
 strategy = AsynFL()
-fedasync_server = Server(strategy, t= 40, test = True, training_exchange= training_exchange, bucket_name= bucket_name)
+fedasync_server = Server(strategy, config, t= 40, test = True, training_exchange= training_exchange, bucket_name= bucket_name)
 
 
-fedasync_server.run()
+fedasync_server.start()

@@ -46,14 +46,14 @@ class Client(QueueConnector):
         self._global_model_update_data_size = None
 
         # variables.
-        self._client_id = ""
+        self._client_id = str(uuid.uuid4())
         self._is_training = False
         self._session_id = ""
-        self._client_identifier = str(uuid.uuid4())
+        # self._client_identifier = str(uuid.uuid4())
         self._new_model_flag = False
         self._is_registered = False
 
-        Config.QUEUE_NAME = self._client_identifier
+        Config.QUEUE_NAME = "queue_" + self._client_id #self._client_identifier
 
         # if there is no profile.json file, then create a new one.
         if not os.path.exists("profile.json"):
