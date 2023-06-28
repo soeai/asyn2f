@@ -12,6 +12,7 @@ from asynfed.commons.messages.client_init_connect_to_server import SysInfo
 from asynfed.commons.utils.queue_consume import Amqp_Consumer
 from asynfed.commons.utils.queue_produce import Amqp_Producer
 
+
 LOGGER = logging.getLogger(__name__)
 
 lock = threading.Lock()

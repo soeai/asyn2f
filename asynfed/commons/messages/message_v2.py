@@ -30,7 +30,6 @@ class MessageV2:
     @classmethod
     def from_json(cls, json_str):
         to_dict = json.loads(json_str)
-        print(to_dict)
         return cls(**to_dict)
 
 

@@ -5,7 +5,8 @@ sys.path.append(project_dir)
 
 from threading import Thread
 from asynfed.commons.utils import queue_consumer, queue_producer
-from asynfed.commons.messages import message_v2, init_connection
+from asynfed.commons.messages import message_v2
+from asynfed.client_v2.messages import init_connection
 
 
 class AmqpClient:

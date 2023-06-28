@@ -5,9 +5,8 @@ sys.path.append(project_dir)
 from uuid import uuid4
 from asynfed.commons.messages.response_client_connection import ResponseClientConnection
 from threading import Thread
-from asynfed.commons.messages.server_init_response_to_client import ServerInitResponseToClient
 from asynfed.commons.utils import queue_consumer, queue_producer
-from asynfed.commons.messages import message_v2, init_connection
+from asynfed.commons.messages import message_v2
 
 
 class AmqpServer:
@@ -19,16 +18,11 @@ class AmqpServer:
 
     def on_message_received(self, ch, method, props, body):
         msg_received = eval(body.decode('utf-8'))
+        print(f" [x] Server received {msg_received}")
 
         if msg_received['message_type'] == 'init_connection':
-            print(f" [x] Server received {msg_received}")
-            # self._handle_init_connection(msg_received)
-            content = init_connection.InitConnection()
-            message = message_v2.MessageV2(
-                message_type='response_connection',
-                content=content
-            ).to_json()
-            self.amqp_producer.send_message(message, routing_key='client_consumer')
+            self._handle_init_connection(msg_received)
+            print(f" [x] Server sent {msg_received}")
 
 
 
@@ -39,7 +33,7 @@ class AmqpServer:
     def start_amqp(self):
         self.amqp_thread.start()
 
-    def _handle_init_connection(self, msg_received, correlation_id):
+    def _handle_init_connection(self, msg_received):
         client_profile = { "client_identifier": str(uuid4()),
             "session_id": msg_received['headers']['session_id'],
             "client_id": str(uuid4()) }
@@ -54,8 +48,8 @@ class AmqpServer:
                 'training_exchange': 'training_exchange', }
 
         content = ResponseClientConnection(client_profile, storage_info, model_info, queue_info)
-        message = message_v2.MessageV2(message_type="reply_init_connection", content=content).to_json()
-        self.amqp_producer.send_message(message, corr_id=correlation_id)
+        message = message_v2.MessageV2(message_type="response_connection", content=content).to_json()
+        self.amqp_producer.send_message(message, routing_key='client_consumer')
 
 if __name__ == '__main__':
     config = {
