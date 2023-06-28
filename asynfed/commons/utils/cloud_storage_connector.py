@@ -12,8 +12,6 @@ class AWSConnector(ABC):
     """Class for connecting to AWS S3"""
     time_sleep = 10
     def __init__(self, parent=None) -> None:
-
-        print(Config.__dict__)
         if "" in [Config.STORAGE_ACCESS_KEY, Config.STORAGE_SECRET_KEY, Config.STORAGE_BUCKET_NAME,
                   Config.STORAGE_REGION_NAME]:
             raise Exception("Storage connector config is not enough, check again.")

@@ -6,7 +6,7 @@ import pickle
 from asynfed.commons.conf import Config
 from asynfed.commons.messages import ClientNotifyModelToServer
 
-from ..client import Client
+from asynfed.client_v2.client import Client
 from ..ModelWrapper import ModelWrapper
 from asynfed.commons.conf import Config
 

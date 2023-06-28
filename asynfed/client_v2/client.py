@@ -1,3 +1,6 @@
+import os, sys
+root = os.path.dirname(os.path.dirname(os.getcwd()))
+sys.path.append(root)
 import json
 import logging
 import os
@@ -6,8 +9,9 @@ import uuid
 from time import sleep
 from abc import abstractmethod
 from asynfed.client.client_storage_connector import ClientStorage
+from asynfed.client_v2.messages import init_connection
 from asynfed.commons.conf import RoutingRules, Config, init_config
-from asynfed.commons.messages import ClientInit, ServerNotifyModelToClient, ServerInitResponseToClient
+from asynfed.commons.messages import ClientInit, ServerNotifyModelToClient, ServerInitResponseToClient, message_v2
 from asynfed.commons.messages.client_init_connect_to_server import SysInfo
 from asynfed.commons.utils.queue_consumer import AmqpConsumer
 from asynfed.commons.utils.queue_producer import AmqpProducer
@@ -18,22 +22,26 @@ lock = threading.Lock()
 
 
 class Client(object):
+    """
+    params structure:
+        config: {
+            "client_id": "",
+            "queue_consumer": {
+                'exchange_name': 'asynfl_exchange',
+                'exchange_type': 'topic',
+                'routing_key': 'server.#',
+                'end_point': ''
+            },
+            "queue_producer": {
+                'queue_name': 'client_queue',
+                'exchange_name': 'test_exchange',
+                'exchange_type': 'topic',
+                'routing_key': 'client.#',
+                'end_point': ""
+            }
+        }
+    """
     def __init__(self, config):
-        # config structure
-        # {
-        #     "client_id": "",
-        #     "queue_consumer": {
-        #             'exchange_name': 'asynfl_exchange',
-        #             'exchange_type': 'topic',
-        #             'routing_key': 'server.#',
-        #             'end_point': ''},
-        #     "queue_producer": {
-        #              'queue_name': 'client_queue',
-        #             'exchange_name': 'test_exchange',
-        #             'exchange_type': 'topic',
-        #             'routing_key': 'client.#',
-        #             'end_point': ""}
-        # }
         self.config = config
 
         # Dependencies
@@ -72,24 +80,28 @@ class Client(object):
 
         self.config['queue_consumer']['queue_name'] = "queue_" + self._client_id
 
-        # if there is no profile.json file, then create a new one.
-        if not os.path.exists("profile.json"):
-            self.create_profile()
-        else:
-            self.load_profile()
-
-        self.log: bool = True
+        # Initialize profile for client
+        # if not os.path.exists("profile.json"):
+        #     self.create_profile()
+        # else:
+        #     self.load_profile()
+        #
+        # self.log: bool = True
 
         init_config("client")
 
         self.thread_consumer = threading.Thread(target=self._start_consumer)
-        self.queue_concumer = AmqpConsumer(self.config['queue_consumer'], self)
+        self.queue_consumer = AmqpConsumer(self.config['queue_consumer'], self)
         self.queue_producer = AmqpProducer(self.config['queue_producer'])
 
         LOGGER.info(f'\n\nClient Id: {self._client_id}'
                     f'\n\tQueue In : {self.config["queue_consumer"]}'
                     f'\n\tQueue Out : {self.config["queue_producer"]}'
                     f'\n\n')
+
+        self._send_init_message()
+
+
 
     def on_download(self, result):
         if result:
@@ -101,15 +113,15 @@ class Client(object):
     def on_upload(self, result):
         pass
 
-    def on_message_handling(self, ch, method, props, body):
+    def on_message_received(self, ch, method, props, body):
         # If message come from routing SERVER_INIT_RESPONSE_TO_CLIENT then save the model id.
-        receive_msg = json.loads(bytes.decode(body))
+        msg_received = eval(body.decode('utf-8'))
+        if msg_received['message_type'] == Config.SERVER_INIT_RESPONSE:
+            print("Received message from server: ", msg_received)
+            return
+            # message = ServerInitResponseToClient()
+            # message.deserialize(receive_msg['content'])
 
-        if receive_msg['type'] == Config.SERVER_INIT_RESPONSE:
-            message = ServerInitResponseToClient()
-            message.deserialize(receive_msg['content'])
-
-            LOGGER.info(message.__dict__)
 
             # Get only the message that server reply to it base on the session_id
             if self._client_id == message.client_id:
@@ -166,10 +178,7 @@ class Client(object):
                     self.train()
                     # self.start_training_thread()
 
-        elif (
-                receive_msg['tyoe'] == Config.SERVER_NOTIFY_MESSAGE
-                and self._is_registered
-        ):
+        elif (msg_received['message_type'] == Config.SERVER_NOTIFY_MESSAGE and self._is_registered):
             # download model.
             msg = ServerNotifyModelToClient()
             msg.deserialize(receive_msg['content'])
@@ -275,10 +284,16 @@ class Client(object):
              "content": message.serialize()}
         )
 
-    def init_connect_to_server(self, message):
-        self.queue_producer.send_data(
-            {"type": Config.CLIENT_INIT_MESSAGE,
-             "content": message.serialize()})
+    def _send_init_message(self):
+        content = init_connection.InitConnection()
+        message = message_v2.MessageV2(
+            message_type=Config.CLIENT_INIT_MESSAGE,
+            headers={'session_id': self._session_id, 'client_id': self._client_id},
+            content=content
+        ).to_json()
+        self.queue_producer.send_data(message)
+        print(f" [x] Client sent {message}")
+        
 
     def publish_init_message(self, data_size=10000, qod=0.2):
         message = ClientInit(
@@ -295,7 +310,7 @@ class Client(object):
         self.init_connect_to_server(message.serialize())
 
     def _start_consumer(self):
-        self.queue_concumer.start()
+        self.queue_consumer.start()
 
     # Run the client
     def start(self):
@@ -310,3 +325,29 @@ class Client(object):
     #
     #         self._is_training = True
     #         training_thread.start()
+
+
+if __name__ == '__main__':
+
+    config = {
+        "client_id": "001",
+        "queue_consumer": {
+            'exchange_name': 'asynfl_exchange',
+            'exchange_type': 'topic',
+            'queue_name': 'server_queue',
+            'routing_key': 'client.#',
+            'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
+        },
+        "queue_producer": {
+            'exchange_name': 'asynfl_exchange',
+            'exchange_type': 'topic',
+            'queue_name': 'server_consumer',
+            'routing_key': 'server.#',
+            'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
+        }
+    }
+    class NewClient(Client):
+        def train(self):
+            pass
+    client = NewClient(config)
+    client.start()
