@@ -1,4 +1,5 @@
 import os, sys
+import re
 root = os.path.dirname(os.path.dirname(os.getcwd()))
 sys.path.append(root)
 
@@ -79,7 +80,6 @@ class Server(object):
         else:
             Config.STORAGE_BUCKET_NAME = self._server_id
         Config.STORAGE_BUCKET_NAME = "hellothisisnewbucket2"
-        print(self._server_id)
         #
         # init_config("server")
 
@@ -170,7 +170,7 @@ class Server(object):
         # # thread.join()
         #
     def on_message_received(self, ch, method, props, body):
-        msg_received = eval(body.decode('utf-8'))
+        msg_received = MessageV2.serialize(body.decode('utf-8'))
         if msg_received['message_type'] == Config.CLIENT_INIT_MESSAGE:
             self._response_connection(msg_received)
             return
@@ -273,8 +273,8 @@ class Server(object):
         client_id = msg_received['headers']['client_id']
         session_id = msg_received['headers']['session_id']
         content = msg_received['content']
-
-        access_key, secret_key = self._cloud_storage.get_client_key(client_id)
+        with lock:
+            access_key, secret_key = self._cloud_storage.get_client_key(client_id)
         worker = Worker(
             session_id=session_id,
             worker_id=client_id,
@@ -305,18 +305,21 @@ class Server(object):
 
         model_info = {
             "model_url": model_url,
-            "global_model_name": "",
+            "global_model_name": model_url.split("/")[1],
+            # use regex to get model version base on the global_model_name, e.g. "model_v1" -> "1"
+            "model_version": re.findall(r'\d+', model_url.split("/")[1])[0]
         }
         aws_info = {
             "access_key": access_key,
             "secret_key": secret_key,
-            "region_name": "asia-southeast-2",
+            "bucket_name": Config.STORAGE_BUCKET_NAME,
+            "region_name": Config.STORAGE_REGION_NAME,
         }
         queue_info = {
             "training_exchange": "",
             "monitor_queue": "",
         }
-        content = response_connection.ResponseConnection(model_info, aws_info, queue_info)
+        content = response_connection.ResponseConnection(model_info, aws_info, queue_info, reconnect=False)
         message = MessageV2(Config.SERVER_INIT_RESPONSE, content).to_json()
         self.queue_producer.send_data(message)
 

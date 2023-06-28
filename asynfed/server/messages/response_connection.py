@@ -15,7 +15,8 @@ class ResponseConnection:
             monitor_queue: "",
         }
     """
-    def __init__(self, model_info: dict, aws_info: dict, queue_info: dict):
+    def __init__(self, model_info: dict, aws_info: dict, queue_info: dict, reconnect: bool):
         self.model_info = model_info
         self.aws_info = aws_info
         self.queue_info = queue_info
+        self.reconnect = reconnect

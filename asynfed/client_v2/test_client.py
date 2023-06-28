@@ -18,7 +18,7 @@ class AmqpClient:
         self.amqp_thread = Thread(target=self.start)
 
     def on_message_received(self, ch, method, props, body):
-        msg_received = eval(body.decode('utf-8'))
+        msg_received = message_v2.MessageV2.serialize(body.decode('utf-8'))
         print("SERVER: " + method.routing_key)
         print("SELF: " + self.config['queue_consumer']['routing_key'])
         if msg_received['message_type'] == 'response_connection':
