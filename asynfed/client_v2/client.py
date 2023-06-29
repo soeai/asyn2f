@@ -137,7 +137,7 @@ class Client(object):
                 Config.STORAGE_BUCKET_NAME = message.bucket_name
                 Config.MONITOR_QUEUE = message.monitor_queue
 
-                self._storage_connector = ClientStorage(self)
+                self._storage_connector = ClientStorage()
 
                 LOGGER.info(
                     f"Init connection to the server successfully | access_key: {message.access_key} | secret_key: {message.secret_key} | model_url: {message.model_url}"
