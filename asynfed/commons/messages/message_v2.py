@@ -28,8 +28,16 @@ class MessageV2:
         return json.dumps(to_dict)
 
     @classmethod
-    def from_json(cls, json_str):
-        to_dict = json.loads(json_str)
-        return cls(**to_dict)
+    def serialize(cls, dict_str):
+        if ': false' in dict_str:
+            dict_str = dict_str.replace(': false', ': False')
+        if ': true' in dict_str:
+            dict_str = dict_str.replace(': true', ': True')
+        return eval(dict_str)
 
 
+if __name__ == '__main__':
+    temp_str = "{'asd': 'asdasd', '123': 44, 'bool': false}"
+    msg = MessageV2.serialize(temp_str)
+    print(msg)
+    print(type(msg))

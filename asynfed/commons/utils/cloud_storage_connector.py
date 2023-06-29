@@ -3,25 +3,22 @@ import logging
 import boto3
 from time import sleep
 
-from asynfed.commons.conf import Config
-
 logging.getLogger(__name__)
 
 
 class AWSConnector(ABC):
     """Class for connecting to AWS S3"""
     time_sleep = 10
-    def __init__(self, parent=None) -> None:
-
-        print(Config.__dict__)
-        if "" in [Config.STORAGE_ACCESS_KEY, Config.STORAGE_SECRET_KEY, Config.STORAGE_BUCKET_NAME,
-                  Config.STORAGE_REGION_NAME]:
-            raise Exception("Storage connector config is not enough, check again.")
-
+    def __init__(self, access_key, secret_key, bucket_name, region_name, parent=None) -> None:
         self.parent_thread = parent
-        self._s3 = boto3.client('s3', aws_access_key_id=Config.STORAGE_ACCESS_KEY,
-                                aws_secret_access_key=Config.STORAGE_SECRET_KEY,
-                                region_name=Config.STORAGE_REGION_NAME)
+        self.access_key = access_key
+        self.secret_key = secret_key
+        self.bucket_name = bucket_name
+        self.region_name = region_name
+        # self._s3 = boto3.client('s3', aws_access_key_id=access_key,
+        #                         aws_secret_access_key=secret_key,
+        #                         region_name=region_name)
+        self._s3 = boto3.Session().client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region_name) 
         logging.info(f'Connected to AWS server')
 
     def upload(self, local_file_path: str, remote_file_path: str, try_time=5):
@@ -30,7 +27,7 @@ class AWSConnector(ABC):
         if self.parent_thread is None:
             try:
                 logging.info(f'Uploading {local_file_path} to {remote_file_path}...')
-                self._s3.upload_file(local_file_path, Config.STORAGE_BUCKET_NAME, remote_file_path)
+                self._s3.upload_file(local_file_path, self.bucket_name, remote_file_path)
                 logging.info(f'Successfully uploaded {local_file_path} to {remote_file_path}')
                 return True
             except Exception as e:
@@ -41,7 +38,7 @@ class AWSConnector(ABC):
             while t < try_time:
                 try:
                     logging.info(f'Uploading {local_file_path} to {remote_file_path}...')
-                    self._s3.upload_file(local_file_path, Config.STORAGE_BUCKET_NAME, remote_file_path)
+                    self._s3.upload_file(local_file_path, self.bucket_name, remote_file_path)
                     logging.info(f'Successfully uploaded {local_file_path} to {remote_file_path}')
                     self.parent_thread.on_upload(True)
                     break
@@ -57,23 +54,26 @@ class AWSConnector(ABC):
         if self.parent_thread is None:
             try:
                 logging.info(f'Saving {remote_file_path} to {local_file_path}...')
-                self._s3.download_file(Config.STORAGE_BUCKET_NAME, remote_file_path, local_file_path)
+                self._s3.download_file(self.bucket_name, remote_file_path, local_file_path)
                 logging.info(f'Saved {remote_file_path} to {local_file_path}')
                 return True
             except Exception as e:
-                logging.error(e)
+                print('asdasd')
+                raise e
                 return False
         else: # call asynchronously
+            result = False
             t = 1
             while t < try_time:
                 try:
                     logging.info(f'Saving {remote_file_path} to {local_file_path}...')
-                    self._s3.download_file(Config.STORAGE_BUCKET_NAME, remote_file_path, local_file_path)
+                    self._s3.download_file(self.bucket_name, remote_file_path, local_file_path)
                     logging.info(f'Saved {remote_file_path} to {local_file_path}')
-                    self.parent_thread.on_download(True)
+                    result = True
                     break
                 except Exception as e:
+                    raise e
                     logging.error(e)
                     sleep(AWSConnector.time_sleep)
                     t += 1
-            self.parent_thread.on_download(False)
+            self.parent_thread.on_download(result)

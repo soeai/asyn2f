@@ -1,3 +1,8 @@
+import os, sys
+import re
+root = os.path.dirname(os.path.dirname(os.getcwd()))
+sys.path.append(root)
+
 import json
 import logging
 import threading
@@ -9,11 +14,15 @@ from asynfed.commons.conf import RoutingRules, init_config
 from asynfed.commons.messages import ServerNotifyModelToClient, ClientNotifyModelToServer, ClientInit, \
     ServerInitResponseToClient
 from asynfed.commons.messages.error_message import ErrorMessage
+from asynfed.commons.messages.message_v2 import MessageV2
 from asynfed.commons.utils.queue_consumer import AmqpConsumer
 from asynfed.commons.utils.queue_producer import AmqpProducer
 from asynfed.commons.utils.time_ultils import time_diff, time_now
 from asynfed.server import Strategy, WorkerManager, ServerStorage
 from asynfed.server.objects import Worker
+from asynfed.server.strategies import AsynFL
+from asynfed.server.messages import response_connection
+
 
 lock = threading.Lock()
 
@@ -70,8 +79,9 @@ class Server(object):
             Config.STORAGE_BUCKET_NAME = self.config['bucket_name']
         else:
             Config.STORAGE_BUCKET_NAME = self._server_id
-
-        init_config("server")
+        Config.STORAGE_BUCKET_NAME = "hellothisisnewbucket2"
+        #
+        # init_config("server")
 
         LOGGER.info(f'\n\nServer Info:\n\tQueue In : {self.config["queue_consumer"]}'
                     f'\n\tQueue Out : {self.config["queue_producer"]}'
@@ -80,13 +90,14 @@ class Server(object):
 
         # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
-        self._cloud_storage: ServerStorage = ServerStorage()
-
-        self.delete_bucket_on_exit = True
-
+        self._cloud_storage: ServerStorage = ServerStorage(self)
+        #
+        # self.delete_bucket_on_exit = True
+        #
         self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
         self.queue_concumer = AmqpConsumer(self.config['queue_consumer'], self)
         self.queue_producer = AmqpProducer(self.config['queue_producer'])
+        print('Queue ready!')
 
     def __notify_global_model_to_client(self, message):
         # Send notify message to client.
@@ -117,55 +128,57 @@ class Server(object):
 
         # run the consuming thread!.
         self.thread_consumer.start()
-
-        while not self.__is_stop_condition() and not self._closing:
-            #
-            # if not thread.is_alive():
-            #     if self.delete_bucket_on_exit:
-            #         self._cloud_storage.delete_bucket()
-            #     self.stop()
-
-            with lock:
-                n_local_updates = len(self._worker_manager.get_completed_workers())
-            if n_local_updates == 0:
-                print(f'No local update found, sleep for {self._t} seconds...')
-                # Sleep for t seconds.
-                sleep(self._t)
-            # elif n_local_updates == 1:
-            #     print("Hello")
-            elif n_local_updates > 0:
-                try:
-                    print(f'Found {n_local_updates} local update(s)')
-                    print('Start update global model')
-                    # calculate self._strategy.avg_qod and self._strategy.avg_loss
-                    # and self_strategy.global_model_update_data_size
-                    # within the self.__update function
-                    # self.__update()
-                    self.__update(n_local_updates)
-                    # Clear worker queue after aggregation.
-                    # self._worker_manager.update_worker_after_training()
-                    self.__publish_global_model()
-
-
-                except Exception as e:
-                    message = ErrorMessage(str(e), None)
-                    LOGGER.info("*" * 20)
-                    LOGGER.info(e)
-                    LOGGER.info("THIS IS THE INTENDED MESSAGE")
-                    LOGGER.info("*" * 20)
-                    self.__notify_error_to_client(message)
-
-        self.stop()
-        # thread.join()
-
-    def on_message_handling(self, ch, method, props, body):
-        receive_msg = json.loads(bytes.decode(body))
-        if receive_msg['type'] == Config.CLIENT_INIT_MESSAGE:
+        #
+        # while not self.__is_stop_condition():
+        #     #
+        #     # if not thread.is_alive():
+        #     #     if self.delete_bucket_on_exit:
+        #     #         self._cloud_storage.delete_bucket()
+        #     #     self.stop()
+        #
+        #     with lock:
+        #         n_local_updates = len(self._worker_manager.get_completed_workers())
+        #     if n_local_updates == 0:
+        #         print(f'No local update found, sleep for {self._t} seconds...')
+        #         # Sleep for t seconds.
+        #         sleep(self._t)
+        #     # elif n_local_updates == 1:
+        #     #     print("Hello")
+        #     elif n_local_updates > 0:
+        #         try:
+        #             print(f'Found {n_local_updates} local update(s)')
+        #             print('Start update global model')
+        #             # calculate self._strategy.avg_qod and self._strategy.avg_loss
+        #             # and self_strategy.global_model_update_data_size
+        #             # within the self.__update function
+        #             # self.__update()
+        #             self.__update(n_local_updates)
+        #             # Clear worker queue after aggregation.
+        #             # self._worker_manager.update_worker_after_training()
+        #             self.__publish_global_model()
+        #
+        #
+        #         except Exception as e:
+        #             message = ErrorMessage(str(e), None)
+        #             LOGGER.info("*" * 20)
+        #             LOGGER.info(e)
+        #             LOGGER.info("THIS IS THE INTENDED MESSAGE")
+        #             LOGGER.info("*" * 20)
+        #             self.__notify_error_to_client(message)
+        #
+        # self.stop()
+        # # thread.join()
+        #
+    def on_message_received(self, ch, method, props, body):
+        msg_received = MessageV2.serialize(body.decode('utf-8'))
+        if msg_received['message_type'] == Config.CLIENT_INIT_MESSAGE:
+            self._response_connection(msg_received)
+            return
             try:
-                # Get message from Client
-                client_init_message: ClientInit = ClientInit()
-                client_init_message.deserialize(receive_msg['content'])
-                LOGGER.info(f"client_msg: {client_init_message.__str__()} at {threading.current_thread()}")
+                # # Get message from Client
+                # client_init_message: ClientInit = ClientInit()
+                # client_init_message.deserialize(receive_msg['content'])
+                # LOGGER.info(f"client_msg: {client_init_message.__str__()} at {threading.current_thread()}")
 
                 # check if session is in the worker_manager.get_all_worker_session
                 if client_init_message.session_id in self._worker_manager.list_all_worker_session_id() and client_init_message.client_id != '':
@@ -256,6 +269,61 @@ class Server(object):
             print(f'Performance and Loss: {client_notify_message.performance}, {client_notify_message.loss_value}')
             print("*" * 20)
 
+    def _response_connection(self, msg_received):
+        client_id = msg_received['headers']['client_id']
+        session_id = msg_received['headers']['session_id']
+        content = msg_received['content']
+        with lock:
+            access_key, secret_key = self._cloud_storage.get_client_key(client_id)
+        worker = Worker(
+            session_id=session_id,
+            worker_id=client_id,
+            sys_info=content['system_info'],
+            data_size=content['data_description']['data_size'],
+            qod=content['data_description']['qod'],
+        )
+        with lock:
+            worker.access_key_id = access_key
+            worker.secret_key_id = secret_key
+            self._worker_manager.add_worker(worker)
+
+
+        try:
+            model_name = self._cloud_storage.get_newest_global_model().split('.')[0]
+            model_version = model_name.split('_')[1][1:]
+
+        except Exception as e:
+            model_version = -1
+
+        try:
+            self._strategy.current_version = int(model_version)
+        except Exception as e:
+            logging.error(e)
+            self._strategy.current_version = 0
+
+        model_url = self._cloud_storage.get_newest_global_model()
+
+        model_info = {
+            "model_url": model_url,
+            "global_model_name": model_url.split("/")[-1],
+            # use regex to get model version base on the global_model_name, e.g. "model_v1" -> "1"
+            "model_version": int(re.findall(r'\d+', model_url.split("/")[1])[0])
+        }
+        aws_info = {
+            "access_key": access_key,
+            "secret_key": secret_key,
+            "bucket_name": Config.STORAGE_BUCKET_NAME,
+            "region_name": Config.STORAGE_REGION_NAME,
+        }
+        queue_info = {
+            "training_exchange": "",
+            "monitor_queue": "",
+        }
+        content = response_connection.ResponseConnection(model_info, aws_info, queue_info, reconnect=False)
+        message = MessageV2(Config.SERVER_INIT_RESPONSE, content).to_json()
+        self.queue_producer.send_data(message)
+
+
     def __update(self, n_local_updates):
         if n_local_updates == 1:
             self._strategy.current_version += 1
@@ -324,3 +392,33 @@ class Server(object):
         print("*" * 20)
         # Send message
         self.__notify_global_model_to_client(msg)
+
+
+if __name__ == '__main__':
+    import dotenv
+    dotenv.load_dotenv()
+
+    conf = {
+        "server_id": "test_server_id",
+        "bucket_name": "test_bucket",
+        "queue_consumer": {
+            'exchange_name': 'asynfl_exchange',
+            'exchange_type': 'topic',
+            'queue_name': 'server_consumer',
+            'routing_key': 'server.#',
+            'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
+        },
+        "queue_producer": {
+            'exchange_name': 'asynfl_exchange',
+            'exchange_type': 'topic',
+            'queue_name': 'server_queue',
+            'routing_key': 'client.#',
+            'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
+        }
+    }
+    Config.STORAGE_ACCESS_KEY = os.getenv("access_key")
+    Config.STORAGE_SECRET_KEY = os.getenv("secret_key")
+
+    strat = AsynFL()
+    server = Server(strat, conf)
+    server.start()
