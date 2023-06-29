@@ -81,7 +81,7 @@ class Server(object):
             Config.STORAGE_BUCKET_NAME = self._server_id
         Config.STORAGE_BUCKET_NAME = "hellothisisnewbucket2"
         #
-        # init_config("server")
+        init_config("server")
 
         LOGGER.info(f'\n\nServer Info:\n\tQueue In : {self.config["queue_consumer"]}'
                     f'\n\tQueue Out : {self.config["queue_producer"]}'
@@ -90,7 +90,7 @@ class Server(object):
 
         # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
-        self._cloud_storage: ServerStorage = ServerStorage()
+        self._cloud_storage: ServerStorage = ServerStorage(self)
         #
         # self.delete_bucket_on_exit = True
         #

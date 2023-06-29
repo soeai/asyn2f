@@ -15,11 +15,12 @@ from asynfed.commons.messages import message_v2
 from asynfed.commons.messages.client_init_connect_to_server import SysInfo
 from asynfed.commons.utils.queue_consumer import AmqpConsumer
 from asynfed.commons.utils.queue_producer import AmqpProducer
+import concurrent.futures
 
 LOGGER = logging.getLogger(__name__)
 
 lock = threading.Lock()
-
+thread_pool_ref = concurrent.futures.ThreadPoolExecutor
 
 class Client(object):
     def __init__(self, config):
@@ -60,7 +61,6 @@ class Client(object):
         self._global_model_version = None
 
         self._global_model_name = None
-        self._storage_connector = None
 
         self._local_epoch = 0
         # merging process
@@ -89,14 +89,8 @@ class Client(object):
         # self.log: bool = True
 
         init_config("client")
-        # self.aws_content = {
-        #     'aws_info': {
-        #         'access_key': 'AKIA2AGLYGAA5AREZHKM',
-        #         'secret_key': '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',
-        #         'bucket_name': 'hellothisisnewbucket2',
-        #         'region_name': 'ap-southeast-2',
-        #     }
-        # }
+        self._storage_connector = None
+
         self.thread_consumer = threading.Thread(target=self._start_consumer)
         self.queue_consumer = AmqpConsumer(self.config['queue_consumer'], self)
         self.queue_producer = AmqpProducer(self.config['queue_producer'])
@@ -107,8 +101,6 @@ class Client(object):
                     f'\n\n')
 
         self._send_init_message()
-
-
 
     def on_download(self, result):
         if result:
@@ -134,6 +126,7 @@ class Client(object):
                                                     content['aws_info']['secret_key'],
                                                     content['aws_info']['bucket_name'],
                                                     content['aws_info']['region_name'], self)
+            self.aws_content = content
             LOGGER.info(f"Reconnected!") if msg_received['content']['reconnect'] else LOGGER.info(f"Connected!")
             self._is_connected = True
 
@@ -205,12 +198,6 @@ class Client(object):
 
                 # # change the flag to true.
                 # self._new_model_flag = True
-
-    def _start_aws(self, content):
-        self._storage_connector = ClientStorage(content['aws_info']['access_key'],
-                                                content['aws_info']['secret_key'],
-                                                content['aws_info']['bucket_name'],
-                                                content['aws_info']['region_name'], self)
 
 
     @abstractmethod
