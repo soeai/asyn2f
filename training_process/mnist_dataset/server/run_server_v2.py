@@ -15,7 +15,7 @@ from asynfed.commons.conf import Config
 
 conf = {
     "server_id": "test_server_id",
-    "bucket_name": "test_bucket",
+    "bucket_name": "hellothisisnewbucket2",
     "queue_consumer": {
         'exchange_name': 'asynfl_exchange',
         'exchange_type': 'topic',

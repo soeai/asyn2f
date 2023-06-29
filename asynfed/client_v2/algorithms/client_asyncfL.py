@@ -206,11 +206,11 @@ class ClientAsyncFl(Client):
 
             # Only when the local model is save, local epoch is updated
             self._local_epoch += 1
-            sleep(20)
 
             # Upload the weight to the storage (the remote server)
             remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
             while True:
+                print(save_location, remote_file_path)
                 if self._storage_connector.upload(save_location, remote_file_path) is True:
                     # After training, notify new model to the server.
                     message = MessageV2(
@@ -221,24 +221,6 @@ class ClientAsyncFl(Client):
                                                 loss=self._train_loss,
                                                 performance= self._train_acc)).to_json()
                     self.queue_producer.send_data(message)
-
-                    # message = ClientNotifyModelToServer(
-                    #     client_id=self._client_id,
-                    #     timestamp=datetime.now().timestamp(),
-                    #     model_id=filename,
-                    #     weight_file=remote_file_path,
-                    #     # global_model_version_used=self._current_local_version,
-                    #     global_model_version_used=self._global_model_version,
-                    #     performance= self._train_acc,
-                    #     loss_value= self._train_loss,
-                    # )
-
-                    print("*" * 20)
-                    print("Client Notify Model to Server")
-                    print(message)
-                    print("*" * 20)
-                    # self.notify_model_to_server(message.serialize())
-                    LOGGER.info("ClientModel End Training, notify new model to server.")
                     # self.update_profile()
                     break
 

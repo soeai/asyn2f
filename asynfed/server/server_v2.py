@@ -1,10 +1,10 @@
 import os, sys
 import re
 
-from asynfed.server.messages.notify_new_model import NotifyNewModel
 root = os.path.dirname(os.path.dirname(os.getcwd()))
 sys.path.append(root)
 
+from asynfed.server.messages.notify_new_model import NotifyNewModel
 import json
 import logging
 import threading
@@ -151,12 +151,13 @@ class Server(object):
 
 
                 except Exception as e:
-                    message = ErrorMessage(str(e), None)
-                    LOGGER.info("*" * 20)
-                    LOGGER.info(e)
-                    LOGGER.info("THIS IS THE INTENDED MESSAGE")
-                    LOGGER.info("*" * 20)
-                    self.__notify_error_to_client(message)
+                    raise e
+                    # message = ErrorMessage(str(e), None)
+                    # LOGGER.info("*" * 20)
+                    # LOGGER.info(e)
+                    # LOGGER.info("THIS IS THE INTENDED MESSAGE")
+                    # LOGGER.info("*" * 20)
+                    # self.__notify_error_to_client(message)
 
     def on_message_received(self, ch, method, props, body):
         msg_received = MessageV2.serialize(body.decode('utf-8'))

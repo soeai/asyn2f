@@ -121,6 +121,7 @@ class Client(object):
     def on_message_received(self, ch, method, props, body):
         msg_received = message_v2.MessageV2.serialize(body.decode('utf-8'))
         content = msg_received['content']
+        print(msg_received['headers']['message_type'], self._is_connected)
 
         # IF message come from SERVER_INIT_RESPONSE_TO_CLIENT
         if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE:
@@ -141,32 +142,28 @@ class Client(object):
                 self._storage_connector.download(remote_file_path=content['model_info']['model_url'], 
                                                  local_file_path=local_path)
 
-                # start 1 thread to train model.
                 # self.update_profile()
-                self.train()
-                # self.start_training_thread()
+                # self.train()
+                self.start_training_thread()
 
-        elif (msg_received['message_type'] == Config.SERVER_NOTIFY_MESSAGE and self._is_connected):
+        elif msg_received['headers']['message_type'] == Config.SERVER_NOTIFY_MESSAGE and self._is_connected:
             # download model.
-            msg = ServerNotifyModelToClient()
-            msg.deserialize(receive_msg['content'])
 
-            LOGGER.info("Receive global model notify............")
             print("*" * 20)
-            print(msg)
+            print('SERVER NOTIFY MESSAGE', msg_received)
             print("*" * 20)
             with lock:
                 # ----- receive and load global message ----
-                self._global_chosen_list = msg.chosen_id
+                self._global_chosen_list = content['chosen_id']
 
                 # update latest model info
-                self._global_model_name = msg.global_model_name
-                self._global_model_version = msg.global_model_version
+                self._global_model_name = content['global_model_name']
+                self._current_global_version = content['global_model_version']
 
                 # global info for merging process
-                self._global_model_update_data_size = msg.global_model_update_data_size
-                self._global_avg_loss = msg.avg_loss
-                self._global_avg_qod = msg.avg_qod
+                self._global_model_update_data_size = content['global_model_update_data_size']
+                self._global_avg_loss = content['avg_loss']
+                self._global_avg_qod = content['avg_qod']
                 print("*" * 20)
                 print(
                     f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
@@ -175,10 +172,10 @@ class Client(object):
                 # save the previous local version of the global model to log it to file
                 self._previous_local_version = self._current_local_version
                 # update local version (the latest global model that the client have)
-                self._current_local_version = self._global_model_version
+                self._current_local_version = self._current_global_version
 
-                remote_path = f'global-models/{msg.model_id}_v{self._global_model_version}.pkl'
-                local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{msg.model_id}_v{self._global_model_version}.pkl'
+                remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
+                local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
 
                 LOGGER.info("Downloading new global model............")
                 # while True:
@@ -191,7 +188,7 @@ class Client(object):
                 # LOGGER.info(f"Successfully downloaded new global model, version {self._global_model_version}")
 
                 # # change the flag to true.
-                # self._new_model_flag = True
+                self._new_model_flag = True
 
 
     @abstractmethod
@@ -267,20 +264,6 @@ class Client(object):
         self.queue_producer.send_data(message)
         
 
-    def publish_init_message(self, data_size=10000, qod=0.2):
-        message = ClientInit(
-            session_id=self._session_id,
-            client_id=self._client_id,
-            sys_info=SysInfo(),
-            data_size=data_size,
-            qod=qod
-        )
-        print("-" * 20)
-        print("Init message of client")
-        print(message)
-        print("-" * 20)
-        self.init_connect_to_server(message.serialize())
-
     def _start_consumer(self):
         self.queue_consumer.start()
 
@@ -288,15 +271,14 @@ class Client(object):
     def start(self):
         self.thread_consumer.start()
 
-    # def start_training_thread(self):
-    #     if not self._is_training:
-    #         LOGGER.info("Start training thread.")
-    #         training_thread = threading.Thread(
-    #             target=self.train,
-    #             name="client_training_thread")
-    #
-    #         self._is_training = True
-    #         training_thread.start()
+    def start_training_thread(self):
+        LOGGER.info("Start training thread.")
+        training_thread = threading.Thread(
+            target=self.train,
+            name="client_training_thread")
+
+        self._is_training = True
+        training_thread.start()
 
 
 if __name__ == '__main__':
