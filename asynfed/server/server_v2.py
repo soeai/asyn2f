@@ -171,7 +171,7 @@ class Server(object):
         #
     def on_message_received(self, ch, method, props, body):
         msg_received = MessageV2.serialize(body.decode('utf-8'))
-        if msg_received['message_type'] == Config.CLIENT_INIT_MESSAGE:
+        if msg_received['headers']['message_type'] == Config.CLIENT_INIT_MESSAGE:
             self._response_connection(msg_received)
             return
             try:
@@ -319,8 +319,10 @@ class Server(object):
             "training_exchange": "",
             "monitor_queue": "",
         }
-        content = response_connection.ResponseConnection(model_info, aws_info, queue_info, reconnect=False)
-        message = MessageV2(Config.SERVER_INIT_RESPONSE, content).to_json()
+        message = MessageV2(
+            headers={'message_type': Config.SERVER_INIT_RESPONSE, 'server_id': self._server_id},
+            content=response_connection.ResponseConnection(model_info, aws_info, queue_info, reconnect=False)
+        ).to_json()
         self.queue_producer.send_data(message)
 
 

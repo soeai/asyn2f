@@ -5,25 +5,27 @@ class MessageV2:
     '''
     MessageV2 class is used to create a message object that can be sent to the server.
     params:
-        message_type: str
         content: dict
         headers: dict
 
     Sample params:
-        message_type: "init_connection"
-        content: ClientInitConnection(),
-        headers: {"session_id": "session_1", "client_id": "client_1""}
+        headers: {
+            "message_type": "init_connection",
+            "session_id": "session_1", 
+            "client_id": "client_1""
+        }
+        content: {
+
+        }
     '''
-    def __init__(self, message_type, content=None, headers=None):
-        self.message_type = message_type
-        self.content = content.__dict__ or {}
+    def __init__(self, content=None, headers=None):
         self.headers = headers or {}
+        self.content = content.__dict__ or {}
 
     def to_json(self):
         to_dict = {
-            "message_type": self.message_type,
+            "headers": self.headers,
             "content": self.content,
-            "headers": self.headers
         }
         return json.dumps(to_dict)
 
@@ -34,6 +36,30 @@ class MessageV2:
         if ': true' in dict_str:
             dict_str = dict_str.replace(': true', ': True')
         return eval(dict_str)
+
+    @classmethod
+    def print_message(cls, dict_to_print):
+        MAX_LENGTH = 80
+        OFFSET = 3
+        print('|' + '-'*MAX_LENGTH + '|')
+        for k, v in dict_to_print.items():
+            if type(v) is dict:
+                print(f'|{k:<20}' + ' '*(MAX_LENGTH-20) )
+                for k2, v2 in v.items():
+                    if type(v2) is dict:
+                        print('|' + ' '*OFFSET + f'{k2:<20}' + ' '*(MAX_LENGTH-OFFSET-20))
+                        for k3, v3 in v2.items():
+                            print('|'+  ' '*OFFSET*2 + f'{k3:<20}: {v3:<50}' )
+                    else:
+                        print('|' + ' '*OFFSET + f'{k2:<20}: {v2:<50}' )
+            elif type(v) is bool:
+                v = 'True' if v else 'False'
+                print('|' + ' '*OFFSET + f'{k:<20}: {v:<50}' )
+            else:
+                if len(v) == 0:
+                    v = 'None'
+                print('|' + ' '*OFFSET + f'{k:<20}: {v:<50}') 
+        print('|' + '-'*MAX_LENGTH + '|')
 
 
 if __name__ == '__main__':

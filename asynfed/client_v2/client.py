@@ -121,15 +121,15 @@ class Client(object):
         content = msg_received['content']
 
         # IF message come from SERVER_INIT_RESPONSE_TO_CLIENT
-        if msg_received['message_type'] == Config.SERVER_INIT_RESPONSE:
-            print(f"\nReceive server init response message: {content}\n")
+        if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE:
+            message_v2.MessageV2.print_message(msg_received)
 
             self._global_model_name = content['model_info']['model_url']
             self._current_global_version = content['model_info']['model_version']
             self._storage_connector = ClientStorage(content['aws_info']['access_key'],
                                                     content['aws_info']['secret_key'],
                                                     content['aws_info']['bucket_name'],
-                                                    content['aws_info']['region_name'], self)
+                                                    content['aws_info']['region_name'])
             self._is_connected = True
 
             # Check for new global model version.
@@ -253,11 +253,9 @@ class Client(object):
         )
 
     def _send_init_message(self):
-        content = init_connection.InitConnection()
         message = message_v2.MessageV2(
-            message_type=Config.CLIENT_INIT_MESSAGE,
-            headers={'session_id': self._session_id, 'client_id': self._client_id},
-            content=content
+            headers={'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
+            content=init_connection.InitConnection()
         ).to_json()
         self.queue_producer.send_data(message)
         

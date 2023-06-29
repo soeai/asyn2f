@@ -1,3 +1,4 @@
+import os
 from abc import ABC
 import logging
 import boto3
@@ -15,14 +16,17 @@ class AWSConnector(ABC):
         self.secret_key = secret_key
         self.bucket_name = bucket_name
         self.region_name = region_name
-        # self._s3 = boto3.client('s3', aws_access_key_id=access_key,
-        #                         aws_secret_access_key=secret_key,
-        #                         region_name=region_name)
-        self._s3 = boto3.Session().client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region_name) 
+        self._s3 = boto3.client('s3', aws_access_key_id=access_key,
+                                aws_secret_access_key=secret_key,
+                                region_name=region_name)
+        # self._s3 = boto3.Session().client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region_name) 
         logging.info(f'Connected to AWS server')
 
     def upload(self, local_file_path: str, remote_file_path: str, try_time=5):
         """Uploads new global model to AWS"""
+        # check if local_file_path is exist, if not create one
+        if not os.path.exists(local_file_path):
+            os.makedirs(local_file_path.split('/')[:-1])
         # call synchronously
         if self.parent_thread is None:
             try:
@@ -50,6 +54,8 @@ class AWSConnector(ABC):
 
     def download(self, remote_file_path, local_file_path, try_time=5):
         """Downloads a file from AWS"""
+        if not os.path.exists(local_file_path):
+            os.makedirs('/'.join(local_file_path.split('/')[:-1]))
         # call synchronously
         if self.parent_thread is None:
             try:
@@ -58,7 +64,6 @@ class AWSConnector(ABC):
                 logging.info(f'Saved {remote_file_path} to {local_file_path}')
                 return True
             except Exception as e:
-                print('asdasd')
                 raise e
                 return False
         else: # call asynchronously
