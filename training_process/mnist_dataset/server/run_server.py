@@ -1,4 +1,6 @@
 import os, sys
+import pause
+from apscheduler.schedulers.background import BackgroundScheduler
 # run locally without install asynfed package
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))
 sys.path.append(root)
@@ -45,6 +47,7 @@ else:
 # from data_preprocessing import preprocess_dataset
 # default_testing_dataset_path = "../../data/cifar_data/test_set.pickle"
 # test_ds, _ = preprocess_dataset(default_testing_dataset_path, training = False)
+scheduler = BackgroundScheduler()
 
 
 strategy = AsynFL()
@@ -52,3 +55,5 @@ fedasync_server = Server(strategy, t= 20, test = True, training_exchange= traini
 
 
 fedasync_server.start()
+scheduler.start()
+pause.days(1) # or it can anything as per your need

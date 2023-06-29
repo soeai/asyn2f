@@ -3,10 +3,13 @@ from datetime import datetime
 from time import sleep
 import numpy as np
 import pickle
+from asynfed.client_v2.messages.notify_model import NotifyModel
 from asynfed.commons.conf import Config
 from asynfed.commons.messages import ClientNotifyModelToServer
 
 from asynfed.client_v2.client import Client
+from asynfed.commons.messages.message_v2 import MessageV2
+from asynfed.commons.utils.time_ultils import time_now
 from ..ModelWrapper import ModelWrapper
 from asynfed.commons.conf import Config
 
@@ -45,11 +48,11 @@ class ClientAsyncFl(Client):
         full_path = folder + file_name
         # with open(full_path, "rb") as f:
         #     weights = pickle.load(f)
+        print(full_path)
+        print(os.getcwd())
         while not os.path.isfile(full_path):
-            print("*" * 20)
-            sleep(5)
             print("Sleep 5 second when the model is not ready, then retry")
-            print("*" * 20)
+            sleep(5)
 
         with open(full_path, "rb") as f:
             weights = pickle.load(f)
@@ -203,30 +206,40 @@ class ClientAsyncFl(Client):
 
             # Only when the local model is save, local epoch is updated
             self._local_epoch += 1
+            sleep(20)
 
             # Upload the weight to the storage (the remote server)
             remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
             while True:
                 if self._storage_connector.upload(save_location, remote_file_path) is True:
                     # After training, notify new model to the server.
-                    message = ClientNotifyModelToServer(
-                        client_id=self._client_id,
-                        timestamp=datetime.now().timestamp(),
-                        model_id=filename,
-                        weight_file=remote_file_path,
-                        # global_model_version_used=self._current_local_version,
-                        global_model_version_used=self._global_model_version,
-                        performance= self._train_acc,
-                        loss_value= self._train_loss,
-                    )
+                    message = MessageV2(
+                            headers={"timestamp": time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id},
+                            content=NotifyModel(remote_worker_weight_path=remote_file_path, 
+                                                filename=filename,
+                                                global_version_used=self._current_local_version, 
+                                                loss=self._train_loss,
+                                                performance= self._train_acc)).to_json()
+                    self.queue_producer.send_data(message)
+
+                    # message = ClientNotifyModelToServer(
+                    #     client_id=self._client_id,
+                    #     timestamp=datetime.now().timestamp(),
+                    #     model_id=filename,
+                    #     weight_file=remote_file_path,
+                    #     # global_model_version_used=self._current_local_version,
+                    #     global_model_version_used=self._global_model_version,
+                    #     performance= self._train_acc,
+                    #     loss_value= self._train_loss,
+                    # )
 
                     print("*" * 20)
                     print("Client Notify Model to Server")
                     print(message)
                     print("*" * 20)
-                    self.notify_model_to_server(message.serialize())
+                    # self.notify_model_to_server(message.serialize())
                     LOGGER.info("ClientModel End Training, notify new model to server.")
-                    self.update_profile()
+                    # self.update_profile()
                     break
 
             # break before completing the intended number of epoch

@@ -60,12 +60,11 @@ class WorkerManager:
         """
         return self.worker_pool
 
-    def add_local_update(self, message: ClientNotifyModelToServer):
+    def add_local_update(self, client_id, message_content: dict):
         # update worker states with information from local worker.
-        client_id = message.client_id
-        self.worker_pool[client_id].weight_file = message.weight_file
-        self.worker_pool[client_id].current_version = message.global_model_version_used
-        self.worker_pool[client_id].loss = message.loss_value
+        self.worker_pool[client_id].weight_file = message_content['remote_worker_weight_path']
+        self.worker_pool[client_id].current_version = message_content['global_version_used']
+        self.worker_pool[client_id].loss = message_content['loss']
         self.worker_pool[client_id].is_completed = True
 
 

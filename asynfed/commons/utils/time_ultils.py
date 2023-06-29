@@ -42,6 +42,6 @@ def time_now():
     now = datetime.now()
 
     # Format the datetime object as a string and return it
-    return now.strftime("%m/%d/%Y, %H:%M:%S")
+    return now.strftime("%Y-%m-%d %H:%M:%S")
 
 

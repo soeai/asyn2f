@@ -10,15 +10,18 @@ logging.getLogger(__name__)
 class AWSConnector(ABC):
     """Class for connecting to AWS S3"""
     time_sleep = 10
-    def __init__(self, access_key, secret_key, bucket_name, region_name, parent=None) -> None:
-        self.parent_thread = parent
-        self.access_key = access_key
-        self.secret_key = secret_key
-        self.bucket_name = bucket_name
-        self.region_name = region_name
-        self._s3 = boto3.client('s3', aws_access_key_id=access_key,
-                                aws_secret_access_key=secret_key,
-                                region_name=region_name)
+    def __init__(self, aws_config) -> None:
+        if aws_config['parent']:
+            self.parent_thread = aws_config['parent']
+        else:
+            self.parent_thread = None
+        self.access_key = aws_config['access_key']
+        self.secret_key = aws_config['secret_key']
+        self.bucket_name = aws_config['bucket_name']
+        self.region_name = aws_config['region_name']
+        self._s3 = boto3.client('s3', aws_access_key_id=self.access_key, 
+                                aws_secret_access_key=self.secret_key, 
+                                region_name=self.region_name)
         # self._s3 = boto3.Session().client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region_name) 
         logging.info(f'Connected to AWS server')
 
@@ -54,18 +57,17 @@ class AWSConnector(ABC):
 
     def download(self, remote_file_path, local_file_path, try_time=5):
         """Downloads a file from AWS"""
-        if not os.path.exists(local_file_path):
-            os.makedirs('/'.join(local_file_path.split('/')[:-1]))
         # call synchronously
         if self.parent_thread is None:
             try:
                 logging.info(f'Saving {remote_file_path} to {local_file_path}...')
                 self._s3.download_file(self.bucket_name, remote_file_path, local_file_path)
                 logging.info(f'Saved {remote_file_path} to {local_file_path}')
+                downloaded = True
                 return True
             except Exception as e:
                 raise e
-                return False
+                # return False
         else: # call asynchronously
             result = False
             t = 1

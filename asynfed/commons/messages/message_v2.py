@@ -10,9 +10,10 @@ class MessageV2:
 
     Sample params:
         headers: {
+            "timestamp": "2021-01-01 00:00:00"
             "message_type": "init_connection",
             "session_id": "session_1", 
-            "client_id": "client_1""
+            "client_id": "client_1"
         }
         content: {
 
@@ -35,10 +36,18 @@ class MessageV2:
             dict_str = dict_str.replace(': false', ': False')
         if ': true' in dict_str:
             dict_str = dict_str.replace(': true', ': True')
+        if ': null' in dict_str:
+            dict_str = dict_str.replace(': null', ': None')
         return eval(dict_str)
 
     @classmethod
     def print_message(cls, dict_to_print):
+        def check_value(value):
+            if type(value) is bool:
+                v = 'True' if value else 'False'
+                return v
+            if value is None:
+                return 'None'
         MAX_LENGTH = 80
         OFFSET = 3
         print('|' + '-'*MAX_LENGTH + '|')
@@ -49,7 +58,7 @@ class MessageV2:
                     if type(v2) is dict:
                         print('|' + ' '*OFFSET + f'{k2:<20}' + ' '*(MAX_LENGTH-OFFSET-20))
                         for k3, v3 in v2.items():
-                            print('|'+  ' '*OFFSET*2 + f'{k3:<20}: {v3:<50}' )
+                            print('|'+  ' '*OFFSET*2 + f'{k3:<20}: {check_value(v3):<50}' )
                     else:
                         print('|' + ' '*OFFSET + f'{k2:<20}: {v2:<50}' )
             elif type(v) is bool:

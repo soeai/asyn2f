@@ -1,4 +1,6 @@
 import os, sys
+
+from asynfed.commons.utils.time_ultils import time_now
 root = os.path.dirname(os.path.dirname(os.getcwd()))
 sys.path.append(root)
 import json
@@ -122,14 +124,13 @@ class Client(object):
 
         # IF message come from SERVER_INIT_RESPONSE_TO_CLIENT
         if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE:
-            message_v2.MessageV2.print_message(msg_received)
+            # message_v2.MessageV2.print_message(msg_received)
+            print('SERVER INIT RESPONSE', msg_received)
 
-            self._global_model_name = content['model_info']['model_url']
+            self._session_id = content['session_id']
+            self._global_model_name = content['model_info']['global_model_name']
             self._current_global_version = content['model_info']['model_version']
-            self._storage_connector = ClientStorage(content['aws_info']['access_key'],
-                                                    content['aws_info']['secret_key'],
-                                                    content['aws_info']['bucket_name'],
-                                                    content['aws_info']['region_name'])
+            self._storage_connector = ClientStorage(content['aws_info'])
             self._is_connected = True
 
             # Check for new global model version.
@@ -137,11 +138,11 @@ class Client(object):
                 LOGGER.info("Detect new global version.")
                 local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
 
-                self._storage_connector.download(remote_file_path=self._global_model_name, 
+                self._storage_connector.download(remote_file_path=content['model_info']['model_url'], 
                                                  local_file_path=local_path)
 
                 # start 1 thread to train model.
-                self.update_profile()
+                # self.update_profile()
                 self.train()
                 # self.start_training_thread()
 
@@ -253,9 +254,15 @@ class Client(object):
         )
 
     def _send_init_message(self):
+        data_description = {
+            'data_size': 10000,
+            'qod': 0.5,
+        }
         message = message_v2.MessageV2(
-            headers={'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
-            content=init_connection.InitConnection()
+            headers={'timestamp': time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
+            content=init_connection.InitConnection(
+                data_description=data_description,
+            )
         ).to_json()
         self.queue_producer.send_data(message)
         

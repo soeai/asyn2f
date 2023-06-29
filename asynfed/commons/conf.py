@@ -82,7 +82,7 @@ def prepare_folder():
 def init_config(side):
     # LOGGER.info(f'\n\n\n Config: {Config.__class__.__dict__} \n\n\n')
     # check_valid_config(side)
-    # prepare_folder()
+    prepare_folder()
     # Define logger
     LOG_FORMAT = '%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'
     logging.basicConfig(

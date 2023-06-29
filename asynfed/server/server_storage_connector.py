@@ -8,8 +8,8 @@ import uuid
 
 class ServerStorage(AWSConnector):
 
-    def __init__(self, parent=None):
-        super().__init__(Config.STORAGE_ACCESS_KEY, Config.STORAGE_SECRET_KEY, Config.STORAGE_BUCKET_NAME, Config.STORAGE_REGION_NAME, parent)
+    def __init__(self, aws_config=None):
+        super().__init__(aws_config)
         self.iam = boto3.client('iam', aws_access_key_id=Config.STORAGE_ACCESS_KEY,
                                 aws_secret_access_key=Config.STORAGE_SECRET_KEY)
         self.client_keys = None
