@@ -16,11 +16,14 @@ from asynfed.commons.messages.client_init_connect_to_server import SysInfo
 from asynfed.commons.utils.queue_consumer import AmqpConsumer
 from asynfed.commons.utils.queue_producer import AmqpProducer
 import concurrent.futures
+thread_pool_ref = concurrent.futures.ThreadPoolExecutor
+import pause
+from apscheduler.schedulers.background import BackgroundScheduler
+
 
 LOGGER = logging.getLogger(__name__)
 
 lock = threading.Lock()
-thread_pool_ref = concurrent.futures.ThreadPoolExecutor
 
 class Client(object):
     def __init__(self, config):
@@ -87,9 +90,11 @@ class Client(object):
         #     self.load_profile()
         #
         # self.log: bool = True
+        Config.TRAINING_EXCHANGE = "asdasd"
 
         init_config("client")
 
+        # self.aws_thread = threading.Thread(target=self._handle_aws)
         self.thread_consumer = threading.Thread(target=self._start_consumer)
         self.queue_consumer = AmqpConsumer(self.config['queue_consumer'], self)
         self.queue_producer = AmqpProducer(self.config['queue_producer'])
@@ -125,7 +130,6 @@ class Client(object):
                                                     content['aws_info']['secret_key'],
                                                     content['aws_info']['bucket_name'],
                                                     content['aws_info']['region_name'], self)
-            # LOGGER.info(f"Reconnected!") if msg_received['content']['reconnect'] else LOGGER.info(f"Connected!")
             self._is_connected = True
 
             # Check for new global model version.
@@ -291,6 +295,10 @@ class Client(object):
 
 
 if __name__ == '__main__':
+    scheduler = BackgroundScheduler()
+
+# your code goes here
+
 
     config = {
         "client_id": "002",
@@ -314,3 +322,6 @@ if __name__ == '__main__':
             pass
     client = NewClient(config)
     client.start()
+
+    scheduler.start()
+    pause.days(1) # or it can anything as per your need
