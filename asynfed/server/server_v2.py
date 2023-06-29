@@ -274,7 +274,7 @@ class Server(object):
         self._cloud_storage.upload(local_filename, remote_filename)
 
         message = MessageV2(
-            headers={"timestamp": time_now(), "message_type": Config.SERVER_NOTIFY_MODEL_TO_CLIENT, "server_id": self._server_id},
+            headers={"timestamp": time_now(), "message_type": Config.SERVER_NOTIFY_MESSAGE, "server_id": self._server_id},
             content=NotifyNewModel(
                 chosen_id=[],
                 model_id=self._strategy.model_id,
