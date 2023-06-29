@@ -57,7 +57,8 @@ class AWSConnector(ABC):
                 logging.info(f'Saved {remote_file_path} to {local_file_path}')
                 return True
             except Exception as e:
-                logging.error(e)
+                print('asdasd')
+                raise e
                 return False
         else: # call asynchronously
             t = 1
@@ -69,6 +70,7 @@ class AWSConnector(ABC):
                     self.parent_thread.on_download(True)
                     break
                 except Exception as e:
+                    raise e
                     logging.error(e)
                     sleep(AWSConnector.time_sleep)
                     t += 1

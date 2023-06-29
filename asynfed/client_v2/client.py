@@ -58,7 +58,7 @@ class Client(object):
         self._previous_local_version = 0
         self._current_local_version = 0
 
-        self._global_model_version = None
+        self._current_global_version = None
 
         self._global_model_name = None
 
@@ -89,7 +89,6 @@ class Client(object):
         # self.log: bool = True
 
         init_config("client")
-        self._storage_connector = None
 
         self.thread_consumer = threading.Thread(target=self._start_consumer)
         self.queue_consumer = AmqpConsumer(self.config['queue_consumer'], self)
@@ -121,31 +120,21 @@ class Client(object):
             print(f"\nReceive server init response message: {content}\n")
 
             self._global_model_name = content['model_info']['model_url']
-            self._global_model_version = content['model_info']['model_version']
+            self._current_global_version = content['model_info']['model_version']
             self._storage_connector = ClientStorage(content['aws_info']['access_key'],
                                                     content['aws_info']['secret_key'],
                                                     content['aws_info']['bucket_name'],
                                                     content['aws_info']['region_name'], self)
-            self.aws_content = content
-            LOGGER.info(f"Reconnected!") if msg_received['content']['reconnect'] else LOGGER.info(f"Connected!")
+            # LOGGER.info(f"Reconnected!") if msg_received['content']['reconnect'] else LOGGER.info(f"Connected!")
             self._is_connected = True
 
-            return
-
             # Check for new global model version.
-            if self._current_local_version < self._global_model_version:
+            if self._current_local_version < self._current_global_version:
                 LOGGER.info("Detect new global version.")
-                filename = self._global_model_name.split("/")[-1]
-                local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{filename}"
+                local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
 
-                # while True:
-                #     if \
-                self._storage_connector.download(
-                    remote_file_path=self._global_model_name,
-                    local_file_path=local_path)
-                #     break
-                # print("Download model failed. Retry in 5 seconds.")
-                # sleep(5)
+                self._storage_connector.download(remote_file_path=self._global_model_name, 
+                                                 local_file_path=local_path)
 
                 # start 1 thread to train model.
                 self.update_profile()
@@ -211,7 +200,7 @@ class Client(object):
             "global_model_name": self._global_model_name,
             "local_epoch": self._local_epoch - 1,
             "local_qod": self._local_qod,
-            "save_global_model_version": self._global_model_version,
+            "save_global_model_version": self._current_global_version,
             "save_global_model_update_data_size": self._global_model_update_data_size,
             "save_global_avg_loss": self._global_avg_loss,
             "save_global_avg_qod": self._global_avg_qod,

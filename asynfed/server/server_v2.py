@@ -81,7 +81,7 @@ class Server(object):
             Config.STORAGE_BUCKET_NAME = self._server_id
         Config.STORAGE_BUCKET_NAME = "hellothisisnewbucket2"
         #
-        init_config("server")
+        # init_config("server")
 
         LOGGER.info(f'\n\nServer Info:\n\tQueue In : {self.config["queue_consumer"]}'
                     f'\n\tQueue Out : {self.config["queue_producer"]}'
@@ -305,9 +305,9 @@ class Server(object):
 
         model_info = {
             "model_url": model_url,
-            "global_model_name": model_url.split("/")[1],
+            "global_model_name": model_url.split("/")[-1],
             # use regex to get model version base on the global_model_name, e.g. "model_v1" -> "1"
-            "model_version": re.findall(r'\d+', model_url.split("/")[1])[0]
+            "model_version": int(re.findall(r'\d+', model_url.split("/")[1])[0])
         }
         aws_info = {
             "access_key": access_key,
