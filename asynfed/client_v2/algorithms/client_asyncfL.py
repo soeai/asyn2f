@@ -12,6 +12,7 @@ from asynfed.commons.messages.message_v2 import MessageV2
 from asynfed.commons.utils.time_ultils import time_now
 from ..ModelWrapper import ModelWrapper
 from asynfed.commons.conf import Config
+import tensorflow as tf
 
 import os
 LOGGER = logging.getLogger(__name__)
@@ -33,6 +34,12 @@ class ClientAsyncFl(Client):
         - user is freely decided to follow the sample
             or create their own model in their own platform (pytorch,...)
         '''
+        if tf.config.list_physical_devices('GPU'):
+            tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[config['gpu_index']], 'GPU')
+            print("Using GPU: ", tf.config.list_physical_devices('GPU')[config['gpu_index']])
+        else:
+            print("Using CPU")
+
         self.model = model
         self._local_data_size = self.model.data_size
         self._local_qod = self.model.qod
@@ -210,9 +217,9 @@ class ClientAsyncFl(Client):
             # Upload the weight to the storage (the remote server)
             remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
             while True:
-                print(save_location, remote_file_path)
                 if self._storage_connector.upload(save_location, remote_file_path) is True:
                     # After training, notify new model to the server.
+                    print('Notify new model to the server')
                     message = MessageV2(
                             headers={"timestamp": time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id},
                             content=NotifyModel(remote_worker_weight_path=remote_file_path, 
@@ -221,17 +228,18 @@ class ClientAsyncFl(Client):
                                                 loss=self._train_loss,
                                                 performance= self._train_acc)).to_json()
                     self.queue_producer.send_data(message)
-                    # self.update_profile()
+                    self.update_profile()
+                    print('Notify new model to the server successfully')
                     break
 
             # break before completing the intended number of epoch
             # if the total training time excess some degree
             # set by client
-            if self.model.delta_time:
-                delta_time = datetime.now() - start_time
-                delta_time_in_minute = delta_time.total_seconds() / 60
-                if delta_time_in_minute >= self.model.delta_time:
-                    break
+            # if self.model.delta_time:
+            #     delta_time = datetime.now() - start_time
+            #     delta_time_in_minute = delta_time.total_seconds() / 60
+            #     if delta_time_in_minute >= self.model.delta_time:
+            #         break
 
     def __merge(self):
         LOGGER.info("MERGER weights.")

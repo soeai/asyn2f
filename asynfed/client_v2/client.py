@@ -86,11 +86,11 @@ class Client(object):
         self.config['queue_consumer']['queue_name'] = "queue_" + self._client_id
 
         # Initialize profile for client
-        # if not os.path.exists("profile.json"):
-        #     self.create_profile()
-        # else:
-        #     self.load_profile()
-        #
+        if not os.path.exists("profile.json"):
+            self.create_profile()
+        else:
+            self.load_profile()
+
         # self.log: bool = True
         Config.TRAINING_EXCHANGE = "asdasd"
 
@@ -121,12 +121,13 @@ class Client(object):
     def on_message_received(self, ch, method, props, body):
         msg_received = message_v2.MessageV2.serialize(body.decode('utf-8'))
         content = msg_received['content']
-        print(msg_received['headers']['message_type'], self._is_connected)
 
         # IF message come from SERVER_INIT_RESPONSE_TO_CLIENT
         if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE:
             # message_v2.MessageV2.print_message(msg_received)
             print('SERVER INIT RESPONSE', msg_received)
+            if content['reconnect'] is True:
+                print("Reconnect to server.")
 
             self._session_id = content['session_id']
             self._global_model_name = content['model_info']['global_model_name']
@@ -142,9 +143,8 @@ class Client(object):
                 self._storage_connector.download(remote_file_path=content['model_info']['model_url'], 
                                                  local_file_path=local_path)
 
-                # self.update_profile()
-                # self.train()
-                self.start_training_thread()
+            self.update_profile()
+            self.start_training_thread()
 
         elif msg_received['headers']['message_type'] == Config.SERVER_NOTIFY_MESSAGE and self._is_connected:
             # download model.
@@ -244,11 +244,6 @@ class Client(object):
         except Exception as e:
             print(e)
 
-    def notify_model_to_server(self, message):
-        self.queue_producer.send_data(
-            {"type": Config.CLIENT_NOTIFY_MESSAGE,
-             "content": message.serialize()}
-        )
 
     def _send_init_message(self):
         data_description = {

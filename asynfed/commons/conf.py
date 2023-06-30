@@ -27,8 +27,6 @@ class Config:
     QUEUE_NAME: str = ""
     MONITOR_QUEUE: str = "any"
 
-    # Exchanges
-    TRAINING_EXCHANGE: str = ""
 
     CLIENT_INIT_MESSAGE = "client_init"
     CLIENT_NOTIFY_MESSAGE = "client_notify"

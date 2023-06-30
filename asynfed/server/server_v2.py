@@ -38,28 +38,30 @@ class Server(object):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, config, t: int = 15, istest=True) -> None:
-        # Server variables
+    def __init__(self, strategy: Strategy, config: dict) -> None:
+        """
+        config structure
+        {
+            "server_id": "",
+            "bucket_name": "",
+            "region_name": "ap-southeast-2",
+            "t": 15,
+            "queue_consumer": {
+                'exchange_name': 'asynfl_exchange',
+                'exchange_type': 'topic',
+                'routing_key': 'server.#',
+                'end_point': ''},
+            "queue_producer": {
+                'exchange_name': 'asynfl_exchange',
+                'exchange_type': 'topic',
+                'routing_key': 'client.#',
+                'end_point': ""}
+        }
+        """
         super().__init__()
 
-        # config structure
-        # {
-        #     "server_id": "",
-        #     "bucket_name": ""
-        #     "queue_consumer": {
-        #             'exchange_name': 'asynfl_exchange',
-        #             'exchange_type': 'topic',
-        #             'routing_key': 'server.#',
-        #             'end_point': ''},
-        #     "queue_producer": {
-        #              'exchange_name': 'asynfl_exchange',
-        #             'exchange_type': 'topic',
-        #             'routing_key': 'client.#',
-        #             'end_point': ""}
-        # }
-
         self.config = config
-        self._t = t
+        self._t = config.get('t') or 15
         self._strategy = strategy
         # variables
         self._is_downloading = False
@@ -70,14 +72,13 @@ class Server(object):
         self._first_arrival = None
         self._latest_arrival = None
 
-        if istest:
+        if config.get('test'):
             self._server_id = self.config['server_id']
         else:
             self._server_id = f'server-{str(uuid.uuid4())}'
 
         # All this information was decided by server to prevent conflict
         # because multiple server can use the same RabbitMQ, S3 server.
-        Config.TRAINING_EXCHANGE = self._server_id
 
         if self.config['bucket_name'] is not None or self.config['bucket_name'] != "":
             Config.STORAGE_BUCKET_NAME = self.config['bucket_name']
@@ -101,9 +102,7 @@ class Server(object):
             "parent": None
         }
         self._cloud_storage: ServerStorage = ServerStorage(aws_config)
-        #
-        # self.delete_bucket_on_exit = True
-        #
+
         self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
         self.queue_concumer = AmqpConsumer(self.config['queue_consumer'], self)
         self.queue_producer = AmqpProducer(self.config['queue_producer'])
@@ -114,11 +113,6 @@ class Server(object):
         # Send notify message to client.
         pass
 
-    def __response_to_client_init_connect(self, message):
-        # Send response message to client.
-        self.queue_producer.send_message({
-            "type": Config.SERVER_INIT_RESPONSE,
-            "content": message.serialize()})
 
     def _start_consumer(self):
         self.queue_concumer.start()
@@ -171,20 +165,23 @@ class Server(object):
         client_id = msg_received['headers']['client_id']
         session_id = str(uuid.uuid4())
         content = msg_received['content']
-        with lock:
-            access_key, secret_key = self._cloud_storage.get_client_key(client_id)
-        worker = Worker(
-            session_id=session_id,
-            worker_id=client_id,
-            sys_info=content['system_info'],
-            data_size=content['data_description']['data_size'],
-            qod=content['data_description']['qod'],
-        )
-        with lock:
+
+        if msg_received['session_id'] in self._worker_manager.list_all_worker_session_id:
+            reconnect = True
+        else:
+            reconnect = False
+            worker = Worker(
+                    session_id=session_id,
+                    worker_id=client_id,
+                    sys_info=content['system_info'],
+                    data_size=content['data_description']['data_size'],
+                    qod=content['data_description']['qod'],
+            )
             worker.access_key_id = access_key
             worker.secret_key_id = secret_key
             self._worker_manager.add_worker(worker)
 
+        access_key, secret_key = self._cloud_storage.get_client_key(client_id)
 
         try:
             model_name = self._cloud_storage.get_newest_global_model().split('.')[0]
@@ -205,14 +202,15 @@ class Server(object):
                       "model_version": int(re.findall(r'\d+', model_url.split("/")[1])[0]) }
         aws_info = {"access_key": access_key, 
                     "secret_key": secret_key, 
-                    "bucket_name": Config.STORAGE_BUCKET_NAME, 
-                    "region_name": Config.STORAGE_REGION_NAME, 
+                    "bucket_name": self.config['bucket_name'],
+                    "region_name": self.config['region_name'],
                     "parent": None}
         queue_info = {"training_exchange": "", 
                       "monitor_queue": ""}
+
         message = MessageV2(
                 headers={'timestamp': time_now(), 'message_type': Config.SERVER_INIT_RESPONSE, 'server_id': self._server_id}, 
-                content=response_connection.ResponseConnection(session_id, model_info, aws_info, queue_info, reconnect=False)
+                content=response_connection.ResponseConnection(session_id, model_info, aws_info, queue_info, reconnect=reconnect)
         ).to_json()
         self.queue_producer.send_data(message)
 
@@ -293,32 +291,3 @@ class Server(object):
         self._first_arrival = None
         self._latest_arrival = None
 
-
-if __name__ == '__main__':
-    import dotenv
-    dotenv.load_dotenv()
-
-    conf = {
-        "server_id": "test_server_id",
-        "bucket_name": "test_bucket",
-        "queue_consumer": {
-            'exchange_name': 'asynfl_exchange',
-            'exchange_type': 'topic',
-            'queue_name': 'server_consumer',
-            'routing_key': 'server.#',
-            'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
-        },
-        "queue_producer": {
-            'exchange_name': 'asynfl_exchange',
-            'exchange_type': 'topic',
-            'queue_name': 'server_queue',
-            'routing_key': 'client.#',
-            'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
-        }
-    }
-    Config.STORAGE_ACCESS_KEY = os.getenv("access_key")
-    Config.STORAGE_SECRET_KEY = os.getenv("secret_key")
-
-    strat = AsynFL()
-    server = Server(strat, conf)
-    server.start()
