@@ -60,6 +60,10 @@ class AsynFL(Strategy):
         # Create a new weight with the same shape and type as a given weight.
         merged_weight = None
         for cli_id, worker in completed_workers.items():
+            # download only when aggregating
+            self._cloud_storage.download(remote_file_path= worker.get_remote_weight_file_path(), 
+                                        local_file_path= worker.get_weight_file_path())
+            
             weight_file = worker.get_weight_file_path()
 
             # Load the array from the specified file using the numpy.load function

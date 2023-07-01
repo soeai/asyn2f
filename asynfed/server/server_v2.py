@@ -223,8 +223,8 @@ class Server(object):
         print(msg_received)
         client_id = msg_received['headers']['client_id']
 
-        self._cloud_storage.download(remote_file_path=msg_received['content']['remote_worker_weight_path'],
-                                        local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + msg_received['content']['filename'])
+        # self._cloud_storage.download(remote_file_path=msg_received['content']['remote_worker_weight_path'],
+        #                                 local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + msg_received['content']['filename'])
         self._worker_manager.add_local_update(client_id, msg_received['content'])
 
 
@@ -243,6 +243,8 @@ class Server(object):
                 self._strategy.global_model_update_data_size = worker.data_size
                 worker.is_completed = False
 
+                self._cloud_storage.download(remote_file_path= worker.get_remote_weight_file_path(), 
+                                             local_file_path= worker.get_weight_file_path())
             # print("*" * 10)
             # print(f"Avg loss, avg qod, global datasize: {self._strategy.avg_loss}, {self._strategy.avg_qod}, {self._strategy.global_model_update_data_size}")
             # print("*" * 10)

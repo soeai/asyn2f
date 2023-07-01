@@ -11,6 +11,7 @@ class Worker:
     def __init__(self, session_id: str, worker_id: str, sys_info: SysInfo = None, data_size: int = 10,
                  qod: float = 0.1) -> None:
         # Properties
+
         self.alpha = None
         self.session_id = session_id
         self.worker_id = worker_id
@@ -21,6 +22,7 @@ class Worker:
         self.secret_key_id = None
         self.n_update = 0
         self.weight_file = ""
+        
         self.performance = 0.0
         # info needed for aggregating
         self.qod = qod
@@ -28,9 +30,13 @@ class Worker:
         # loss change from update time to update time
         self.loss = 0.0
 
+
     def get_weight_file_path(self):
         filename = self.weight_file.split('/')[-1]
-        return f'{Config.TMP_LOCAL_MODEL_FOLDER}{filename}'
+        return f'{Config.TMP_LOCAL_MODEL_FOLDER}{self.worker_id}/{filename}'
+    
+    def get_remote_weight_file_path(self):
+        return self.weight_file
 
     def reset(self):
         """
