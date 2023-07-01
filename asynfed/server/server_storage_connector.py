@@ -100,8 +100,6 @@ class ServerStorage(AWSConnector):
     def get_client_key(self, worker_id):
         # Generate an access key and secret key for the user
         self.create_folder(worker_id)
-        LOGGER.info(
-            f"session: {worker_id} - access key: {self.client_access_key_id} - secret key: {self.client_access_key_id}")
         return self.client_access_key_id, self.client_secret_key
 
     def create_folder(self, folder_name):

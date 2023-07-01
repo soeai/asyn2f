@@ -166,8 +166,10 @@ class Server(object):
         session_id = str(uuid.uuid4())
         content = msg_received['content']
 
-        if msg_received['session_id'] in self._worker_manager.list_all_worker_session_id:
+        if msg_received['headers']['session_id'] in self._worker_manager.list_all_worker_session_id():
             reconnect = True
+            worker = self._worker_manager.get_worker_by_id(client_id)
+            access_key, secret_key = worker.access_key_id, worker.secret_key_id
         else:
             reconnect = False
             worker = Worker(
@@ -177,11 +179,11 @@ class Server(object):
                     data_size=content['data_description']['data_size'],
                     qod=content['data_description']['qod'],
             )
+            access_key, secret_key = self._cloud_storage.get_client_key(client_id)
             worker.access_key_id = access_key
             worker.secret_key_id = secret_key
             self._worker_manager.add_worker(worker)
 
-        access_key, secret_key = self._cloud_storage.get_client_key(client_id)
 
         try:
             model_name = self._cloud_storage.get_newest_global_model().split('.')[0]

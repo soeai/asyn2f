@@ -1,18 +1,18 @@
 
 import os
 import sys
-from dotenv import load_dotenv
 import pause
 from apscheduler.schedulers.background import BackgroundScheduler
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
 sys.path.append(root)
 
 from asynfed.client_v2.algorithms.client_asyncfL import ClientAsyncFl
-from asynfed.commons.conf import Config
 from asynfed.client_v2.frameworks.tensorflow.tensorflow_framework import TensorflowFramework
+from asynfed.commons.conf import Config
 from training_process.cifar_dataset.client.resnet18 import Resnet18
 from data_preprocessing import preprocess_dataset
 
+from dotenv import load_dotenv
 load_dotenv()
 scheduler = BackgroundScheduler()
 
@@ -43,6 +43,9 @@ config = {
         "tracking_point": 1000,
         "sleeping_time": 10,
         "learning_rate": 1e-3,
+        "delta_time": 0.1,
+        "regularization": "l2",
+        "lambda_value": 1e-4,
     }
 }
 

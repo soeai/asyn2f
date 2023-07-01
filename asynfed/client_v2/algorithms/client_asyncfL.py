@@ -96,7 +96,7 @@ class ClientAsyncFl(Client):
 
             # if the receive global model version is equal to the save global model version
             # just load the save current local version
-            if self._save_global_model_version == self._global_model_version:
+            if self._save_global_model_version == self._current_global_version:
                 LOGGER.info("The receive global model is equal to the save global model. Just load the current local weight and continue training")
             else:
                 LOGGER.info("The receive global model is newer than the save one. Merging process needed.")
