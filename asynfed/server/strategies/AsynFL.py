@@ -23,7 +23,8 @@ class AsynFL(Strategy):
         return all_clients
 
     def compute_alpha(self, worker: Worker) -> float:
-        alpha  = worker.qod * worker.data_size / worker.loss
+        # avoid division by zero
+        alpha  = worker.qod * worker.data_size / (worker.loss + 1e-7)
         return alpha
 
     def aggregate(self, worker_manager: WorkerManager, cloud_storage):
@@ -41,15 +42,23 @@ class AsynFL(Strategy):
 
         sum_alpha = 0.0
         print("*" * 20)
-        print("Alpha before being normalized")
+        for w_id, worker in completed_workers.items():
+            # worker.alpha = self.compute_alpha(worker)
+            print(f"{worker.worker_id} qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
+            # reset state after update
+        print("*" * 20)
+        
+        # print("Alpha before being normalized")
         for w_id, worker in completed_workers.items():
             worker.alpha = self.compute_alpha(worker)
-            print(f"{worker.worker_id} with alpha {worker.alpha}, qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
             sum_alpha += worker.alpha
-            # reset state after update
             worker.is_completed = False
+        #     print(f"{worker.worker_id} with alpha {worker.alpha}, qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
+        #     sum_alpha += worker.alpha
+            # reset state after update
+
         print(f"Total data: {self.global_model_update_data_size}, avg_loss: {self.avg_loss}, avg_qod: {self.avg_qod}")
-        print("*" * 20)
+        # print("*" * 20)
 
 
         print("*" * 20)

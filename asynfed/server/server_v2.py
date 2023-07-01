@@ -224,7 +224,9 @@ class Server(object):
         self.queue_producer.send_data(message)
 
     def _handle_client_notify_message(self, msg_received):
+        print("-" * 20)
         print(msg_received)
+        print("-" * 20)
         client_id = msg_received['headers']['client_id']
 
         # self._cloud_storage.download(remote_file_path=msg_received['content']['remote_worker_weight_path'],
