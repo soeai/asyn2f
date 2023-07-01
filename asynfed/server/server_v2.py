@@ -282,7 +282,8 @@ class Server(object):
             t2 = time_diff(self._start_time, self._latest_arrival)
 
             # get avg complete time of current epoch
-            self._t = (t2 + t1) / 2 + 2 * t1
+            self._t = (t2 + t1) / 2 
+            # self._t = (t2 + t1) / 2 + 2 * t1
 
     def __is_stop_condition(self):
         self._strategy.is_completed()

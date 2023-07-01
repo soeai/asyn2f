@@ -292,6 +292,14 @@ class ClientAsyncFl(Client):
         alpha = ( (local_qod*local_size) / (local_qod*local_size + global_qod*global_size) + local_loss/(local_loss + global_loss) )
         alpha = alpha / 2
 
+        print("-" * 20)
+        print(f"local loss: {local_loss}")
+        print(f"global loss: {global_loss}")
+        print(f"local size: {local_size}")
+        print(f"global data size: {global_size}")
+        print(f"alpha = {alpha}")
+        print("-" * 20)
+
         # create a blank array to store the result
         self.model.merged_weights = [np.zeros(layer.shape) for layer in self.model.current_weights]
         # base on the direction, global weights and current local weights
