@@ -34,11 +34,14 @@ class ClientAsyncFl(Client):
         - user is freely decided to follow the sample
             or create their own model in their own platform (pytorch,...)
         '''
-        if tf.config.list_physical_devices('GPU'):
-            tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[config['gpu_index']], 'GPU')
-            print("Using GPU: ", tf.config.list_physical_devices('GPU')[config['gpu_index']])
-        else:
-            print("Using CPU")
+
+        # print("*" * 20)
+        # if tf.config.list_physical_devices('GPU'):
+        #     tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[config["training_params"]['gpu_index']], 'GPU')
+        #     print("Using GPU: ", tf.config.list_physical_devices('GPU')[config["training_params"]['gpu_index']])
+        # else:
+        #     print("Using CPU")
+        # print("*" * 20)
 
         self.model = model
         self._local_data_size = self.model.data_size

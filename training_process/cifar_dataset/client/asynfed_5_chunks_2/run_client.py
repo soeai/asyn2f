@@ -80,16 +80,16 @@ else:
 print("*" * 20)
 
 
-print("*" * 20)
-print("*" * 20)
-import tensorflow as tf
-if tf.config.list_physical_devices('GPU'):
-    tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[gpu_index], 'GPU')
-    print("config tensorflow using gpu successfully")
-else:
-    print("There is no gpu or your tensorflow is not built in with gpu support")
-print("*" * 20)
-print("*" * 20)
+# print("*" * 20)
+# print("*" * 20)
+# import tensorflow as tf
+# if tf.config.list_physical_devices('GPU'):
+#     tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[gpu_index], 'GPU')
+#     print("config tensorflow using gpu successfully")
+# else:
+#     print("There is no gpu or your tensorflow is not built in with gpu support")
+# print("*" * 20)
+# print("*" * 20)
 
 
 # ------------oOo--------------------

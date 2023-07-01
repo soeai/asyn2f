@@ -17,7 +17,6 @@ if [ -f "profile.json" ]; then
 fi
 
 # Activate conda environment
-conda init bash
 source activate asynfed
 
 
