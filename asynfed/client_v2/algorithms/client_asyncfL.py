@@ -49,6 +49,9 @@ class ClientAsyncFl(Client):
         self._train_acc = 0.0
         self._train_loss = 0.0
 
+        self._send_init_message()
+
+
     def _get_model_dim_ready(self):
        for images, labels in self.model.train_ds:
             self.model.fit(images, labels)

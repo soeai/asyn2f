@@ -106,7 +106,7 @@ class Client(object):
                     f'\n\tQueue Out : {self.config["queue_producer"]}'
                     f'\n\n')
 
-        self._send_init_message()
+        # self._send_init_message()
 
     def on_download(self, result):
         if result:
@@ -247,8 +247,8 @@ class Client(object):
 
     def _send_init_message(self):
         data_description = {
-            'data_size': 10000,
-            'qod': 0.5,
+            'data_size': self._local_data_size,
+            'qod': self._local_qod,
         }
         message = message_v2.MessageV2(
             headers={'timestamp': time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},

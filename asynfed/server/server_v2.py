@@ -179,6 +179,9 @@ class Server(object):
                     data_size=content['data_description']['data_size'],
                     qod=content['data_description']['qod'],
             )
+            print("*" * 20)
+            print(worker)
+            print("*" * 20)
             access_key, secret_key = self._cloud_storage.get_client_key(client_id)
             worker.access_key_id = access_key
             worker.secret_key_id = secret_key
