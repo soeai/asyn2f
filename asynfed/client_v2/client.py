@@ -22,32 +22,14 @@ thread_pool_ref = concurrent.futures.ThreadPoolExecutor
 import pause
 from apscheduler.schedulers.background import BackgroundScheduler
 
+from asynfed.client_v2.ModelWrapper import ModelWrapper
 
 LOGGER = logging.getLogger(__name__)
 
 lock = threading.Lock()
 
 class Client(object):
-    def __init__(self, config):
-        """
-        params structure:
-            config: {
-                "client_id": "001",
-                "queue_consumer": {
-                    'exchange_name': 'asynfl_exchange',
-                    'exchange_type': 'topic',
-                    'routing_key': 'server.#',
-                    'end_point': ''
-                },
-                "queue_producer": {
-                    'queue_name': 'client_queue',
-                    'exchange_name': 'test_exchange',
-                    'exchange_type': 'topic',
-                    'routing_key': 'client.#',
-                    'end_point': ""
-                }
-            }
-        """
+    def __init__(self, model: ModelWrapper, config):
         self.config = config
 
         # Dependencies
@@ -56,9 +38,14 @@ class Client(object):
         self._save_global_avg_loss = None
         self._save_global_model_update_data_size = None
         self._save_global_model_version = None
-        self._local_data_size = 0
-        self._local_qod = 0.0
+
+
+        self.model = model
+        self._local_data_size = self.model.data_size
+        self._local_qod = self.model.qod
+        self._train_acc = 0.0
         self._train_loss = 0.0
+
 
         self._previous_local_version = 0
         self._current_local_version = 0
@@ -106,7 +93,7 @@ class Client(object):
                     f'\n\tQueue Out : {self.config["queue_producer"]}'
                     f'\n\n')
 
-        # self._send_init_message()
+        self._send_init_message()
 
     def on_download(self, result):
         if result:
@@ -276,34 +263,34 @@ class Client(object):
         training_thread.start()
 
 
-if __name__ == '__main__':
-    scheduler = BackgroundScheduler()
+# if __name__ == '__main__':
+#     scheduler = BackgroundScheduler()
 
-# your code goes here
+# # your code goes here
 
 
-    config = {
-        "client_id": "002",
-        "queue_consumer": {
-            'exchange_name': 'asynfl_exchange',
-            'exchange_type': 'topic',
-            'queue_name': 'server_queue',
-            'routing_key': 'client.#',
-            'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
-        },
-        "queue_producer": {
-            'exchange_name': 'asynfl_exchange',
-            'exchange_type': 'topic',
-            'queue_name': 'server_consumer',
-            'routing_key': 'server.#',
-            'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
-        }
-    }
-    class NewClient(Client):
-        def train(self):
-            pass
-    client = NewClient(config)
-    client.start()
+#     config = {
+#         "client_id": "002",
+#         "queue_consumer": {
+#             'exchange_name': 'asynfl_exchange',
+#             'exchange_type': 'topic',
+#             'queue_name': 'server_queue',
+#             'routing_key': 'client.#',
+#             'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
+#         },
+#         "queue_producer": {
+#             'exchange_name': 'asynfl_exchange',
+#             'exchange_type': 'topic',
+#             'queue_name': 'server_consumer',
+#             'routing_key': 'server.#',
+#             'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
+#         }
+#     }
+#     class NewClient(Client):
+#         def train(self):
+#             pass
+#     client = NewClient(config)
+#     client.start()
 
-    scheduler.start()
-    pause.days(1) # or it can anything as per your need
+#     scheduler.start()
+#     pause.days(1) # or it can anything as per your need

@@ -10,7 +10,7 @@ from asynfed.commons.messages import ClientNotifyModelToServer
 from asynfed.client_v2.client import Client
 from asynfed.commons.messages.message_v2 import MessageV2
 from asynfed.commons.utils.time_ultils import time_now
-from ..ModelWrapper import ModelWrapper
+# from ..ModelWrapper import ModelWrapper
 from asynfed.commons.conf import Config
 import tensorflow as tf
 
@@ -21,8 +21,8 @@ LOGGER = logging.getLogger(__name__)
 # This is the proposed federated asynchronous training algorithm of our paper
 # More algorithms can be found at other files in this directory 
 class ClientAsyncFl(Client):
-    def __init__(self, model: ModelWrapper, config):
-        super().__init__(config)
+    def __init__(self, model, config):
+        super().__init__(model, config)
         '''
         - model must be an instance of an inheritant of class ModelWrapper
         - model.train_ds: require
@@ -43,13 +43,13 @@ class ClientAsyncFl(Client):
         #     print("Using CPU")
         # print("*" * 20)
 
-        self.model = model
-        self._local_data_size = self.model.data_size
-        self._local_qod = self.model.qod
-        self._train_acc = 0.0
-        self._train_loss = 0.0
+        # self.model = model
+        # self._local_data_size = self.model.data_size
+        # self._local_qod = self.model.qod
+        # self._train_acc = 0.0
+        # self._train_loss = 0.0
 
-        self._send_init_message()
+        # self._send_init_message()
 
 
     def _get_model_dim_ready(self):
@@ -225,6 +225,7 @@ class ClientAsyncFl(Client):
             while True:
                 if self._storage_connector.upload(save_location, remote_file_path) is True:
                     # After training, notify new model to the server.
+                    print("*" * 20)
                     print('Notify new model to the server')
                     message = MessageV2(
                             headers={"timestamp": time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id},
@@ -235,7 +236,9 @@ class ClientAsyncFl(Client):
                                                 performance= self._train_acc)).to_json()
                     self.queue_producer.send_data(message)
                     self.update_profile()
+                    print(message)
                     print('Notify new model to the server successfully')
+                    print("*" * 20)
                     break
 
             # break before completing the intended number of epoch
