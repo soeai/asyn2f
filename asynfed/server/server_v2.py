@@ -166,6 +166,7 @@ class Server(object):
         session_id = str(uuid.uuid4())
         content = msg_received['content']
 
+
         if msg_received['headers']['session_id'] in self._worker_manager.list_all_worker_session_id():
             reconnect = True
             worker = self._worker_manager.get_worker_by_id(client_id)
@@ -187,6 +188,9 @@ class Server(object):
             worker.secret_key_id = secret_key
             self._worker_manager.add_worker(worker)
 
+            folder_name = f'{Config.TMP_LOCAL_MODEL_FOLDER}{worker.worker_id}'
+            if not os.path.exists(folder_name):
+                os.makedirs(folder_name)
 
         try:
             model_name = self._cloud_storage.get_newest_global_model().split('.')[0]
@@ -243,6 +247,10 @@ class Server(object):
                 self._strategy.global_model_update_data_size = worker.data_size
                 worker.is_completed = False
 
+                # print("*" * 20)
+                # print("remote file path: ", worker.get_remote_weight_file_path())
+                # print("save file path: ", worker.get_remote_weight_file_path())
+                # print("*" * 20)
                 self._cloud_storage.download(remote_file_path= worker.get_remote_weight_file_path(), 
                                              local_file_path= worker.get_weight_file_path())
             # print("*" * 10)
