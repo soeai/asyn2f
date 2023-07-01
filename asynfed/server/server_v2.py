@@ -251,15 +251,18 @@ class Server(object):
                 # print("remote file path: ", worker.get_remote_weight_file_path())
                 # print("save file path: ", worker.get_remote_weight_file_path())
                 # print("*" * 20)
-                self._cloud_storage.download(remote_file_path= worker.get_remote_weight_file_path(), 
-                                             local_file_path= worker.get_weight_file_path())
+
+                remote_weight_file = worker.get_remote_weight_file_path()
+                local_weight_file = worker.get_weight_file_path()
+                self._cloud_storage.download(remote_file_path= remote_weight_file, 
+                                             local_file_path= local_weight_file)
             # print("*" * 10)
             # print(f"Avg loss, avg qod, global datasize: {self._strategy.avg_loss}, {self._strategy.avg_qod}, {self._strategy.global_model_update_data_size}")
             # print("*" * 10)
 
             # copy the worker model weight to the global model folder
             import shutil
-            local_weight_file = worker.get_weight_file_path()
+            # local_weight_file = worker.get_weight_file_path()
             save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self._strategy.get_global_model_filename()
             shutil.copy(local_weight_file, save_location)
 
@@ -269,7 +272,7 @@ class Server(object):
             # calculate self._strategy.avg_qod and self_strategy.avg_loss
             # and self_strategy.global_model_update_data_size
             # within the self._strategy.aggregate function
-            self._strategy.aggregate(self._worker_manager)
+            self._strategy.aggregate(self._worker_manager, self._cloud_storage)
 
         # calculate dynamic time ratial only when
         if None not in [self._start_time, self._first_arrival, self._latest_arrival]:

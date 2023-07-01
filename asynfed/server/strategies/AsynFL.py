@@ -12,6 +12,7 @@ from asynfed.server.strategies import Strategy
 
 from asynfed.server.worker_manager import WorkerManager
 
+from time import sleep
 
 class AsynFL(Strategy):
 
@@ -25,7 +26,8 @@ class AsynFL(Strategy):
         alpha  = worker.qod * worker.data_size / worker.loss
         return alpha
 
-    def aggregate(self, worker_manager: WorkerManager):
+    def aggregate(self, worker_manager: WorkerManager, cloud_storage):
+    # def aggregate(self, worker_manager: WorkerManager, cloud_storage: ServerStorage):
         # calculate avg, loss and datasize here
         # Get all workers that has the weight version with server
         completed_workers: dict[str, Worker] = worker_manager.get_completed_workers()
@@ -61,13 +63,15 @@ class AsynFL(Strategy):
         merged_weight = None
         for cli_id, worker in completed_workers.items():
             # download only when aggregating
-            self._cloud_storage.download(remote_file_path= worker.get_remote_weight_file_path(), 
-                                        local_file_path= worker.get_weight_file_path())
+            remote_weight_file = worker.get_remote_weight_file_path()
+            local_weight_file = worker.get_weight_file_path()
+            cloud_storage.download(remote_file_path= remote_weight_file, 
+                                        local_file_path= local_weight_file)
             
-            weight_file = worker.get_weight_file_path()
+            # weight_file = worker.get_weight_file_path()
 
             # Load the array from the specified file using the numpy.load function
-            weight = self.get_model_weights(weight_file)
+            weight = self.get_model_weights(local_weight_file)
 
             if merged_weight is None:
                 merged_weight = copy(weight)
@@ -91,13 +95,15 @@ class AsynFL(Strategy):
         print(file_path)
         print("*" * 10)
 
-        if os.path.isfile(file_path) is False:
-            raise Exception("File not found")
-        else:
-            # return np.load(filepath, allow_pickle=True)
-            with open(file_path, "rb") as f:
-                weights = pickle.load(f)
-            return weights
+        while not os.path.isfile(file_path):
+            print("*" * 20)
+            sleep(5)
+            print("Sleep 5 second when the model is not ready, then retry")
+            print("*" * 20)
+
+        with open(file_path, "rb") as f:
+            weights = pickle.load(f)
+        return weights
 
     def is_completed(self):
         return False

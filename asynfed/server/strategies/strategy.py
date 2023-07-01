@@ -26,7 +26,7 @@ class Strategy(ABC):
         """
 
     @abstractmethod
-    def aggregate(self, all_workers) -> None:
+    def aggregate(self, all_workers, cloud_storage) -> None:
         """Aggregate algorithm.
         """
 
