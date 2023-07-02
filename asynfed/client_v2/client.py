@@ -174,7 +174,7 @@ class Client(object):
                 LOGGER.info("Downloading new global model............")
 
                 while True:
-                    if self._storage_connector.download(remote_file_path=self._global_model_name,
+                    if self._storage_connector.download(remote_file_path=remote_path,
                                                         local_file_path=local_path):
                         break
                     print("Download model failed. Retry in 5 seconds.")
