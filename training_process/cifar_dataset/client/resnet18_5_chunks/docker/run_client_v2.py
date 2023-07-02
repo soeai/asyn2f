@@ -1,11 +1,7 @@
 
-import os
-import sys
 from dotenv import load_dotenv
 import pause
 from apscheduler.schedulers.background import BackgroundScheduler
-root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))))
-sys.path.append(root)
 
 from asynfed.client_v2.algorithms.client_asyncfL import ClientAsyncFl
 from asynfed.commons.conf import Config
@@ -65,8 +61,8 @@ print("*" * 20)
 # ------------oOo--------------------
 # Preprocessing data
 # default_training_dataset_path = "../../../../data/cifar_data/5_chunks/chunk_2.pickle"
-default_testing_dataset_path = "../../../../data/cifar_data/test_set.pickle"
-training_dataset_path = f"../../../../data/cifar_data/5_chunks/chunk_{config['training_params']['chunk_index']}.pickle"
+default_testing_dataset_path = "training_process/data/cifar_data/test_set.pickle"
+training_dataset_path = f"training_process/data/cifar_data/5_chunks/chunk_{config['training_params']['chunk_index']}.pickle"
 # if os.getenv("cifar_train_dataset_path"):
 #     training_dataset_path = os.getenv("cifar_train_dataset_path")
 # else:
