@@ -14,7 +14,7 @@ Config.STORAGE_SECRET_KEY = os.getenv("secret_key")
 
 conf = {
     "server_id": "test_server_id",
-    "bucket_name": "test-clientv2-2",
+    "bucket_name": "run-clientv2-resnet18",
     "region_name": "ap-southeast-2",
     "t": 30,
     "queue_consumer": {
