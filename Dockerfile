@@ -11,4 +11,5 @@ COPY . .
 
 # install dependencies for the program
 RUN pip install -r requirements.txt
+RUN python3 setup.py install
 # install asynfed package as pip package 
