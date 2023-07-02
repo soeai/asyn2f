@@ -42,7 +42,7 @@ class ClientAsyncFl(Client):
         # self._train_loss = 0.0
 
         # self._send_init_message()
-
+        # self._merged_global_version = self._current_global_version
 
     def _get_model_dim_ready(self):
        for images, labels in self.model.train_ds:
@@ -69,6 +69,8 @@ class ClientAsyncFl(Client):
         # temporarily fixed this problem
         # by training the model before loading the global weights
         self._get_model_dim_ready()
+        self._merged_global_version = self._current_global_version
+
 
         # check whether the client rejoin or training from the begining
         if self._local_epoch <= 1:
@@ -169,19 +171,22 @@ class ClientAsyncFl(Client):
                     # previous, current and global weights are used in the merged process
                     self.model.current_weights = self.model.get_weights()
                     # load global weights from file
+                    
+                    self._previous_merged_global_version = self._previous_global_version
+                    self._merged_global_version = self._current_global_version
+
                     global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + self._global_model_name
                     while not os.path.isfile(global_model_path):
                         print("*" * 20)
                         sleep(5)
-                        print("Sleep 5 second when the model is not ready, then retry")
+                        ("Sleep 5 second when the model is not ready, then retry")
                         print("*" * 20)
 
                     with open(global_model_path, "rb") as f:
                         self.model.global_weights = pickle.load(f)
                     LOGGER.info(f"New model ? - {self._new_model_flag}")
-
                     LOGGER.info(
-                        f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._current_global_version}, current global version {self._previous_global_version}")
+                        f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._merged_global_version}, current global version {self._previous_merged_global_version}")
                     # merging
                     self.__merge()
                     # changing flag status
@@ -189,7 +194,37 @@ class ClientAsyncFl(Client):
 
                     # # break after merging 
                     # break
+
+            if self._new_model_flag:
+                print("-" * 30)
+                print("-" * 30)
+                print("meging outside the batch training")
+                print("-" * 30)
+                print("-" * 30)
+                # before the merging process happens, need to retrieve current weights and global weights
+                # previous, current and global weights are used in the merged process
+                self.model.current_weights = self.model.get_weights()
+                # load global weights from file
                 
+                self._previous_merged_global_version = self._previous_global_version
+                self._merged_global_version = self._current_global_version
+                
+                global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + self._global_model_name
+                while not os.path.isfile(global_model_path):
+                    print("*" * 20)
+                    sleep(5)
+                    ("Sleep 5 second when the model is not ready, then retry")
+                    print("*" * 20)
+
+                with open(global_model_path, "rb") as f:
+                    self.model.global_weights = pickle.load(f)
+                LOGGER.info(f"New model ? - {self._new_model_flag}")
+                LOGGER.info(
+                    f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._merged_global_version}, current global version {self._previous_merged_global_version}")
+                # merging
+                self.__merge()
+                # changing flag status
+                self._new_model_flag = False
 
             if self.model.test_ds:
                 for test_images, test_labels in self.model.test_ds:
@@ -231,7 +266,7 @@ class ClientAsyncFl(Client):
                             headers={"timestamp": time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id},
                             content=NotifyModel(remote_worker_weight_path=remote_file_path, 
                                                 filename=filename,
-                                                global_version_used=self._current_global_version, 
+                                                global_version_used=self._merged_global_version, 
                                                 loss=self._train_loss,
                                                 performance= self._train_acc)).to_json()
                     self.queue_producer.send_data(message)
