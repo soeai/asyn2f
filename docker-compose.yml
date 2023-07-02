@@ -6,7 +6,7 @@ services:
   soe-asynfed-client:
     container_name: soe-asynfed-client
     build: .
-    command: python3.9 /app/training_process/mnist_dataset/client/run_client.py
+    command: python3 /app/training_process/cifar_dataset/client/resnet18_5_chunks/docker/run_client_v2.py
     env_file:
       - .env
     # these env variable can be defined in either .env file or as below
