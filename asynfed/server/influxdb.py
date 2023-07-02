@@ -1,5 +1,6 @@
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
+import logging
 
 class InfluxDB():
     def __init__(self, config: dict):
@@ -26,16 +27,18 @@ class InfluxDB():
             else:
                 print("Error: {}".format(e))
 
-    def write_training_process_data(self, training_data):
+    def write_training_process_data(self, msg_received):
         write_api = self.client.write_api(write_options=SYNCHRONOUS)
-        measurement = training_data.client_id
+        measurement = msg_received['headers']['client_id']
 
         record = (
             Point(measurement)
-            .field("client_id", training_data.client_id)
-            .field("epoch", training_data.epoch)
-            .field("train_acc", training_data.train_acc)
-            .field("train_loss", training_data.train_loss)
-            .time(training_data.timestamp, WritePrecision.NS)
+            .field("client_id", msg_received['headers']['client_id'])
+            .field("train_acc", msg_received['content']['performance'])
+            .field("train_loss", msg_received['content']['loss'])
+            .time(msg_received['headers']['timestamp'], WritePrecision.NS)
         )
-        write_api.write(bucket=self.bucket_name, org="ttu", record=record)
+        try:
+            write_api.write(bucket=self.bucket_name, org="ttu", record=record)
+        except Exception as e:
+            logging.error(e)

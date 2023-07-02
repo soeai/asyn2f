@@ -11,10 +11,7 @@ class AWSConnector(ABC):
     """Class for connecting to AWS S3"""
     time_sleep = 10
     def __init__(self, aws_config) -> None:
-        if aws_config['parent']:
-            self.parent_thread = aws_config['parent']
-        else:
-            self.parent_thread = None
+        self.parent_thread = aws_config.get('parent')
         self.access_key = aws_config['access_key']
         self.secret_key = aws_config['secret_key']
         self.bucket_name = aws_config['bucket_name']

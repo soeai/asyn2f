@@ -21,7 +21,7 @@ from asynfed.commons.messages.message_v2 import MessageV2
 from asynfed.commons.utils.queue_consumer import AmqpConsumer
 from asynfed.commons.utils.queue_producer import AmqpProducer
 from asynfed.commons.utils.time_ultils import time_diff, time_now
-from asynfed.server import Strategy, WorkerManager, ServerStorage
+from asynfed.server import Strategy, WorkerManager, ServerStorage, influxdb
 from asynfed.server.objects import Worker
 from asynfed.server.strategies import AsynFL
 from asynfed.server.messages import response_connection
@@ -84,11 +84,9 @@ class Server(object):
         # All this information was decided by server to prevent conflict
         # because multiple server can use the same RabbitMQ, S3 server.
 
-        if self.config['bucket_name'] is not None or self.config['bucket_name'] != "":
-            Config.STORAGE_BUCKET_NAME = self.config['bucket_name']
-        else:
-            Config.STORAGE_BUCKET_NAME = self._server_id
-        #
+        if config.get('aws').get('bucket_name') is None or self.config.get('aws').get('bucket_name') == "":
+            config['aws']['bucket_name'] = self._server_id
+        
         init_config("server")
 
         LOGGER.info(f'\n\nServer Info:\n\tQueue In : {self.config["queue_consumer"]}'
@@ -98,14 +96,8 @@ class Server(object):
 
         # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
-        aws_config = {
-            "access_key": Config.STORAGE_ACCESS_KEY,
-            "secret_key": Config.STORAGE_SECRET_KEY,
-            "region_name": Config.STORAGE_REGION_NAME,
-            "bucket_name": Config.STORAGE_BUCKET_NAME,
-            "parent": None
-        }
-        self._cloud_storage: ServerStorage = ServerStorage(aws_config)
+        self._cloud_storage: ServerStorage = ServerStorage(config['aws'])
+        self._influxdb = influxdb.InfluxDB(config['influxdb'])
 
         self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
         self.queue_concumer = AmqpConsumer(self.config['queue_consumer'], self)
@@ -166,6 +158,8 @@ class Server(object):
 
 
     def _response_connection(self, msg_received):
+        print(msg_received)
+        MessageV2.print_message(msg_received)
         client_id = msg_received['headers']['client_id']
         session_id = str(uuid.uuid4())
         content = msg_received['content']
@@ -215,8 +209,8 @@ class Server(object):
                       "model_version": int(re.findall(r'\d+', model_url.split("/")[1])[0]) }
         aws_info = {"access_key": access_key, 
                     "secret_key": secret_key, 
-                    "bucket_name": self.config['bucket_name'],
-                    "region_name": self.config['region_name'],
+                    "bucket_name": self.config['aws']['bucket_name'],
+                    "region_name": self.config['aws']['region_name'],
                     "parent": None}
         queue_info = {"training_exchange": "", 
                       "monitor_queue": ""}
@@ -228,14 +222,13 @@ class Server(object):
         self.queue_producer.send_data(message)
 
     def _handle_client_notify_message(self, msg_received):
-        print("-" * 20)
-        print(msg_received)
-        print("-" * 20)
+        MessageV2.print_message(msg_received)
         client_id = msg_received['headers']['client_id']
 
         # self._cloud_storage.download(remote_file_path=msg_received['content']['remote_worker_weight_path'],
         #                                 local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + msg_received['content']['filename'])
         self._worker_manager.add_local_update(client_id, msg_received['content'])
+        self._influxdb.write_training_process_data(msg_received)
 
 
     def __update(self, n_local_updates):

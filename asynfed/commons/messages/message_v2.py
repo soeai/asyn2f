@@ -48,6 +48,7 @@ class MessageV2:
                 return v
             if value is None:
                 return 'None'
+            return value or ''
         MAX_LENGTH = 80
         OFFSET = 3
         print('|' + '-'*MAX_LENGTH + '|')

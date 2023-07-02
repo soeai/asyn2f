@@ -9,14 +9,16 @@ from asynfed.server.strategies.AsynFL import AsynFL
 from dotenv import load_dotenv
 load_dotenv()
 
-Config.STORAGE_ACCESS_KEY = os.getenv("access_key")
-Config.STORAGE_SECRET_KEY = os.getenv("secret_key")
 
 conf = {
     "server_id": "test_server_id",
-    "bucket_name": "run-clientv2-resnet18",
-    "region_name": "ap-southeast-2",
     "t": 30,
+    "aws": {
+        "access_key": os.getenv("access_key"),
+        "secret_key": os.getenv("secret_key"),
+        "bucket_name": "run-clientv2-resnet18",
+        "region_name": "ap-southeast-2",
+    },
     "queue_consumer": {
         'exchange_name': 'asynfl_exchange',
         'exchange_type': 'topic',
@@ -30,6 +32,12 @@ conf = {
         'queue_name': 'server_queue',
         'routing_key': 'client.#',
         'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
+    },
+    "influxdb": {
+        "url": os.getenv("INFLUXDB_URL"),
+        "token": os.getenv("INFLUXDB_TOKEN"),
+        "org": os.getenv("INFLUXDB_ORG"),
+        "bucket_name": os.getenv("INFLUXDB_BUCKET")
     }
 }
 strategy = AsynFL()

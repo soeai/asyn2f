@@ -1,34 +1,33 @@
 import logging
 import boto3
-from asynfed.commons.conf import Config
+import json
 from asynfed.commons.utils import AWSConnector
 LOGGER = logging.getLogger(__name__)
-import json
-import uuid
 
 class ServerStorage(AWSConnector):
 
-    def __init__(self, aws_config=None):
+    def __init__(self, aws_config):
         super().__init__(aws_config)
-        self.iam = boto3.client('iam', aws_access_key_id=Config.STORAGE_ACCESS_KEY,
-                                aws_secret_access_key=Config.STORAGE_SECRET_KEY)
+        self.iam = boto3.client('iam', aws_access_key_id=aws_config['access_key'],
+                                aws_secret_access_key=aws_config['secret_key'])
         self.client_keys = None
+        self.bucket_name = aws_config['bucket_name']
 
         try:
-            logging.info(f"Creating bucket {Config.STORAGE_BUCKET_NAME}")
+            logging.info(f"Creating bucket {self.bucket_name}")
             self._s3.create_bucket(
-                Bucket=Config.STORAGE_BUCKET_NAME,
-                CreateBucketConfiguration={'LocationConstraint': Config.STORAGE_REGION_NAME}
+                Bucket=self.bucket_name,
+                CreateBucketConfiguration={'LocationConstraint': aws_config['region_name']}
             )
-            logging.info(f"Created bucket {Config.STORAGE_BUCKET_NAME}")
-            self._s3.put_object(Bucket=Config.STORAGE_BUCKET_NAME, Key='global-models/')
+            logging.info(f"Created bucket {self.bucket_name}")
+            self._s3.put_object(Bucket=self.bucket_name, Key='global-models/')
         except Exception as e:
             if 'BucketAlreadyOwnedByYou' in str(e):
-                logging.info(f"Bucket {Config.STORAGE_BUCKET_NAME} already exists")
+                logging.info(f"Bucket {self.bucket_name} already exists")
             else:
                 logging.error(e)
 
-        self.client_name = f'client-{Config.STORAGE_BUCKET_NAME}'
+        self.client_name = f'client-{self.bucket_name}'
 
         try:
             self.iam.create_user(UserName=self.client_name)
@@ -48,8 +47,8 @@ class ServerStorage(AWSConnector):
                         "s3:ListBucket"
                     ],
                     "Resource": [
-                        f"arn:aws:s3:::{Config.STORAGE_BUCKET_NAME}",
-                        f"arn:aws:s3:::{Config.STORAGE_BUCKET_NAME}/*"
+                        f"arn:aws:s3:::{self.bucket_name}",
+                        f"arn:aws:s3:::{self.bucket_name}/*"
                     ]
                 },
                 {
@@ -60,8 +59,8 @@ class ServerStorage(AWSConnector):
                         "s3:GetObjectACL"
                     ],
                     "Resource": [
-                        f"arn:aws:s3:::{Config.STORAGE_BUCKET_NAME}/global-models",
-                        f"arn:aws:s3:::{Config.STORAGE_BUCKET_NAME}/global-models/*"
+                        f"arn:aws:s3:::{self.bucket_name}/global-models",
+                        f"arn:aws:s3:::{self.bucket_name}/global-models/*"
                     ]
                 },
                 {
@@ -72,14 +71,14 @@ class ServerStorage(AWSConnector):
                         "s3:PutObjectACL"
                     ],
                     "Resource": [
-                        f"arn:aws:s3:::{Config.STORAGE_BUCKET_NAME}/clients/*"
+                        f"arn:aws:s3:::{self.bucket_name}/clients/*"
                     ]
                 }
             ]
         }
         try:
             policy = self.iam.create_policy(
-                PolicyName=Config.STORAGE_BUCKET_NAME,
+                PolicyName=self.bucket_name,
                 PolicyDocument=json.dumps(policy_arn),
             )
             self.iam.attach_user_policy(
@@ -88,7 +87,7 @@ class ServerStorage(AWSConnector):
             )
         except Exception as e:
             if 'EntityAlreadyExists' in str(e):
-                logging.info(f"Policy {Config.STORAGE_BUCKET_NAME} already exists")
+                logging.info(f"Policy {self.bucket_name} already exists")
             else:
                 logging.error(e)
 
@@ -111,11 +110,11 @@ class ServerStorage(AWSConnector):
         return self.client_access_key_id, self.client_secret_key
 
     def create_folder(self, folder_name):
-        self._s3.put_object(Bucket=Config.STORAGE_BUCKET_NAME, Key=('clients/' + folder_name + '/'))
+        self._s3.put_object(Bucket=self.bucket_name, Key=('clients/' + folder_name + '/'))
 
     def get_newest_global_model(self) -> str:
         # get the newest object in the global-models bucket
-        objects = self._s3.list_objects_v2(Bucket=Config.STORAGE_BUCKET_NAME, Prefix='global-models/', Delimiter='/')['Contents']
+        objects = self._s3.list_objects_v2(Bucket=self.bucket_name, Prefix='global-models/', Delimiter='/')['Contents']
         # Sort the list of objects by LastModified in descending order
         sorted_objects = sorted(objects, key=lambda x: x['LastModified'], reverse=True)
 
@@ -134,7 +133,7 @@ class ServerStorage(AWSConnector):
 
     def delete_bucket(self):
         try:
-            self._s3.delete_bucket(Bucket=Config.STORAGE_BUCKET_NAME)
-            logging.info(f'Success! Bucket {Config.STORAGE_BUCKET_NAME} deleted.')
+            self._s3.delete_bucket(Bucket=self.bucket_name)
+            logging.info(f'Success! Bucket {self.bucket_name} deleted.')
         except Exception as e:
-            logging.error(f'Error! Bucket {Config.STORAGE_BUCKET_NAME} was not deleted. {e}')
+            logging.error(f'Error! Bucket {self.bucket_name} was not deleted. {e}')
