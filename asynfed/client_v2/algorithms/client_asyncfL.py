@@ -35,14 +35,6 @@ class ClientAsyncFl(Client):
             or create their own model in their own platform (pytorch,...)
         '''
 
-        # print("*" * 20)
-        # if tf.config.list_physical_devices('GPU'):
-        #     tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[config["training_params"]['gpu_index']], 'GPU')
-        #     print("Using GPU: ", tf.config.list_physical_devices('GPU')[config["training_params"]['gpu_index']])
-        # else:
-        #     print("Using CPU")
-        # print("*" * 20)
-
         # self.model = model
         # self._local_data_size = self.model.data_size
         # self._local_qod = self.model.qod
@@ -126,6 +118,7 @@ class ClientAsyncFl(Client):
         from datetime import datetime
         start_time = datetime.now()
         for i in range(self.model.epoch):
+            self._local_epoch += 1
             # since the current mnist model is small, set some sleeping time
             # to avoid overhead for the queue exchange and storage server
             LOGGER.info(f"Sleep for {Config.SLEEPING_TIME} seconds to avoid overhead")
@@ -199,14 +192,15 @@ class ClientAsyncFl(Client):
                 self._test_acc, self._test_loss = 0, 0
 
             
-
+            print("*" * 20)
             LOGGER.info(
                 f'Epoch: {self._local_epoch}'
-                f'\tLast Batch Train Accuracy: {self._train_acc * 100}, '
-                f'\tLast Batch Train Loss: {self._train_loss}, '
-                f'\tLast Batch Test Accuracy: {self._test_acc * 100}'
-                f'\tLast Batch Test Loss: {self._test_loss}, '
+                f'\tLast Batch Train Accuracy: {(self._train_acc * 100):.4f}, '
+                f'\tLast Batch Train Loss: {self._train_loss:.4f}, '
+                f'\tLast Batch Test Accuracy: {(self._test_acc * 100):.4f}, '
+                f'\tLast Batch Test Loss: {self._test_loss:.4f}'
             )
+            print("*" * 20)
 
 
             # Save weights locally after training
@@ -217,8 +211,8 @@ class ClientAsyncFl(Client):
             # Print the weight location
             LOGGER.info(f'Saved weights to {save_location}')
 
-            # Only when the local model is save, local epoch is updated
-            self._local_epoch += 1
+            # # Only when the local model is save, local epoch is updated
+            # self._local_epoch += 1
 
             # Upload the weight to the storage (the remote server)
             remote_file_path = 'clients/' + str(self._client_id) + '/' + filename

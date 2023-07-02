@@ -10,7 +10,7 @@ class Strategy(ABC):
     """
 
     def __init__(self):
-        self.current_version = 0
+        self.current_version = 1
         self.model_id = str(uuid.uuid4())
         # change after each update time
         self.global_model_update_data_size = 0
