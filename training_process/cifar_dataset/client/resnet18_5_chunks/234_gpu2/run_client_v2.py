@@ -14,6 +14,7 @@ from training_process.cifar_dataset.client.resnet18 import Resnet18
 from training_process.cifar_dataset.client.resnet18_5_chunks.data_preprocessing import preprocess_dataset
 
 load_dotenv()
+
 scheduler = BackgroundScheduler()
 
 config = {
@@ -104,5 +105,6 @@ tensorflow_framework = TensorflowFramework(model=model,
 
 tf_client = ClientAsyncFl(model=tensorflow_framework,config=config)
 tf_client.start()
+
 scheduler.start()
 pause.days(1) # or it can anything as per your need

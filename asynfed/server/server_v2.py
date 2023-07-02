@@ -203,7 +203,7 @@ class Server(object):
             self._strategy.current_version = int(model_version)
         except Exception as e:
             logging.error(e)
-            self._strategy.current_version = 0
+            self._strategy.current_version = 1
 
         model_url = self._cloud_storage.get_newest_global_model()
         model_info = {"model_url": model_url, 

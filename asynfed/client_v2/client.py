@@ -110,7 +110,7 @@ class Client(object):
         content = msg_received['content']
 
         # IF message come from SERVER_INIT_RESPONSE_TO_CLIENT
-        if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE:
+        if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE and not self._is_connected:
             # message_v2.MessageV2.print_message(msg_received)
             print('SERVER INIT RESPONSE', msg_received)
             if content['reconnect'] is True:
@@ -119,11 +119,15 @@ class Client(object):
             self._session_id = content['session_id']
             self._global_model_name = content['model_info']['global_model_name']
             self._current_global_version = content['model_info']['model_version']
+            # print("*" * 20)
+            # print(self._current_global_version)
+            # print("*" * 20)
             self._storage_connector = ClientStorage(content['aws_info'])
             self._is_connected = True
 
             # Check for new global model version.
             if self._current_local_version < self._current_global_version:
+                self._current_local_version = self._current_global_version
                 LOGGER.info("Detect new global version.")
                 local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
 

@@ -117,6 +117,11 @@ class ClientAsyncFl(Client):
         # or after a sufficient period of time
         from datetime import datetime
         start_time = datetime.now()
+        print("-" * 20)
+        print("-" * 20)
+        print(self._local_epoch)
+        print("-" * 20)
+        print("-" * 20)
         for i in range(self.model.epoch):
             self._local_epoch += 1
             # since the current mnist model is small, set some sleeping time
@@ -133,14 +138,16 @@ class ClientAsyncFl(Client):
             tracking_point = tracking_period
 
             multiplier = 1
+
+            # training per several epoch
+            LOGGER.info(f"Enter epoch {self._local_epoch}")
+
             # reset loss and per after each epoch
             self.model.reset_train_loss()
             self.model.reset_train_performance()
             self.model.reset_test_loss()
             self.model.reset_test_performance()
 
-            # training per several epoch
-            LOGGER.info(f"Enter epoch {self._local_epoch}")
             for images, labels in self.model.train_ds:
                 # Tracking the training process every x samples 
                 # x define by user
