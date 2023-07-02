@@ -33,20 +33,21 @@ config = {
         'routing_key': 'server.#',
         'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
     },
+
     "training_params": {
         "dataset": "cifar10",
         "model": "resnet18",
 
         "regularization": "l2",
         "lambda_value": 5e-4,
-        "learning_rate": 1e-3,
+        "learning_rate": 1e-1,
 
         # setup differently for different device
         "gpu_index": 1,
         "chunk_index": 5,
 
         "qod": 0.45,
-        "batch_size": 64,
+        "batch_size": 128,
         "epoch": 200,
 
         "tracking_point": 2000,

@@ -39,22 +39,21 @@ class Client(object):
         self._save_global_model_update_data_size = None
         self._save_global_model_version = None
 
-
         self.model = model
         self._local_data_size = self.model.data_size
         self._local_qod = self.model.qod
         self._train_acc = 0.0
         self._train_loss = 0.0
 
-
-        self._previous_local_version = 0
-        self._current_local_version = 0
-
-        self._current_global_version = None
+        # for updating new global model
+        self._previous_global_version = 0
+        self._current_global_version = 0
+        self._received_global_version = 0
 
         self._global_model_name = None
 
         self._local_epoch = 0
+
         # merging process
         self._global_avg_loss = None
         self._global_avg_qod = None
@@ -118,7 +117,7 @@ class Client(object):
 
             self._session_id = content['session_id']
             self._global_model_name = content['model_info']['global_model_name']
-            self._current_global_version = content['model_info']['model_version']
+            self._received_global_version = content['model_info']['model_version']
             # print("*" * 20)
             # print(self._current_global_version)
             # print("*" * 20)
@@ -126,13 +125,17 @@ class Client(object):
             self._is_connected = True
 
             # Check for new global model version.
-            if self._current_local_version < self._current_global_version:
-                self._current_local_version = self._current_global_version
+            if self._current_global_version < self._received_global_version:
+                self._current_global_version = self._received_global_version
                 LOGGER.info("Detect new global version.")
                 local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
 
-                self._storage_connector.download(remote_file_path=content['model_info']['model_url'], 
-                                                 local_file_path=local_path)
+                while True:
+                    if self._storage_connector.download(remote_file_path=content['model_info']['model_url'], 
+                                                    local_file_path=local_path):
+                        break
+                    print("Download model failed. Retry in 5 seconds.")
+                    sleep(5)
 
             self.update_profile()
             self.start_training_thread()
@@ -149,7 +152,7 @@ class Client(object):
 
                 # update latest model info
                 self._global_model_name = content['global_model_name']
-                self._current_global_version = content['global_model_version']
+                self._received_global_version = content['global_model_version']
 
                 # global info for merging process
                 self._global_model_update_data_size = content['global_model_update_data_size']
@@ -161,22 +164,23 @@ class Client(object):
                 print("*" * 20)
 
                 # save the previous local version of the global model to log it to file
-                self._previous_local_version = self._current_local_version
+                self._previous_global_version = self._current_global_version
                 # update local version (the latest global model that the client have)
-                self._current_local_version = self._current_global_version
+                self._current_global_version = self._received_global_version
 
                 remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
                 local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
 
                 LOGGER.info("Downloading new global model............")
-                # while True:
-                #     if \
-                self._storage_connector.download(remote_file_path=remote_path,
-                                                 local_file_path=local_path)
-                #     break
-                # print("Download model failed. Retry in 5 seconds.")
-                # sleep(5)
-                # LOGGER.info(f"Successfully downloaded new global model, version {self._global_model_version}")
+
+                while True:
+                    if self._storage_connector.download(remote_file_path=self._global_model_name,
+                                                        local_file_path=local_path):
+                        break
+                    print("Download model failed. Retry in 5 seconds.")
+                    sleep(5)
+
+                LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
 
                 # # change the flag to true.
                 self._new_model_flag = True

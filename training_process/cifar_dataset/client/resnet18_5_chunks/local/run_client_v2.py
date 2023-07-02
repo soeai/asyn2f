@@ -38,13 +38,13 @@ config = {
 
         "regularization": "l2",
         "lambda_value": 5e-4,
-        "learning_rate": 1e-3,
+        "learning_rate": 1e-1,
 
         "gpu_index": 0,
         "chunk_index": 2,
 
         "qod": 0.45,
-        "batch_size": 64,
+        "batch_size": 128,
         "epoch": 200,
 
         "tracking_point": 2000,

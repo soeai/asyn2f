@@ -142,11 +142,11 @@ class ClientAsyncFl(Client):
             # training per several epoch
             LOGGER.info(f"Enter epoch {self._local_epoch}")
 
-            # reset loss and per after each epoch
-            self.model.reset_train_loss()
-            self.model.reset_train_performance()
-            self.model.reset_test_loss()
-            self.model.reset_test_performance()
+            # # reset loss and per after each epoch
+            # self.model.reset_train_loss()
+            # self.model.reset_train_performance()
+            # self.model.reset_test_loss()
+            # self.model.reset_test_performance()
 
             for images, labels in self.model.train_ds:
                 # Tracking the training process every x samples 
@@ -180,16 +180,15 @@ class ClientAsyncFl(Client):
                         self.model.global_weights = pickle.load(f)
                     LOGGER.info(f"New model ? - {self._new_model_flag}")
 
-                    # # print out the performance of the global model
-                    # for test_images, test_labels in self.model.test_ds:
-                    #     self._test_acc, self._test_loss = self.model.evaluate(test_images, test_labels)
-
                     LOGGER.info(
-                        f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._current_local_version}, current global version {self._previous_local_version}")
+                        f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._current_global_version}, current global version {self._previous_global_version}")
                     # merging
                     self.__merge()
                     # changing flag status
                     self._new_model_flag = False
+
+                    # # break after merging 
+                    # break
                 
 
             if self.model.test_ds:
@@ -232,7 +231,7 @@ class ClientAsyncFl(Client):
                             headers={"timestamp": time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id},
                             content=NotifyModel(remote_worker_weight_path=remote_file_path, 
                                                 filename=filename,
-                                                global_version_used=self._current_local_version, 
+                                                global_version_used=self._current_global_version, 
                                                 loss=self._train_loss,
                                                 performance= self._train_acc)).to_json()
                     self.queue_producer.send_data(message)
@@ -241,6 +240,12 @@ class ClientAsyncFl(Client):
                     print('Notify new model to the server successfully')
                     print("*" * 20)
                     break
+
+            # reset loss and per after each epoch
+            self.model.reset_train_loss()
+            self.model.reset_train_performance()
+            self.model.reset_test_loss()
+            self.model.reset_test_performance()
 
             # break before completing the intended number of epoch
             # if the total training time excess some degree

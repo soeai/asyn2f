@@ -31,6 +31,9 @@ class AsynFL(Strategy):
     # def aggregate(self, worker_manager: WorkerManager, cloud_storage: ServerStorage):
         # calculate avg, loss and datasize here
         # Get all workers that has the weight version with server
+        print("-" * 20)
+        print(f"Current global version before aggregating process: {self.current_version}")
+        print("-" * 20)
         self.current_version += 1
         completed_workers: dict[str, Worker] = worker_manager.get_completed_workers()
         total_completed_worker = len(completed_workers)
@@ -70,8 +73,8 @@ class AsynFL(Strategy):
 
         # Create a new weight with the same shape and type as a given weight.
         merged_weight = None
-        # print("*" * 20)
         for cli_id, worker in completed_workers.items():
+            print("*" * 20)
             # download only when aggregating
             worker_current_version = worker.current_version
             remote_weight_file = worker.get_remote_weight_file_path()
@@ -87,11 +90,14 @@ class AsynFL(Strategy):
             if merged_weight is None:
                 merged_weight = copy(weight)
             else:
+                print(f"Current global version: {self.current_version}")
+                print(f"worker id {worker.worker_id} with global version used {worker_current_version}")
+                print(f"substract: {self.current_version - worker_current_version}")
                 for layers in range(len(weight)):
                     merged_weight[layers] += 1 / total_completed_worker * (
                             worker.alpha / (self.current_version - worker_current_version)) * \
                                              weight[layers]
-        # print("*" * 20)
+            print("*" * 20)
 
         # save weight file.
         save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self.get_global_model_filename()
