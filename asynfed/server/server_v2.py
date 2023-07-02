@@ -1,3 +1,4 @@
+from datetime import datetime
 import os, sys
 import re
 
@@ -31,6 +32,7 @@ thread_pool_ref = concurrent.futures.ThreadPoolExecutor
 lock = threading.Lock()
 
 LOGGER = logging.getLogger(__name__)
+logging.getLogger("pika").setLevel(logging.WARNING)
 
 class Server(object):
     """
@@ -38,7 +40,7 @@ class Server(object):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, config: dict) -> None:
+    def __init__(self, strategy: Strategy, config: dict, save_log=False) -> None:
         """
         config structure
         {
@@ -59,6 +61,8 @@ class Server(object):
         }
         """
         super().__init__()
+        if save_log:
+            sys.stdout = SaveLog()
 
         self.config = config
         self._t = config.get('t') or 15
@@ -311,4 +315,37 @@ class Server(object):
         self._start_time = time_now()
         self._first_arrival = None
         self._latest_arrival = None
+
+
+class SaveLog(object):
+    def __init__(self, filename=None):
+        if filename is None:
+            filename = f"logs/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log"
+        if not os.path.exists("logs"):
+            os.makedirs("logs")
+        self.terminal = sys.stdout
+        LOG_FORMAT = '%(levelname) -6s %(asctime)s %(name) -10s %(funcName) -15s %(lineno) -5d: %(message)s'
+        logging.basicConfig(
+            level=logging.INFO,
+            format=LOG_FORMAT,
+            datefmt='%Y-%m-%d %H:%M:%S',
+        )
+
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(LOG_FORMAT)
+        file_handler = logging.FileHandler(filename)
+
+        LOGGER.addHandler(console_handler)
+        LOGGER.addHandler(file_handler)
+        self.log = open(filename, "a")
+   
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)  
+
+    def flush(self):
+        # this flush method is needed for python 3 compatibility.
+        # this handles the flush command by doing nothing.
+        # you might want to specify some extra behavior here.
+        pass    
 

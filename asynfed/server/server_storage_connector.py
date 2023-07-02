@@ -23,14 +23,20 @@ class ServerStorage(AWSConnector):
             logging.info(f"Created bucket {Config.STORAGE_BUCKET_NAME}")
             self._s3.put_object(Bucket=Config.STORAGE_BUCKET_NAME, Key='global-models/')
         except Exception as e:
-            logging.error(e)
+            if 'BucketAlreadyOwnedByYou' in str(e):
+                logging.info(f"Bucket {Config.STORAGE_BUCKET_NAME} already exists")
+            else:
+                logging.error(e)
 
         self.client_name = f'client-{Config.STORAGE_BUCKET_NAME}'
 
         try:
             self.iam.create_user(UserName=self.client_name)
         except Exception as e:
-            logging.error(e)
+            if 'EntityAlreadyExists' in str(e):
+                logging.info(f"User {self.client_name} already exists")
+            else:
+                logging.error(e)
 
         policy_arn = {
             "Version": "2012-10-17",
@@ -81,8 +87,10 @@ class ServerStorage(AWSConnector):
                 PolicyArn=policy['Policy']['Arn'],
             )
         except Exception as e:
-            logging.error(e)
-            pass # Policy is already exist
+            if 'EntityAlreadyExists' in str(e):
+                logging.info(f"Policy {Config.STORAGE_BUCKET_NAME} already exists")
+            else:
+                logging.error(e)
 
         try:
             self.client_keys = self.iam.create_access_key(UserName=self.client_name)['AccessKey']
