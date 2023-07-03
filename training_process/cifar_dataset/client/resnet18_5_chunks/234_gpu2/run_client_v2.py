@@ -19,6 +19,7 @@ scheduler = BackgroundScheduler()
 
 config = {
     "client_id": "234-gpu-2",
+    "role": "train",
     "queue_consumer": {
         'exchange_name': 'asynfl_exchange',
         'exchange_type': 'topic',
