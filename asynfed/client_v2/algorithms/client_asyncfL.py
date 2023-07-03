@@ -5,6 +5,7 @@ from datetime import datetime
 from time import sleep
 import numpy as np
 import pickle
+from asynfed.client_v2.messages.notify_evaluation import NotifyEvaluation
 from asynfed.client_v2.messages.notify_model import NotifyModel
 from asynfed.commons.conf import Config
 from asynfed.client_v2.client import Client
@@ -355,3 +356,18 @@ class ClientAsyncFl(Client):
         # set the merged_weights to be the current weights of the model
         self.model.set_weights(self.model.merged_weights)
 
+    def _test(self):
+        self._get_model_dim_ready()
+        current_local_weights = self._load_weights_from_file(self._global_model_name, Config.TMP_GLOBAL_MODEL_FOLDER)
+        self.model.set_weights(current_local_weights)
+        LOGGER.info('Testing the model')
+        for test_images, test_labels in self.model.test_ds:
+            performance, loss = self.model.evaluate(test_images, test_labels)
+
+        content = NotifyEvaluation(self._global_model_name, performance, loss)
+        LOGGER.info(content.__dict__)
+        message = MessageV2(
+            headers={'timestamp': time_now(), 'message_type': Config.CLIENT_NOTIFY_EVALUATION, 'session_id': self._session_id, 'client_id': self._client_id},
+            content=content
+        ).to_json()
+        self.queue_producer.send_data(message)

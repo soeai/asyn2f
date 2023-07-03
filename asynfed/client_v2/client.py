@@ -213,66 +213,55 @@ class Client(object):
         if self._role == "train":
             self.start_training_thread()
         elif self._role == "test":
-            for test_images, test_labels in self.model.test_ds:
-                performance, loss = self.model.evaluate(test_images, test_labels)
-            content = NotifyEvaluation(self._current_global_version, performance, loss)
-            message = message_v2.MessageV2(
-                headers={'timestamp': time_now(), 'message_type': Config.CLIENT_NOTIFY_EVALUATION, 'session_id': self._session_id, 'client_id': self._client_id},
-                content=content
-            ).to_json()
-            self.queue_producer.send_data(message)
+            self._test()
 
     def _handle_server_notify_message(self, msg_received):
         content = msg_received['content']
         message_v2.MessageV2.print_message(msg_received)
-        if self._role == "train":
-            with lock:
-                # ----- receive and load global message ----
-                self._global_chosen_list = content['chosen_id']
+        with lock:
+            # ----- receive and load global message ----
+            self._global_chosen_list = content['chosen_id']
 
-                # update latest model info
-                self._global_model_name = content['global_model_name']
-                self._received_global_version = content['global_model_version']
+            # update latest model info
+            self._global_model_name = content['global_model_name']
+            self._received_global_version = content['global_model_version']
 
-                # global info for merging process
-                self._global_model_update_data_size = content['global_model_update_data_size']
-                self._global_avg_loss = content['avg_loss']
-                self._global_avg_qod = content['avg_qod']
-                LOGGER.info("*" * 20)
-                LOGGER.info(
-                    f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
-                LOGGER.info("*" * 20)
+            # global info for merging process
+            self._global_model_update_data_size = content['global_model_update_data_size']
+            self._global_avg_loss = content['avg_loss']
+            self._global_avg_qod = content['avg_qod']
+            LOGGER.info("*" * 20)
+            LOGGER.info(
+                f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
+            LOGGER.info("*" * 20)
 
-                # save the previous local version of the global model to log it to file
-                self._previous_global_version = self._current_global_version
-                # update local version (the latest global model that the client have)
-                self._current_global_version = self._received_global_version
+            # save the previous local version of the global model to log it to file
+            self._previous_global_version = self._current_global_version
+            # update local version (the latest global model that the client have)
+            self._current_global_version = self._received_global_version
 
-                remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
-                local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
+            remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
+            local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
 
-                LOGGER.info("Downloading new global model............")
+            LOGGER.info("Downloading new global model............")
 
-                while True:
-                    if self._storage_connector.download(remote_file_path=remote_path,
-                                                        local_file_path=local_path):
-                        break
-                    LOGGER.info("Download model failed. Retry in 5 seconds.")
-                    sleep(5)
+            while True:
+                if self._storage_connector.download(remote_file_path=remote_path,
+                                                    local_file_path=local_path):
+                    break
+                LOGGER.info("Download model failed. Retry in 5 seconds.")
+                sleep(5)
 
-                LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
-                self._new_model_flag = True
-        elif self._role == "test":
-            print('test')
-            for test_images, test_labels in self.model.test_ds:
-                performance, loss = self.model.evaluate(test_images, test_labels)
-                print(performance, loss)
-            content = NotifyEvaluation(self._current_global_version, performance, loss)
-            message = message_v2.MessageV2(
-                headers={'timestamp': time_now(), 'message_type': Config.CLIENT_NOTIFY_EVALUATION, 'session_id': self._session_id, 'client_id': self._client_id},
-                content=content
-            ).to_json()
-            self.queue_producer.send_data(message)
+            LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
+            self._new_model_flag = True
+
+        if self._role == "test":
+            self._test()
+
+    @abstractmethod
+    def _test(self):
+        pass
+
 
     def _start_consumer(self):
         self.queue_consumer.start()
