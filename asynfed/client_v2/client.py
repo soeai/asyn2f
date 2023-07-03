@@ -31,6 +31,7 @@ lock = threading.Lock()
 class Client(object):
     def __init__(self, model: ModelWrapper, config, save_log=False):
         self.config = config
+        self._role = config['role']
         # Dependencies
         self._global_chosen_list = None
         self._save_global_avg_qod = None
@@ -95,7 +96,7 @@ class Client(object):
             self._new_model_flag = True
             LOGGER.info(f"Successfully downloaded new global model, version {self._global_model_version}")
         else:
-            print("Download model failed. Passed this version!")
+            LOGGER.info("Download model failed. Passed this version!")
 
     def on_upload(self, result):
         pass
@@ -108,7 +109,7 @@ class Client(object):
         if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE and not self._is_connected:
             message_v2.MessageV2.print_message(msg_received)
             if content['reconnect'] is True:
-                print("Reconnect to server.")
+                LOGGER.info("Reconnect to server.")
 
             self._session_id = content['session_id']
             self._global_model_name = content['model_info']['global_model_name']
@@ -126,7 +127,7 @@ class Client(object):
                     if self._storage_connector.download(remote_file_path=content['model_info']['model_url'], 
                                                     local_file_path=local_path):
                         break
-                    print("Download model failed. Retry in 5 seconds.")
+                    LOGGER.info("Download model failed. Retry in 5 seconds.")
                     sleep(5)
 
             self.update_profile()
@@ -135,9 +136,9 @@ class Client(object):
         elif msg_received['headers']['message_type'] == Config.SERVER_NOTIFY_MESSAGE and self._is_connected:
             # download model.
 
-            print("*" * 20)
-            print('SERVER NOTIFY MESSAGE', msg_received)
-            print("*" * 20)
+            LOGGER.info("*" * 20)
+            message_v2.MessageV2.print_message(msg_received)
+            LOGGER.info("*" * 20)
             with lock:
                 # ----- receive and load global message ----
                 self._global_chosen_list = content['chosen_id']
@@ -150,10 +151,10 @@ class Client(object):
                 self._global_model_update_data_size = content['global_model_update_data_size']
                 self._global_avg_loss = content['avg_loss']
                 self._global_avg_qod = content['avg_qod']
-                print("*" * 20)
-                print(
+                LOGGER.info("*" * 20)
+                LOGGER.info(
                     f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
-                print("*" * 20)
+                LOGGER.info("*" * 20)
 
                 # save the previous local version of the global model to log it to file
                 self._previous_global_version = self._current_global_version
@@ -169,7 +170,7 @@ class Client(object):
                     if self._storage_connector.download(remote_file_path=remote_path,
                                                         local_file_path=local_path):
                         break
-                    print("Download model failed. Retry in 5 seconds.")
+                    LOGGER.info("Download model failed. Retry in 5 seconds.")
                     sleep(5)
 
                 LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
@@ -234,7 +235,7 @@ class Client(object):
                 # self._local_data_size = data["local_data_size"]
                 # self._train_loss = data["train_loss"]
         except Exception as e:
-            print(e)
+            LOGGER.info(e)
 
 
     def _send_init_message(self):
@@ -299,33 +300,3 @@ class Client(object):
 
 #     scheduler.start()
 #     pause.days(1) # or it can anything as per your need
-
-class SaveLog(object):
-    def __init__(self, filename=None):
-        if filename is None:
-            filename = f"logs/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log"
-        if not os.path.exists("logs"):
-            os.makedirs("logs")
-        self.terminal = sys.stdout
-
-        formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(funcName)s | %(message)s')
-
-        console_handler = logging.StreamHandler(self.terminal)
-        console_handler.setFormatter(formatter)
-        console_handler.setLevel(logging.INFO)
-        LOGGER.addHandler(console_handler)
-
-        file_handler = logging.FileHandler(filename)
-        file_handler.setFormatter(formatter)
-        file_handler.setLevel(logging.INFO)
-        LOGGER.addHandler(file_handler)
-
-        self.log = open(filename, "a")
-   
-    def write(self, message):
-        self.terminal.write(message)
-
-    def flush(self):
-        pass    
-
-

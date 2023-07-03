@@ -62,14 +62,6 @@ class Server(object):
         }
         """
         super().__init__()
-        # if save_log:
-        #     sys.stdout = SaveLog()
-        # else:
-        #     logging.basicConfig(
-        #         level=logging.INFO,
-        #         format='%(levelname) -6s %(asctime)s %(name) -10s %(funcName) -15s %(lineno) -5d: %(message)s',
-        #         datefmt='%Y-%m-%d %H:%M:%S',
-        #     )
 
         self.config = config
         self._t = config.get('t') or 15
@@ -109,7 +101,7 @@ class Server(object):
         self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
         self.queue_concumer = AmqpConsumer(self.config['queue_consumer'], self)
         self.queue_producer = AmqpProducer(self.config['queue_producer'])
-        print('Queue ready!')
+        LOGGER.info('Queue ready!')
 
 
     def __notify_error_to_client(self, message):
@@ -130,13 +122,13 @@ class Server(object):
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
             if n_local_updates == 0:
-                print(f'No local update found, sleep for {self._t} seconds...')
+                LOGGER.info(f'No local update found, sleep for {self._t} seconds...')
                 sleep(self._t)
             # elif n_local_updates == 1:
             #     print("Hello")
             elif n_local_updates > 0:
                 try:
-                    print(f'Start update global model with {n_local_updates} local updates')
+                    LOGGER.info(f'Start update global model with {n_local_updates} local updates')
                     # calculate self._strategy.avg_qod and self._strategy.avg_loss
                     # and self_strategy.global_model_update_data_size
                     # within the self.__update function
@@ -184,9 +176,9 @@ class Server(object):
                     data_size=content['data_description']['data_size'],
                     qod=content['data_description']['qod'],
             )
-            print("*" * 20)
+            LOGGER.info("*" * 20)
             LOGGER.info(worker)
-            print("*" * 20)
+            LOGGER.info("*" * 20)
             access_key, secret_key = self._cloud_storage.get_client_key(client_id)
             worker.access_key_id = access_key
             worker.secret_key_id = secret_key
@@ -240,13 +232,13 @@ class Server(object):
     def __update(self, n_local_updates):
         if n_local_updates == 1:
             self._strategy.current_version += 1
-            print("Only one update from client, passing the model to all other client in the network...")
+            LOGGER.info("Only one update from client, passing the model to all other client in the network...")
             completed_workers: dict[str, Worker] = self._worker_manager.get_completed_workers()
 
             # get the only worker
             # worker = next(iter(completed_workers.values))
             for w_id, worker in completed_workers.items():
-                print(w_id)
+                LOGGER.info(w_id)
                 self._strategy.avg_loss = worker.loss
                 self._strategy.avg_qod = worker.qod
                 self._strategy.global_model_update_data_size = worker.data_size
@@ -273,7 +265,7 @@ class Server(object):
 
 
         else:
-            print("Aggregating process...")
+            LOGGER.info("Aggregating process...")
             # calculate self._strategy.avg_qod and self_strategy.avg_loss
             # and self_strategy.global_model_update_data_size
             # within the self._strategy.aggregate function
@@ -314,37 +306,3 @@ class Server(object):
         self._start_time = time_now()
         self._first_arrival = None
         self._latest_arrival = None
-
-
-class SaveLog(object):
-    def __init__(self, filename=None):
-        if filename is None:
-            filename = f"logs/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log"
-        if not os.path.exists("logs"):
-            os.makedirs("logs")
-        self.terminal = sys.stdout
-
-        formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(funcName)s | %(message)s')
-
-        console_handler = logging.StreamHandler(self.terminal)
-        console_handler.setFormatter(formatter)
-        console_handler.setLevel(logging.INFO)
-        LOGGER.addHandler(console_handler)
-
-        file_handler = logging.FileHandler(filename)
-        file_handler.setFormatter(formatter)
-        file_handler.setLevel(logging.INFO)
-        LOGGER.addHandler(file_handler)
-
-        self.log = open(filename, "a")
-   
-    def write(self, message):
-        self.terminal.write(message)
-
-    def flush(self):
-        # this flush method is needed for python 3 compatibility.
-        # this handles the flush command by doing nothing.
-        # you might want to specify some extra behavior here.
-        pass    
-
-

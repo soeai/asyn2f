@@ -1,6 +1,7 @@
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 import logging
+LOGGER = logging.getLogger(__name__)
 
 class InfluxDB():
     def __init__(self, config: dict):
@@ -25,7 +26,7 @@ class InfluxDB():
             if 'already exists' in e.message:
                 pass
             else:
-                print("Error: {}".format(e))
+                LOGGER.info("Error: {}".format(e))
 
     def write_training_process_data(self, msg_received):
         write_api = self.client.write_api(write_options=SYNCHRONOUS)
@@ -41,4 +42,4 @@ class InfluxDB():
         try:
             write_api.write(bucket=self.bucket_name, org="ttu", record=record)
         except Exception as e:
-            logging.error(e)
+            LOGGER.error(e)

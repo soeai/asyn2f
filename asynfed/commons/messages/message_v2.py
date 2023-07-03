@@ -1,4 +1,5 @@
 import json
+import logging
 
 
 class MessageV2:
@@ -51,25 +52,25 @@ class MessageV2:
             return value or ''
         MAX_LENGTH = 80
         OFFSET = 3
-        print('|' + '-'*MAX_LENGTH + '|')
+        logging.info('|' + '-'*MAX_LENGTH + '|')
         for k, v in dict_to_print.items():
             if type(v) is dict:
-                print(f'|{k:<20}' + ' '*(MAX_LENGTH-20) )
+                logging.info(f'|{k:<20}' + ' '*(MAX_LENGTH-20) )
                 for k2, v2 in v.items():
                     if type(v2) is dict:
-                        print('|' + ' '*OFFSET + f'{k2:<20}' + ' '*(MAX_LENGTH-OFFSET-20))
+                        logging.info('|' + ' '*OFFSET + f'{k2:<20}' + ' '*(MAX_LENGTH-OFFSET-20))
                         for k3, v3 in v2.items():
-                            print('|'+  ' '*OFFSET*2 + f'{k3:<20}: {check_value(v3):<50}' )
+                            logging.info('|'+  ' '*OFFSET*2 + f'{k3:<20}: {check_value(v3):<50}' )
                     else:
-                        print('|' + ' '*OFFSET + f'{k2:<20}: {v2:<50}' )
+                        logging.info('|' + ' '*OFFSET + f'{k2:<20}: {check_value(v2):<50}' )
             elif type(v) is bool:
                 v = 'True' if v else 'False'
-                print('|' + ' '*OFFSET + f'{k:<20}: {v:<50}' )
+                logging.info('|' + ' '*OFFSET + f'{k:<20}: {check_value(v):<50}' )
             else:
                 if len(v) == 0:
                     v = 'None'
-                print('|' + ' '*OFFSET + f'{k:<20}: {v:<50}') 
-        print('|' + '-'*MAX_LENGTH + '|')
+                logging.info('|' + ' '*OFFSET + f'{k:<20}: {check_value(v):<50}') 
+        logging.info('|' + '-'*MAX_LENGTH + '|')
 
 
 if __name__ == '__main__':

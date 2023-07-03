@@ -51,10 +51,10 @@ class ClientAsyncFl(Client):
         full_path = folder + file_name
         # with open(full_path, "rb") as f:
         #     weights = pickle.load(f)
-        print(full_path)
-        print(os.getcwd())
+        # LOGGER.info(full_path)
+        # LOGGER.info(os.getcwd())
         while not os.path.isfile(full_path):
-            print("Sleep 5 second when the model is not ready, then retry")
+            LOGGER.info("Sleep 5 second when the model is not ready, then retry")
             sleep(5)
 
         with open(full_path, "rb") as f:
@@ -82,14 +82,14 @@ class ClientAsyncFl(Client):
         
         # when client rejoin the training process
         else:
-            print("*" * 20)
+            LOGGER.info("*" * 20)
             LOGGER.info("Rejoin the training process")
             LOGGER.info("Loading the local weight...")
             # load current local weight
             current_local_model_filename = f'{self._client_id}_v{self._local_epoch}.pkl'
             current_local_weights = self._load_weights_from_file(current_local_model_filename, Config.TMP_LOCAL_MODEL_FOLDER)
             LOGGER.info("Loaded. ")
-            print("*" * 20)
+            LOGGER.info("*" * 20)
             self.model.set_weights(current_local_weights)
 
             # if the receive global model version is equal to the save global model version
@@ -117,11 +117,11 @@ class ClientAsyncFl(Client):
         # or after a sufficient period of time
         from datetime import datetime
         start_time = datetime.now()
-        print("-" * 20)
-        print("-" * 20)
-        print(self._local_epoch)
-        print("-" * 20)
-        print("-" * 20)
+        LOGGER.info("-" * 20)
+        LOGGER.info("-" * 20)
+        LOGGER.info(self._local_epoch)
+        LOGGER.info("-" * 20)
+        LOGGER.info("-" * 20)
         for i in range(self.model.epoch):
             self._local_epoch += 1
             # since the current mnist model is small, set some sleeping time
@@ -175,10 +175,10 @@ class ClientAsyncFl(Client):
 
                     global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + self._global_model_name
                     while not os.path.isfile(global_model_path):
-                        print("*" * 20)
+                        LOGGER.info("*" * 20)
                         sleep(5)
                         ("Sleep 5 second when the model is not ready, then retry")
-                        print("*" * 20)
+                        LOGGER.info("*" * 20)
 
                     with open(global_model_path, "rb") as f:
                         self.model.global_weights = pickle.load(f)
@@ -194,11 +194,11 @@ class ClientAsyncFl(Client):
                     # break
 
             if self._new_model_flag:
-                print("-" * 30)
-                print("-" * 30)
-                print("meging outside the batch training")
-                print("-" * 30)
-                print("-" * 30)
+                LOGGER.info("-" * 30)
+                LOGGER.info("-" * 30)
+                LOGGER.info("meging outside the batch training")
+                LOGGER.info("-" * 30)
+                LOGGER.info("-" * 30)
                 # before the merging process happens, need to retrieve current weights and global weights
                 # previous, current and global weights are used in the merged process
                 self.model.current_weights = self.model.get_weights()
@@ -209,10 +209,10 @@ class ClientAsyncFl(Client):
                 
                 global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + self._global_model_name
                 while not os.path.isfile(global_model_path):
-                    print("*" * 20)
+                    LOGGER.info("*" * 20)
                     sleep(5)
                     ("Sleep 5 second when the model is not ready, then retry")
-                    print("*" * 20)
+                    LOGGER.info("*" * 20)
 
                 with open(global_model_path, "rb") as f:
                     self.model.global_weights = pickle.load(f)
@@ -231,7 +231,7 @@ class ClientAsyncFl(Client):
                 self._test_acc, self._test_loss = 0, 0
 
             
-            print("*" * 20)
+            LOGGER.info("*" * 20)
             LOGGER.info(
                 f'Epoch: {self._local_epoch}'
                 f'\tLast Batch Train Accuracy: {(self._train_acc * 100):.4f}, '
@@ -239,7 +239,7 @@ class ClientAsyncFl(Client):
                 f'\tLast Batch Test Accuracy: {(self._test_acc * 100):.4f}, '
                 f'\tLast Batch Test Loss: {self._test_loss:.4f}'
             )
-            print("*" * 20)
+            LOGGER.info("*" * 20)
 
 
             # Save weights locally after training
@@ -258,8 +258,8 @@ class ClientAsyncFl(Client):
             while True:
                 if self._storage_connector.upload(save_location, remote_file_path) is True:
                     # After training, notify new model to the server.
-                    print("*" * 20)
-                    print('Notify new model to the server')
+                    LOGGER.info("*" * 20)
+                    LOGGER.info('Notify new model to the server')
                     message = MessageV2(
                             headers={"timestamp": time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id},
                             content=NotifyModel(remote_worker_weight_path=remote_file_path, 
@@ -269,9 +269,9 @@ class ClientAsyncFl(Client):
                                                 performance= self._train_acc)).to_json()
                     self.queue_producer.send_data(message)
                     self.update_profile()
-                    print(message)
-                    print('Notify new model to the server successfully')
-                    print("*" * 20)
+                    LOGGER.info(message)
+                    LOGGER.info('Notify new model to the server successfully')
+                    LOGGER.info("*" * 20)
                     break
 
             # reset loss and per after each epoch
@@ -331,13 +331,13 @@ class ClientAsyncFl(Client):
         alpha = ( (local_qod*local_size) / (local_qod*local_size + global_qod*global_size) + local_loss/(local_loss + global_loss) )
         alpha = alpha / 2
 
-        print("-" * 20)
-        print(f"local loss: {local_loss}")
-        print(f"global loss: {global_loss}")
-        print(f"local size: {local_size}")
-        print(f"global data size: {global_size}")
-        print(f"alpha = {alpha}")
-        print("-" * 20)
+        LOGGER.info("-" * 20)
+        LOGGER.info(f"local loss: {local_loss}")
+        LOGGER.info(f"global loss: {global_loss}")
+        LOGGER.info(f"local size: {local_size}")
+        LOGGER.info(f"global data size: {global_size}")
+        LOGGER.info(f"alpha = {alpha}")
+        LOGGER.info("-" * 20)
 
         # create a blank array to store the result
         self.model.merged_weights = [np.zeros(layer.shape) for layer in self.model.current_weights]
