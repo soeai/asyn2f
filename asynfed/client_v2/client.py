@@ -1,4 +1,5 @@
 import os, sys
+from asynfed.client_v2.messages.notify_evaluation import NotifyEvaluation
 
 from asynfed.commons.utils.time_ultils import time_now
 root = os.path.dirname(os.path.dirname(os.getcwd()))
@@ -103,81 +104,11 @@ class Client(object):
 
     def on_message_received(self, ch, method, props, body):
         msg_received = message_v2.MessageV2.serialize(body.decode('utf-8'))
-        content = msg_received['content']
 
-        # IF message come from SERVER_INIT_RESPONSE_TO_CLIENT
         if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE and not self._is_connected:
-            message_v2.MessageV2.print_message(msg_received)
-            if content['reconnect'] is True:
-                LOGGER.info("Reconnect to server.")
-
-            self._session_id = content['session_id']
-            self._global_model_name = content['model_info']['global_model_name']
-            self._received_global_version = content['model_info']['model_version']
-            self._storage_connector = ClientStorage(content['aws_info'])
-            self._is_connected = True
-
-            # Check for new global model version.
-            if self._current_global_version < self._received_global_version:
-                self._current_global_version = self._received_global_version
-                LOGGER.info("Detect new global version.")
-                local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
-
-                while True:
-                    if self._storage_connector.download(remote_file_path=content['model_info']['model_url'], 
-                                                    local_file_path=local_path):
-                        break
-                    LOGGER.info("Download model failed. Retry in 5 seconds.")
-                    sleep(5)
-
-            self.update_profile()
-            self.start_training_thread()
-
+            self._handle_server_init_response(msg_received)
         elif msg_received['headers']['message_type'] == Config.SERVER_NOTIFY_MESSAGE and self._is_connected:
-            # download model.
-
-            LOGGER.info("*" * 20)
-            message_v2.MessageV2.print_message(msg_received)
-            LOGGER.info("*" * 20)
-            with lock:
-                # ----- receive and load global message ----
-                self._global_chosen_list = content['chosen_id']
-
-                # update latest model info
-                self._global_model_name = content['global_model_name']
-                self._received_global_version = content['global_model_version']
-
-                # global info for merging process
-                self._global_model_update_data_size = content['global_model_update_data_size']
-                self._global_avg_loss = content['avg_loss']
-                self._global_avg_qod = content['avg_qod']
-                LOGGER.info("*" * 20)
-                LOGGER.info(
-                    f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
-                LOGGER.info("*" * 20)
-
-                # save the previous local version of the global model to log it to file
-                self._previous_global_version = self._current_global_version
-                # update local version (the latest global model that the client have)
-                self._current_global_version = self._received_global_version
-
-                remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
-                local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
-
-                LOGGER.info("Downloading new global model............")
-
-                while True:
-                    if self._storage_connector.download(remote_file_path=remote_path,
-                                                        local_file_path=local_path):
-                        break
-                    LOGGER.info("Download model failed. Retry in 5 seconds.")
-                    sleep(5)
-
-                LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
-
-                # # change the flag to true.
-                self._new_model_flag = True
-
+            self._handle_server_notify_message(msg_received)
         elif msg_received['headers']['message_type'] == Config.SERVER_STOP_TRAINING: 
             LOGGER.info('SERVER STOP TRAINING')
             sys.exit()
@@ -246,11 +177,91 @@ class Client(object):
         message = message_v2.MessageV2(
             headers={'timestamp': time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
             content=init_connection.InitConnection(
+                role=self._role,
                 data_description=data_description,
             )
         ).to_json()
         self.queue_producer.send_data(message)
-        
+
+    def _handle_server_init_response(self, msg_received):
+        message_v2.MessageV2.print_message(msg_received)
+
+        content = msg_received['content']
+        if content['reconnect'] is True:
+            LOGGER.info("Reconnect to server.")
+
+        self._session_id = content['session_id']
+        self._global_model_name = content['model_info']['global_model_name']
+        self._received_global_version = content['model_info']['model_version']
+        self._storage_connector = ClientStorage(content['aws_info'])
+        self._is_connected = True
+
+        # Check for new global model version.
+        if self._current_global_version < self._received_global_version:
+            self._current_global_version = self._received_global_version
+            LOGGER.info("Detect new global version.")
+            local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
+
+            while True:
+                if self._storage_connector.download(remote_file_path=content['model_info']['model_url'], 
+                                                local_file_path=local_path):
+                    break
+                LOGGER.info("Download model failed. Retry in 5 seconds.")
+                sleep(5)
+
+        self.update_profile()
+        if self._role == "train":
+            self.start_training_thread()
+        elif self._role == "test":
+            self._test()
+
+    def _handle_server_notify_message(self, msg_received):
+        content = msg_received['content']
+        message_v2.MessageV2.print_message(msg_received)
+        with lock:
+            # ----- receive and load global message ----
+            self._global_chosen_list = content['chosen_id']
+
+            # update latest model info
+            self._global_model_name = content['global_model_name']
+            self._received_global_version = content['global_model_version']
+
+            # global info for merging process
+            self._global_model_update_data_size = content['global_model_update_data_size']
+            self._global_avg_loss = content['avg_loss']
+            self._global_avg_qod = content['avg_qod']
+            LOGGER.info("*" * 20)
+            LOGGER.info(
+                f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
+            LOGGER.info("*" * 20)
+
+            # save the previous local version of the global model to log it to file
+            self._previous_global_version = self._current_global_version
+            # update local version (the latest global model that the client have)
+            self._current_global_version = self._received_global_version
+
+            remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
+            local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
+
+            LOGGER.info("Downloading new global model............")
+
+            while True:
+                if self._storage_connector.download(remote_file_path=remote_path,
+                                                    local_file_path=local_path):
+                    break
+                LOGGER.info("Download model failed. Retry in 5 seconds.")
+                sleep(5)
+
+            LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
+            self._new_model_flag = True
+
+        if self._role == "test":
+            self._test()
+
+    @abstractmethod
+    def _test(self):
+        pass
+
 
     def _start_consumer(self):
         self.queue_consumer.start()

@@ -30,6 +30,7 @@ class Config:
 
     CLIENT_INIT_MESSAGE = "client_init"
     CLIENT_NOTIFY_MESSAGE = "client_notify"
+    CLIENT_NOTIFY_EVALUATION = "client.notify.evaluation"
     SERVER_INIT_RESPONSE = "server_init_resp"
     SERVER_NOTIFY_MESSAGE = "server_notify"
     SERVER_STOP_TRAINING = "server_stop_training"

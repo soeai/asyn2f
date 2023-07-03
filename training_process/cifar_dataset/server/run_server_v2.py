@@ -17,8 +17,6 @@ conf = {
         "access_key": os.getenv("access_key"),
         "secret_key": os.getenv("secret_key"),
         "bucket_name": "run-clientv2-resnet18-5-chunks",
-        # "bucket_name": "run-clientv2-resnet18",
-        # "bucket_name": "test-logger-clientv2",
         "region_name": "ap-southeast-2",
     },
     "queue_consumer": {
