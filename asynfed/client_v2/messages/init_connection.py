@@ -36,7 +36,8 @@ class InitConnection:
     """
     ClientInitConnection class is used to create a message object that can be sent to the server.
     """
-    def __init__(self, system_info=SystemInfo().__dict__, data_description=DataDescription().__dict__) -> None:
+    def __init__(self, role="train", system_info=SystemInfo().__dict__, data_description=DataDescription().__dict__) -> None:
+        self.role = role
         self.system_info = system_info
         self.data_description = data_description
 

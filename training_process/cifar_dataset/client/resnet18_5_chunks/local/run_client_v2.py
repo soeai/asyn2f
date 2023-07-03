@@ -18,20 +18,20 @@ scheduler = BackgroundScheduler()
 
 config = {
     "client_id": "local-client-1",
-    "role": "train",
+    "role": "test",
     "queue_consumer": {
         'exchange_name': 'asynfl_exchange',
         'exchange_type': 'topic',
         'queue_name': 'server_queue',
         'routing_key': 'client.#',
-        'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
+        'end_point': 'amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj'
     },
     "queue_producer": {
         'exchange_name': 'asynfl_exchange',
         'exchange_type': 'topic',
         'queue_name': 'server_consumer',
         'routing_key': 'server.#',
-        'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
+        'end_point': 'amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj'
     },
     "training_params": {
         "dataset": "cifar10",

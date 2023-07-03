@@ -153,7 +153,9 @@ class Server(object):
         if msg_received['headers']['message_type'] == Config.CLIENT_INIT_MESSAGE:
             self._response_connection(msg_received)
         elif msg_received['headers']['message_type'] == Config.CLIENT_NOTIFY_MESSAGE:
-            self._handle_client_notify_message(msg_received)
+            self._handle_client_notify_model(msg_received)
+        elif msg_received['headers']['message_type'] == Config.CLIENT_NOTIFY_EVALUATION:
+            self._handle_client_notify_evaluation(msg_received)
 
 
     def _response_connection(self, msg_received):
@@ -219,7 +221,7 @@ class Server(object):
         ).to_json()
         self.queue_producer.send_data(message)
 
-    def _handle_client_notify_message(self, msg_received):
+    def _handle_client_notify_model(self, msg_received):
         MessageV2.print_message(msg_received)
         client_id = msg_received['headers']['client_id']
 
@@ -227,6 +229,9 @@ class Server(object):
         #                                 local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + msg_received['content']['filename'])
         self._worker_manager.add_local_update(client_id, msg_received['content'])
         self._influxdb.write_training_process_data(msg_received)
+
+    def _handle_client_notify_evaluation(self, msg_received):
+        MessageV2.print_message(msg_received)
 
 
     def __update(self, n_local_updates):
