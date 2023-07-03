@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 from time import sleep
 import numpy as np
+from tqdm import tqdm
 import pickle
 from asynfed.client_v2.messages.notify_evaluation import NotifyEvaluation
 from asynfed.client_v2.messages.notify_model import NotifyModel
@@ -361,7 +362,7 @@ class ClientAsyncFl(Client):
         current_local_weights = self._load_weights_from_file(self._global_model_name, Config.TMP_GLOBAL_MODEL_FOLDER)
         self.model.set_weights(current_local_weights)
         LOGGER.info('Testing the model')
-        for test_images, test_labels in self.model.test_ds:
+        for test_images, test_labels in tqdm(self.model.test_ds):
             performance, loss = self.model.evaluate(test_images, test_labels)
 
         content = NotifyEvaluation(self._global_model_name, performance, loss)

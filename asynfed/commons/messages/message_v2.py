@@ -32,7 +32,7 @@ class MessageV2:
         return json.dumps(to_dict)
 
     @classmethod
-    def serialize(cls, dict_str):
+    def deserialize(cls, dict_str):
         if ': false' in dict_str:
             dict_str = dict_str.replace(': false', ': False')
         if ': true' in dict_str:
@@ -75,6 +75,6 @@ class MessageV2:
 
 if __name__ == '__main__':
     temp_str = "{'asd': 'asdasd', '123': 44, 'bool': false}"
-    msg = MessageV2.serialize(temp_str)
+    msg = MessageV2.deserialize(temp_str)
     print(msg)
     print(type(msg))

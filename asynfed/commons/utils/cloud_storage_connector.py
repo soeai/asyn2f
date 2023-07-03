@@ -63,8 +63,8 @@ class AWSConnector(ABC):
                 downloaded = True
                 return True
             except Exception as e:
-                raise e
-                # return False
+                # raise e
+                return False
         else: # call asynchronously
             result = False
             t = 1

@@ -13,6 +13,11 @@ load_dotenv()
 conf = {
     "server_id": "test_server_id",
     "t": 30,
+    "stop_conditions": {
+        "max_version": 10,
+        "max_performance": 0.01,
+        "min_loss": 10.01,
+    },
     "aws": {
         "access_key": os.getenv("access_key"),
         "secret_key": os.getenv("secret_key"),
@@ -41,5 +46,5 @@ conf = {
     }
 }
 strategy = AsynFL()
-fedasync_server = Server(strategy, conf, save_log=True)
+fedasync_server = Server(strategy, conf, save_log=False)
 fedasync_server.start()

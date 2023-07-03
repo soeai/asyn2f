@@ -2,6 +2,7 @@ from datetime import datetime
 import os, sys
 import re
 
+
 root = os.path.dirname(os.path.dirname(os.getcwd()))
 sys.path.append(root)
 
@@ -14,8 +15,6 @@ from time import sleep
 
 from asynfed.commons import Config
 from asynfed.commons.conf import RoutingRules, init_config
-from asynfed.commons.messages import ServerNotifyModelToClient, ClientNotifyModelToServer, ClientInit, \
-    ServerInitResponseToClient
 from asynfed.commons.messages.error_message import ErrorMessage
 from asynfed.commons.messages.message_v2 import MessageV2
 from asynfed.commons.utils.queue_consumer import AmqpConsumer
@@ -23,8 +22,8 @@ from asynfed.commons.utils.queue_producer import AmqpProducer
 from asynfed.commons.utils.time_ultils import time_diff, time_now
 from asynfed.server import Strategy, WorkerManager, ServerStorage, influxdb
 from asynfed.server.objects import Worker
-from asynfed.server.strategies import AsynFL
 from asynfed.server.messages import response_connection
+from asynfed.server.messages.stop_training import StopTraining
 import concurrent.futures
 thread_pool_ref = concurrent.futures.ThreadPoolExecutor
 
@@ -59,9 +58,24 @@ class Server(object):
                 'exchange_type': 'topic',
                 'routing_key': 'client.#',
                 'end_point': ""}
+            "stop_conditions": {
+                "max_version": 50,
+                "max_performance": 0.9,
+                "min_loss": 0.1
+            },
         }
         """
         super().__init__()
+
+        if config.get('stop_conditions'):
+            self.stop_conditions = config.get('stop_conditions')
+        else:
+            self.stop_conditions = {
+                'max_version': 50,
+                'max_performance': 0.9,
+                'min_loss': 0.1,
+            }
+        self._is_stop_condition = False
 
         self.config = config
         self._t = config.get('t') or 15
@@ -99,33 +113,32 @@ class Server(object):
         self._influxdb = influxdb.InfluxDB(config['influxdb'])
 
         self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
+        self.thread_consumer.daemon = True
         self.queue_concumer = AmqpConsumer(self.config['queue_consumer'], self)
         self.queue_producer = AmqpProducer(self.config['queue_producer'])
         LOGGER.info('Queue ready!')
-
-
-    def __notify_error_to_client(self, message):
-        # Send notify message to client.
-        pass
 
 
     def _start_consumer(self):
         self.queue_concumer.start()
 
     def start(self):
-
-        # run the consuming thread!.
         self.thread_consumer.start()
-        #
-        while not self.__is_stop_condition():
+        while True:
+            if self._is_stop_condition or self.__is_stop_condition({"version": self._strategy.current_version}):
+                content = StopTraining()
+                message = MessageV2(
+                        headers={'timestamp': time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id},
+                        content=content
+                ).to_json()
+                self.queue_producer.send_data(message)
+                break
 
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
             if n_local_updates == 0:
                 LOGGER.info(f'No local update found, sleep for {self._t} seconds...')
                 sleep(self._t)
-            # elif n_local_updates == 1:
-            #     print("Hello")
             elif n_local_updates > 0:
                 try:
                     LOGGER.info(f'Start update global model with {n_local_updates} local updates')
@@ -137,19 +150,11 @@ class Server(object):
                     # Clear worker queue after aggregation.
                     # self._worker_manager.update_worker_after_training()
                     self._publish_global_model()
-
-
                 except Exception as e:
                     raise e
-                    # message = ErrorMessage(str(e), None)
-                    # LOGGER.info("*" * 20)
-                    # LOGGER.info(e)
-                    # LOGGER.info("THIS IS THE INTENDED MESSAGE")
-                    # LOGGER.info("*" * 20)
-                    # self.__notify_error_to_client(message)
 
     def on_message_received(self, ch, method, props, body):
-        msg_received = MessageV2.serialize(body.decode('utf-8'))
+        msg_received = MessageV2.deserialize(body.decode('utf-8'))
         if msg_received['headers']['message_type'] == Config.CLIENT_INIT_MESSAGE:
             self._response_connection(msg_received)
         elif msg_received['headers']['message_type'] == Config.CLIENT_NOTIFY_MESSAGE:
@@ -232,6 +237,15 @@ class Server(object):
 
     def _handle_client_notify_evaluation(self, msg_received):
         MessageV2.print_message(msg_received)
+        if self.__is_stop_condition(msg_received['content']):
+            content = StopTraining()
+            message = MessageV2(
+                    headers={'timestamp': time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id},
+                    content=content
+            ).to_json()
+            self.queue_producer.send_data(message)
+            self._is_stop_condition = True
+            sys.exit(0)
 
 
     def __update(self, n_local_updates):
@@ -285,8 +299,20 @@ class Server(object):
             self._t = (t2 + t1) / 2 
             # self._t = (t2 + t1) / 2 + 2 * t1
 
-    def __is_stop_condition(self):
-        self._strategy.is_completed()
+    def __is_stop_condition(self, info):
+        for k, v in info.items():
+            if k == "loss" and self.stop_conditions.get("min_loss") is not None:
+                if v <= self.stop_conditions.get("min_loss"):
+                    LOGGER.info(f"Stop condition: loss {v} <= {self.stop_conditions.get('min_loss')}")
+                    return True
+            elif k == "performance" and self.stop_conditions.get("max_performance") is not None:
+                if v >= self.stop_conditions.get("max_performance"):
+                    LOGGER.info(f"Stop condition: performance {v} >= {self.stop_conditions.get('max_performance')}")
+                    return True
+            elif k == "version" and self.stop_conditions.get("max_version") is not None:
+                if v >= self.stop_conditions.get("max_version"):
+                    LOGGER.info(f"Stop condition: version {v} >= {self.stop_conditions.get('max_version')}")
+                    return True
 
     def _publish_global_model(self):
         local_filename = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{self._strategy.model_id}_v{self._strategy.current_version}.pkl'

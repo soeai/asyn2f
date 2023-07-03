@@ -33,6 +33,7 @@ class Client(object):
     def __init__(self, model: ModelWrapper, config, save_log=False):
         self.config = config
         self._role = config['role']
+        self._is_stop_condition = False
         # Dependencies
         self._global_chosen_list = None
         self._save_global_avg_qod = None
@@ -103,15 +104,16 @@ class Client(object):
         pass
 
     def on_message_received(self, ch, method, props, body):
-        msg_received = message_v2.MessageV2.serialize(body.decode('utf-8'))
+        msg_received = message_v2.MessageV2.deserialize(body.decode('utf-8'))
 
         if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE and not self._is_connected:
             self._handle_server_init_response(msg_received)
         elif msg_received['headers']['message_type'] == Config.SERVER_NOTIFY_MESSAGE and self._is_connected:
             self._handle_server_notify_message(msg_received)
         elif msg_received['headers']['message_type'] == Config.SERVER_STOP_TRAINING: 
-            LOGGER.info('SERVER STOP TRAINING')
-            sys.exit()
+            message_v2.MessageV2.print_message(msg_received)
+            self._is_stop_condition = True
+            sys.exit(0)
 
 
 
@@ -213,7 +215,7 @@ class Client(object):
         if self._role == "train":
             self.start_training_thread()
         elif self._role == "test":
-            self._test()
+            self.start_testing_thread()
 
     def _handle_server_notify_message(self, msg_received):
         content = msg_received['content']
@@ -270,14 +272,28 @@ class Client(object):
     def start(self):
         self.thread_consumer.start()
 
+        # Keep main thread alive
+        while not self._is_stop_condition:
+            sleep(1)
+        sys.exit(0)
+
     def start_training_thread(self):
         LOGGER.info("Start training thread.")
         training_thread = threading.Thread(
             target=self.train,
             name="client_training_thread")
-
+        training_thread.daemon = True
         self._is_training = True
         training_thread.start()
+
+    def start_testing_thread(self):
+        LOGGER.info("Start testing thread.")
+        testing_thread = threading.Thread(
+            target=self._test,
+            name="client_testing_thread")
+        testing_thread.daemon = True
+        self._is_testing = True
+        testing_thread.start()
 
 
 # if __name__ == '__main__':

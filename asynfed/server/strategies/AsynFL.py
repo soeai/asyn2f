@@ -125,5 +125,3 @@ class AsynFL(Strategy):
             weights = pickle.load(f)
         return weights
 
-    def is_completed(self):
-        return False

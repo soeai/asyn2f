@@ -35,6 +35,3 @@ class Strategy(ABC):
         """
         """
 
-    @abstractmethod
-    def is_completed(self):
-        pass
