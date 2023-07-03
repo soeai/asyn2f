@@ -46,7 +46,7 @@ config = {
 
         "qod": 0.45,
         "batch_size": 128,
-        "epoch": 200,
+        "epoch": 400,
 
         "tracking_point": 2000,
         "sleeping_time": 10,
@@ -102,7 +102,9 @@ tensorflow_framework = TensorflowFramework(model=model,
                                            config=config)
 
 
-tf_client = ClientAsyncFl(model=tensorflow_framework,config=config)
+# tf_client = ClientAsyncFl(model=tensorflow_framework,config=config)
+tf_client = ClientAsyncFl(model=tensorflow_framework,config=config, save_log=True)
+
 tf_client.start()
 scheduler.start()
 pause.days(1) # or it can anything as per your need

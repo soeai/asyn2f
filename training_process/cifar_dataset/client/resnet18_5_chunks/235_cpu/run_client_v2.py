@@ -41,7 +41,7 @@ config = {
         "learning_rate": 1e-1,
 
         # setup differently for different device
-        # "gpu_index": 0,
+        "gpu_index": 0,
         "chunk_index": 4,
 
         "qod": 0.45,
@@ -103,7 +103,9 @@ tensorflow_framework = TensorflowFramework(model=model,
                                            config=config)
 
 
-tf_client = ClientAsyncFl(model=tensorflow_framework,config=config)
+# tf_client = ClientAsyncFl(model=tensorflow_framework,config=config)
+tf_client = ClientAsyncFl(model=tensorflow_framework,config=config, save_log=True)
+
 tf_client.start()
 scheduler.start()
 pause.days(1) # or it can anything as per your need
