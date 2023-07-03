@@ -12,6 +12,7 @@ from asynfed.commons.conf import Config
 
 import os
 LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.INFO)
 
 # This is the proposed federated asynchronous training algorithm of our paper
 # More algorithms can be found at other files in this directory 

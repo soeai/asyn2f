@@ -33,6 +33,7 @@ lock = threading.Lock()
 
 LOGGER = logging.getLogger(__name__)
 logging.getLogger("pika").setLevel(logging.WARNING)
+LOGGER.setLevel(logging.INFO)
 
 class Server(object):
     """
@@ -61,8 +62,14 @@ class Server(object):
         }
         """
         super().__init__()
-        if save_log:
-            sys.stdout = SaveLog()
+        # if save_log:
+        #     sys.stdout = SaveLog()
+        # else:
+        #     logging.basicConfig(
+        #         level=logging.INFO,
+        #         format='%(levelname) -6s %(asctime)s %(name) -10s %(funcName) -15s %(lineno) -5d: %(message)s',
+        #         datefmt='%Y-%m-%d %H:%M:%S',
+        #     )
 
         self.config = config
         self._t = config.get('t') or 15
@@ -87,11 +94,11 @@ class Server(object):
         if config.get('aws').get('bucket_name') is None or self.config.get('aws').get('bucket_name') == "":
             config['aws']['bucket_name'] = self._server_id
         
-        init_config("server")
+        init_config("server", save_log)
 
         LOGGER.info(f'\n\nServer Info:\n\tQueue In : {self.config["queue_consumer"]}'
                     f'\n\tQueue Out : {self.config["queue_producer"]}'
-                    f'\n\tS3 Bucket: {Config.STORAGE_BUCKET_NAME}'
+                    f'\n\tS3 Bucket: {self.config["aws"]["bucket_name"]}'
                     f'\n\n')
 
         # Initialize dependencies
@@ -158,7 +165,6 @@ class Server(object):
 
 
     def _response_connection(self, msg_received):
-        print(msg_received)
         MessageV2.print_message(msg_received)
         client_id = msg_received['headers']['client_id']
         session_id = str(uuid.uuid4())
@@ -179,7 +185,7 @@ class Server(object):
                     qod=content['data_description']['qod'],
             )
             print("*" * 20)
-            print(worker)
+            LOGGER.info(worker)
             print("*" * 20)
             access_key, secret_key = self._cloud_storage.get_client_key(client_id)
             worker.access_key_id = access_key
@@ -317,28 +323,28 @@ class SaveLog(object):
         if not os.path.exists("logs"):
             os.makedirs("logs")
         self.terminal = sys.stdout
-        LOG_FORMAT = '%(levelname) -6s %(asctime)s %(name) -10s %(funcName) -15s %(lineno) -5d: %(message)s'
-        logging.basicConfig(
-            level=logging.INFO,
-            format=LOG_FORMAT,
-            datefmt='%Y-%m-%d %H:%M:%S',
-        )
 
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(LOG_FORMAT)
-        file_handler = logging.FileHandler(filename)
+        formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(funcName)s | %(message)s')
 
+        console_handler = logging.StreamHandler(self.terminal)
+        console_handler.setFormatter(formatter)
+        console_handler.setLevel(logging.INFO)
         LOGGER.addHandler(console_handler)
+
+        file_handler = logging.FileHandler(filename)
+        file_handler.setFormatter(formatter)
+        file_handler.setLevel(logging.INFO)
         LOGGER.addHandler(file_handler)
+
         self.log = open(filename, "a")
    
     def write(self, message):
         self.terminal.write(message)
-        self.log.write(message)  
 
     def flush(self):
         # this flush method is needed for python 3 compatibility.
         # this handles the flush command by doing nothing.
         # you might want to specify some extra behavior here.
         pass    
+
 

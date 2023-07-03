@@ -1,3 +1,5 @@
+import os
+import sys
 import logging
 from datetime import datetime
 from time import sleep
@@ -5,24 +7,20 @@ import numpy as np
 import pickle
 from asynfed.client_v2.messages.notify_model import NotifyModel
 from asynfed.commons.conf import Config
-from asynfed.commons.messages import ClientNotifyModelToServer
-
 from asynfed.client_v2.client import Client
 from asynfed.commons.messages.message_v2 import MessageV2
 from asynfed.commons.utils.time_ultils import time_now
-# from ..ModelWrapper import ModelWrapper
 from asynfed.commons.conf import Config
-import tensorflow as tf
 
-import os
 LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.INFO)
 
 
 # This is the proposed federated asynchronous training algorithm of our paper
 # More algorithms can be found at other files in this directory 
 class ClientAsyncFl(Client):
-    def __init__(self, model, config):
-        super().__init__(model, config)
+    def __init__(self, model, config, save_log=False):
+        super().__init__(model, config, save_log)
         '''
         - model must be an instance of an inheritant of class ModelWrapper
         - model.train_ds: require
@@ -357,3 +355,38 @@ class ClientAsyncFl(Client):
         # set the merged_weights to be the current weights of the model
         self.model.set_weights(self.model.merged_weights)
 
+class SaveLog(object):
+    def __init__(self, filename=None):
+        if filename is None:
+            filename = f"logs/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log"
+        if not os.path.exists("logs"):
+            os.makedirs("logs")
+        self.terminal = sys.stdout
+        LOG_FORMAT = '%(levelname) -6s %(asctime)s %(name) -10s %(funcName) -15s %(lineno) -5d: %(message)s'
+        logging.basicConfig(
+            level=logging.INFO,
+            format=LOG_FORMAT,
+            datefmt='%Y-%m-%d %H:%M:%S',
+            # filename=filename,
+        )
+
+        console_handler = logging.StreamHandler(self.terminal)
+        console_handler.setFormatter(LOG_FORMAT)
+        file_handler = logging.FileHandler(filename)
+
+        LOGGER.addHandler(console_handler)
+        LOGGER.addHandler(file_handler)
+        self.log = open(filename, "a")
+   
+    def write(self, message):
+        self.terminal.write(message)
+        if message != "\n":
+            dt_str =str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            message = f"[{dt_str}] {message}"
+        self.log.write(message)  
+
+    def flush(self):
+        # this flush method is needed for python 3 compatibility.
+        # this handles the flush command by doing nothing.
+        # you might want to specify some extra behavior here.
+        pass    

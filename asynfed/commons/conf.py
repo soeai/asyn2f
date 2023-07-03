@@ -32,6 +32,7 @@ class Config:
     CLIENT_NOTIFY_MESSAGE = "client_notify"
     SERVER_INIT_RESPONSE = "server_init_resp"
     SERVER_NOTIFY_MESSAGE = "server_notify"
+    SERVER_STOP_TRAINING = "server_stop_training"
 
     # this folder is used to save local models
     TMP_LOCAL_MODEL_FOLDER = "./weights/local_weights/"
@@ -77,16 +78,25 @@ def prepare_folder():
         os.makedirs(Config.LOG_PATH)
 
 
-def init_config(side):
+def init_config(side, save_log=False):
+    from datetime import datetime
     # LOGGER.info(f'\n\n\n Config: {Config.__class__.__dict__} \n\n\n')
     # check_valid_config(side)
     prepare_folder()
-    # Define logger
+    if not os.path.exists("logs"):
+        os.makedirs("logs")
     LOG_FORMAT = '%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'
-    logging.basicConfig(
-        level=logging.INFO,
-        format=LOG_FORMAT,
-        # filename=f"{Config.LOG_PATH+'log.txt'}",
-        # filemode='a',
-        # datefmt='%H:%M:%S'
-    )
+    if save_log:
+        logging.basicConfig(
+            level=logging.INFO,
+            format=LOG_FORMAT,
+            filename=f"logs/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log",
+            filemode='a',
+            datefmt='%H:%M:%S'
+        )
+    else:
+        logging.basicConfig(
+            level=logging.INFO,
+            format=LOG_FORMAT,
+            datefmt='%H:%M:%S'
+        )

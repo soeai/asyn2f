@@ -9,29 +9,28 @@ import os
 import threading
 import uuid
 from time import sleep
+from datetime import datetime
 from abc import abstractmethod
 from asynfed.client_v2.client_storage_connector import ClientStorage
 from asynfed.client_v2.messages import init_connection
 from asynfed.commons.conf import RoutingRules, Config, init_config
 from asynfed.commons.messages import message_v2
-from asynfed.commons.messages.client_init_connect_to_server import SysInfo
 from asynfed.commons.utils.queue_consumer import AmqpConsumer
 from asynfed.commons.utils.queue_producer import AmqpProducer
+from asynfed.client_v2.ModelWrapper import ModelWrapper
 import concurrent.futures
 thread_pool_ref = concurrent.futures.ThreadPoolExecutor
-import pause
-from apscheduler.schedulers.background import BackgroundScheduler
 
-from asynfed.client_v2.ModelWrapper import ModelWrapper
 
 LOGGER = logging.getLogger(__name__)
+logging.getLogger('pika').setLevel(logging.WARNING)
+LOGGER.setLevel(logging.INFO)
 
 lock = threading.Lock()
 
 class Client(object):
-    def __init__(self, model: ModelWrapper, config):
+    def __init__(self, model: ModelWrapper, config, save_log=False):
         self.config = config
-
         # Dependencies
         self._global_chosen_list = None
         self._save_global_avg_qod = None
@@ -77,12 +76,9 @@ class Client(object):
         else:
             self.load_profile()
 
-        # self.log: bool = True
-        Config.TRAINING_EXCHANGE = "asdasd"
 
-        init_config("client")
+        init_config("client", save_log)
 
-        # self.aws_thread = threading.Thread(target=self._handle_aws)
         self.thread_consumer = threading.Thread(target=self._start_consumer)
         self.queue_consumer = AmqpConsumer(self.config['queue_consumer'], self)
         self.queue_producer = AmqpProducer(self.config['queue_producer'])
@@ -110,17 +106,13 @@ class Client(object):
 
         # IF message come from SERVER_INIT_RESPONSE_TO_CLIENT
         if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE and not self._is_connected:
-            # message_v2.MessageV2.print_message(msg_received)
-            print('SERVER INIT RESPONSE', msg_received)
+            message_v2.MessageV2.print_message(msg_received)
             if content['reconnect'] is True:
                 print("Reconnect to server.")
 
             self._session_id = content['session_id']
             self._global_model_name = content['model_info']['global_model_name']
             self._received_global_version = content['model_info']['model_version']
-            # print("*" * 20)
-            # print(self._current_global_version)
-            # print("*" * 20)
             self._storage_connector = ClientStorage(content['aws_info'])
             self._is_connected = True
 
@@ -184,6 +176,11 @@ class Client(object):
 
                 # # change the flag to true.
                 self._new_model_flag = True
+
+        elif msg_received['headers']['message_type'] == Config.SERVER_STOP_TRAINING: 
+            LOGGER.info('SERVER STOP TRAINING')
+            sys.exit()
+
 
 
     @abstractmethod
@@ -302,3 +299,33 @@ class Client(object):
 
 #     scheduler.start()
 #     pause.days(1) # or it can anything as per your need
+
+class SaveLog(object):
+    def __init__(self, filename=None):
+        if filename is None:
+            filename = f"logs/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log"
+        if not os.path.exists("logs"):
+            os.makedirs("logs")
+        self.terminal = sys.stdout
+
+        formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(funcName)s | %(message)s')
+
+        console_handler = logging.StreamHandler(self.terminal)
+        console_handler.setFormatter(formatter)
+        console_handler.setLevel(logging.INFO)
+        LOGGER.addHandler(console_handler)
+
+        file_handler = logging.FileHandler(filename)
+        file_handler.setFormatter(formatter)
+        file_handler.setLevel(logging.INFO)
+        LOGGER.addHandler(file_handler)
+
+        self.log = open(filename, "a")
+   
+    def write(self, message):
+        self.terminal.write(message)
+
+    def flush(self):
+        pass    
+
+
