@@ -54,7 +54,7 @@ def start_client(args):
 
         def fit(self, parameters, config):
             model.set_weights(parameters)
-            model.fit(x_train, y_train, epochs=1, batch_size=32, steps_per_epoch=10)
+            model.fit(x_train, y_train, epochs=1, batch_size=32, steps_per_epoch=args.steps_per_epoch)
             return model.get_weights(), len(x_train), {}
 
         def evaluate(self, parameters, config):
@@ -73,6 +73,7 @@ if __name__ == '__main__':
     parser.add_argument("--gpu", type=int, default=None, help="Specify the GPU index")
     parser.add_argument("--chunk", type=int, default=1, help="Specify the chunk size")
     parser.add_argument("--address", type=str, default="localhost:8080", help="Specify the server address")
+    parser.add_argument("--steps_per_epoch", type=int, default=50, help="Specify the number of steps per epoch")
 
     args = parser.parse_args()
     start_client(args)
