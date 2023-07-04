@@ -72,7 +72,7 @@ if __name__ == '__main__':
         
     parser.add_argument("--gpu", type=int, default=None, help="Specify the GPU index")
     parser.add_argument("--chunk", type=int, default=1, help="Specify the chunk size")
-    parser.add_argument("--address", type=str, default="localhost:8080", help="Specify the server address")
+    parser.add_argument("--address", type=str, default="0.0.0.0:8080", help="Specify the server address")
     parser.add_argument("--steps_per_epoch", type=int, default=50, help="Specify the number of steps per epoch")
 
     args = parser.parse_args()
