@@ -57,6 +57,7 @@ class Resnet18(TensorflowSequentialModel):
         self.fc = layers.Dense(output_features, activation='softmax')
 
     def call(self, x):
+        x = tf.cast(x, tf.float32)
         out = tf.keras.activations.relu(self.bn1(self.conv1(x)))
         out = self.layer1(out)
         out = self.layer2(out)
