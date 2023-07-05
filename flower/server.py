@@ -11,31 +11,30 @@ from experiment.cifar_dataset.client.data_preprocessing import preprocess_datase
 
 
 test_path = 'data/test_set.pickle'
-learning_rate = 1e-1
+x_test, y_test, data_size = preprocess_dataset(test_path)
+
 epoch = 200
 batch_size = 128
-_, data_size = preprocess_dataset(test_path, batch_size=batch_size, training=False)
-model = Resnet18(input_features=(32, 32, 3), 
-                output_features=10,
-                lr=learning_rate,
-                decay_steps=epoch*data_size/batch_size)
+learning_rate = 1e-1
+lambda_value = 5e-4
+
+# model
+# because we don't need to train on server
+# just build a simple model
+model = Resnet18(num_classes= 10)
+# Compile the model
 model.build(input_shape=(None, 32, 32, 3))
 # model.compile("adam", "sparse_categorical_crossentropy", metrics=["accuracy"])
 model.compile("adam", "categorical_crossentropy", metrics=["accuracy"])
 
+
 def get_evaluate_fn(model):
     """Return an evaluation function for server-side evaluation."""
-
-    # Load data and model here to avoid the overhead of doing it in `evaluate` itself
-    x_test, y_test = load_to_numpy_array(test_path)
-    y_test = tf.keras.utils.to_categorical(y_test, 10)
-
     # The `evaluate` function will be called after every round
     def evaluate(server_round, parameters , config):
         model.set_weights(parameters)  
         loss, accuracy, _, _, _, _ = model.evaluate(x_test, y_test, return_dict=False)
         return loss, {"accuracy": accuracy}
-
     return evaluate
 
 
@@ -56,7 +55,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--address", type=str, default="0.0.0.0:8080", help="Specify the port number")
     parser.add_argument("--min_worker", type=int, default=2, help="Specify the minimum number of workers")
-    parser.add_argument("--num_rounds", type=int, default=10, help="Specify the minimum number of workers")
+    parser.add_argument("--num_rounds", type=int, default=200, help="Specify the number of iterations")
 
     args = parser.parse_args()
     start_server(args)
