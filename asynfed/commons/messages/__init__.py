@@ -1,5 +1,3 @@
-from .client_init_connect_to_server import ClientInit
-from .server_init_response_to_client import ServerInitResponseToClient
-from .client_notify_model_to_server import ClientNotifyModelToServer
-from .server_notify_model_to_client import ServerNotifyModelToClient
-
+from .message import Message
+from .message_v2 import MessageV2
+from .client_init_connection_to_server import SysInfo

@@ -5,11 +5,11 @@ import argparse
 root = os.path.dirname(os.getcwd())
 sys.path.append(root)
 
-from training_process.cifar_dataset.client.centralized_resnet18.data_preprocessing import load_to_numpy_array
+from experiment.cifar_dataset.client.centralized_resnet18.data_preprocessing import load_to_numpy_array
 import flwr as fl
 import tensorflow as tf
-from training_process.cifar_dataset.client.resnet18_5_chunks.data_preprocessing import preprocess_dataset
-from training_process.cifar_dataset.client.resnet18 import Resnet18
+from experiment.cifar_dataset.client.data_preprocessing import preprocess_dataset
+from experiment.cifar_dataset.client.resnet18 import Resnet18
 
 def start_client(args):
     chunk = args.chunk

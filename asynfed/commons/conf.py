@@ -6,18 +6,6 @@ import os
 
 LOGGER = logging.getLogger(__name__)
 
-
-class RoutingRules:
-    # at ClientModel Queue
-    SERVER_ERROR_TO_CLIENT = "error.message"
-    CLIENT_INIT_SEND_TO_SERVER: str = "client.init.send.to.server"
-    CLIENT_NOTIFY_MODEL_TO_SERVER: str = "client.notify.update"
-
-    # at Server Queue
-    SERVER_INIT_RESPONSE_TO_CLIENT: str = "server.init.reply"
-    SERVER_NOTIFY_MODEL_TO_CLIENT: str = "server.notify.global.model.to.client"
-
-
 class Config:
     """
     Server config here!
@@ -50,7 +38,6 @@ class Config:
     SLEEPING_TIME = 10
     TRACKING_POINT = 5000
     BATCH_SIZE=128
-    DATA_SIZE=60000
 
     EPOCH = 5
     DELTA_TIME = 15

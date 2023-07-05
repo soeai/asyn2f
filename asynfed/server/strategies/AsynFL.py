@@ -8,7 +8,9 @@ import pickle
 
 from asynfed.commons.conf import Config
 from asynfed.server.objects import Worker
-from asynfed.server.strategies import Strategy
+# from .Strategy import Strategy
+
+from .strategy import Strategy
 
 from asynfed.server.worker_manager import WorkerManager
 

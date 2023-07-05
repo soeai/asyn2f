@@ -1,42 +1,92 @@
+from datetime import datetime
+import os, sys
+import re
+
+
+root = os.path.dirname(os.path.dirname(os.getcwd()))
+sys.path.append(root)
+
+from asynfed.server.messages.notify_new_model import NotifyNewModel
 import logging
+import threading
 import uuid
 from time import sleep
-from pika import BasicProperties
-from asynfed.commons.conf import RoutingRules, Config, init_config
-from asynfed.commons.messages.client_init_connect_to_server import ClientInit
-from asynfed.commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
-from asynfed.commons.messages.server_init_response_to_client import ServerInitResponseToClient
-from asynfed.commons.messages.server_notify_model_to_client import ServerNotifyModelToClient
-from asynfed.commons.utils.queue_connector import QueueConnector
-from asynfed.commons.utils.time_ultils import time_diff, time_now
+
+from asynfed.commons import Config
+from asynfed.commons.conf import init_config
+
+from asynfed.commons.messages import MessageV2
+from asynfed.commons.utils import AmqpConsumer
+from asynfed.commons.utils import AmqpProducer
+
+from asynfed.commons.utils import time_diff, time_now
+
+
+from .strategies import Strategy
 from .objects import Worker
 from .server_storage_connector import ServerStorage
-from .strategies import Strategy
+from .influxdb import InfluxDB
 from .worker_manager import WorkerManager
-import threading
 
-from ..commons.messages.error_message import ErrorMessage
-from ..commons.utils.queue_connector_blocking import BlockingQueueConnector
 
-# from pynput import keyboard
+from asynfed.server.messages import ResponseConnection
+from asynfed.server.messages import StopTraining
+
+import concurrent.futures
+thread_pool_ref = concurrent.futures.ThreadPoolExecutor
+
 
 lock = threading.Lock()
 
 LOGGER = logging.getLogger(__name__)
+logging.getLogger("pika").setLevel(logging.WARNING)
+LOGGER.setLevel(logging.INFO)
 
-
-class Server(QueueConnector):
+class Server(object):
     """
     - This is the abstract class for server, we delegate the stop condition to be decided by user.
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, t: int = 15, test=True,
-                 training_exchange: str = "test-client-tensorflow-cifar10",
-                 bucket_name='test-client-tensorflow-cifar10') -> None:
-        # Server variables
+    def __init__(self, strategy: Strategy, config: dict, save_log=False) -> None:
+        """
+        config structure
+        {
+            "server_id": "",
+            "bucket_name": "",
+            "region_name": "ap-southeast-2",
+            "t": 15,
+            "queue_consumer": {
+                'exchange_name': 'asynfl_exchange',
+                'exchange_type': 'topic',
+                'routing_key': 'server.#',
+                'end_point': ''},
+            "queue_producer": {
+                'exchange_name': 'asynfl_exchange',
+                'exchange_type': 'topic',
+                'routing_key': 'client.#',
+                'end_point': ""}
+            "stop_conditions": {
+                "max_version": 50,
+                "max_performance": 0.9,
+                "min_loss": 0.1
+            },
+        }
+        """
         super().__init__()
-        self._t = t
+
+        if config.get('stop_conditions'):
+            self.stop_conditions = config.get('stop_conditions')
+        else:
+            self.stop_conditions = {
+                'max_version': 50,
+                'max_performance': 0.9,
+                'min_loss': 0.1,
+            }
+        self._is_stop_condition = False
+
+        self.config = config
+        self._t = config.get('t') or 15
         self._strategy = strategy
         # variables
         self._is_downloading = False
@@ -47,318 +97,251 @@ class Server(QueueConnector):
         self._first_arrival = None
         self._latest_arrival = None
 
-        if test:
-            self._server_id = training_exchange
+        if config.get('test'):
+            self._server_id = self.config['server_id']
         else:
             self._server_id = f'server-{str(uuid.uuid4())}'
 
         # All this information was decided by server to prevent conflict
         # because multiple server can use the same RabbitMQ, S3 server.
-        Config.TRAINING_EXCHANGE = self._server_id
 
-        if test:
-            Config.STORAGE_BUCKET_NAME = bucket_name
-            Config.QUEUE_NAME = bucket_name
-        else:
-            Config.STORAGE_BUCKET_NAME = self._server_id
-            Config.QUEUE_NAME = self._server_id
+        if config.get('aws').get('bucket_name') is None or self.config.get('aws').get('bucket_name') == "":
+            config['aws']['bucket_name'] = self._server_id
+        
+        init_config("server", save_log)
 
-        init_config("server")
-
-        LOGGER.info(f' \n\nServer Info:\n\tRabbitMQ Exchange : {Config.TRAINING_EXCHANGE}'
-                    f'\n\tS3 Bucket: {Config.STORAGE_BUCKET_NAME}'
+        LOGGER.info(f'\n\nServer Info:\n\tQueue In : {self.config["queue_consumer"]}'
+                    f'\n\tQueue Out : {self.config["queue_producer"]}'
+                    f'\n\tS3 Bucket: {self.config["aws"]["bucket_name"]}'
                     f'\n\n')
 
         # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
-        self._cloud_storage: ServerStorage = ServerStorage()
+        self._cloud_storage: ServerStorage = ServerStorage(config['aws'])
+        self._influxdb = InfluxDB(config['influxdb'])
 
-        self.delete_bucket_on_exit = True
-
-    def on_message(self, channel, method, properties: BasicProperties, body):
-
-        if method.routing_key == RoutingRules.CLIENT_INIT_SEND_TO_SERVER:
-            try:
-                # Get message from Client
-                client_init_message: ClientInit = ClientInit()
-                client_init_message.deserialize(body.decode())
-                LOGGER.info(f"client_msg: {client_init_message.__str__()} at {threading.current_thread()}")
-
-                # check if session is in the worker_manager.get_all_worker_session
-                if client_init_message.session_id in self._worker_manager.list_all_worker_session_id() and client_init_message.client_id != '':
-
-                    # get worker_id by client_id
-                    worker = self._worker_manager.get_worker_by_id(client_init_message.client_id)
-                    worker_id = worker.worker_id
-                    session_id = client_init_message.session_id
-
-                else:
-                    worker_id = str(uuid.uuid4())
-                    session_id = str(uuid.uuid4())
-
-                    # Get cloud storage keys
-                    with lock:
-                        access_key, secret_key = self._cloud_storage.get_client_key(worker_id)
-
-                    # Add worker to Worker Manager.
-                    worker = Worker(
-                        session_id=session_id,
-                        worker_id=worker_id,
-                        sys_info=client_init_message.sys_info,
-                        data_size=client_init_message.data_size,
-                        qod=client_init_message.qod
-                    )
-                    with lock:
-                        worker.access_key_id = access_key
-                        worker.secret_key_id = secret_key
-                        self._worker_manager.add_worker(worker)
-
-                model_name = self._cloud_storage.get_newest_global_model().split('.')[0]
-                try:
-                    model_version = model_name.split('_')[1][1:]
-
-                except Exception as e:
-                    model_version = -1
-                try:
-                    self._strategy.current_version = int(model_version)
-                except Exception as e:
-                    logging.error(e)
-                    self._strategy.current_version = 0
-
-                model_url = self._cloud_storage.get_newest_global_model()
-                # Build response message
-                response = ServerInitResponseToClient(
-                    # client_identifier=client_init_message.client_identifier,
-                    session_id=session_id,
-                    client_id=worker_id,
-                    model_url=model_url,
-                    global_model_name=model_url.split("/")[1],
-                    model_version=self._strategy.current_version,
-                    access_key=worker.access_key_id,
-                    secret_key=worker.secret_key_id,
-                    bucket_name=Config.STORAGE_BUCKET_NAME,
-                    region_name=Config.STORAGE_REGION_NAME,
-                    training_exchange=Config.TRAINING_EXCHANGE,
-                    monitor_queue=Config.MONITOR_QUEUE
-
-                )
-                LOGGER.info(f"server response: {response.__str__()} at {threading.current_thread()}")
-                self.__response_to_client_init_connect(response)
-
-            except Exception as e:
-                error_message = ErrorMessage(error_message=e.__str__(), client_id=body.decode["client_id"])
-                self.__notify_error_to_client(error_message)
-
-        elif method.routing_key == RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER:
-            client_notify_message = ClientNotifyModelToServer()
-            client_notify_message.deserialize(body.decode())
-
-            if self._strategy.current_version == client_notify_message.global_model_version_used:
-                if self._first_arrival is None:
-                    self._first_arrival = time_now()
-                    self._latest_arrival = time_now()
-
-                elif self._first_arrival is not None:
-                    self._latest_arrival = time_now()
-
-            # Download model!
-            with lock:
-                self._cloud_storage.download(remote_file_path=client_notify_message.weight_file,
-                                             local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + client_notify_message.model_id)
-                self._worker_manager.add_local_update(client_notify_message)
-
-            print("*" * 20)
-            print(f'Receive new model from client [{client_notify_message.client_id}]!')
-            print(self._worker_manager.worker_pool[client_notify_message.client_id].data_size)
-            print(self._worker_manager.worker_pool[client_notify_message.client_id].is_completed)
-            print(f'Performance and Loss: {client_notify_message.performance}, {client_notify_message.loss_value}')
-            print("*" * 20)
+        self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
+        self.thread_consumer.daemon = True
+        self.queue_concumer = AmqpConsumer(self.config['queue_consumer'], self)
+        self.queue_producer = AmqpProducer(self.config['queue_producer'])
+        LOGGER.info('Queue ready!')
 
 
-
-
-    def setup(self):
-        # Declare exchange, queue, binding.
-        self._channel.exchange_declare(exchange=Config.TRAINING_EXCHANGE, exchange_type=self.EXCHANGE_TYPE)
-        self._channel.queue_declare(queue=Config.QUEUE_NAME)
-        self._channel.queue_bind(
-            Config.QUEUE_NAME,
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.CLIENT_NOTIFY_MODEL_TO_SERVER
-        )
-        self._channel.queue_bind(
-            Config.QUEUE_NAME,
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.CLIENT_INIT_SEND_TO_SERVER
-        )
-
-        self._channel.queue_purge(Config.QUEUE_NAME)
-
-        self.start_consuming()
-
-    def __notify_global_model_to_client(self, message):
-        # Send notify message to client.
-        self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.SERVER_NOTIFY_MODEL_TO_CLIENT,
-            message.serialize()
-        )
-        # Get the starting time of the epoch and reset vars
-        self._start_time = time_now()
-        self._first_arrival = None
-        self._latest_arrival = None
-
-    def __notify_error_to_client(self, message):
-        # Send notify message to client.
-        self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.SERVER_ERROR_TO_CLIENT,
-            message.serialize()
-        )
-
-    def __response_to_client_init_connect(self, message):
-        # Send response message to client.
-        self._channel.basic_publish(
-            Config.TRAINING_EXCHANGE,
-            RoutingRules.SERVER_INIT_RESPONSE_TO_CLIENT,
-            message.serialize()
-        )
+    def _start_consumer(self):
+        self.queue_concumer.start()
 
     def start(self):
-
-        # create 1 thread to listen on the queue.
-        consuming_thread = threading.Thread(target=self.run_queue,
-                                            name="fedasync_server_consuming_thread")
-
-        # run the consuming thread!.
-        consuming_thread.start()
-
-        # thread = threading.Thread(target=keyboard_thread)
-        # thread.start()
-
-        while not self.__is_stop_condition() and not self._closing:
-            #
-            # if not thread.is_alive():
-            #     if self.delete_bucket_on_exit:
-            #         self._cloud_storage.delete_bucket()
-            #     self.stop()
+        self.thread_consumer.start()
+        while True:
+            if self._is_stop_condition or self.__is_stop_condition({"version": self._strategy.current_version}):
+                content = StopTraining()
+                message = MessageV2(
+                        headers={'timestamp': time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id},
+                        content=content
+                ).to_json()
+                self.queue_producer.send_data(message)
+                break
 
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
             if n_local_updates == 0:
-                print(f'No local update found, sleep for {self._t} seconds...')
-                # Sleep for t seconds.
+                LOGGER.info(f'No local update found, sleep for {self._t} seconds...')
                 sleep(self._t)
-            # elif n_local_updates == 1:
-            #     print("Hello")
             elif n_local_updates > 0:
                 try:
-                    print(f'Found {n_local_updates} local update(s)')
-                    print('Start update global model')
-                    # calculate self._strategy.avg_qod and self._strategy.avg_loss 
+                    LOGGER.info(f'Start update global model with {n_local_updates} local updates')
+                    # calculate self._strategy.avg_qod and self._strategy.avg_loss
                     # and self_strategy.global_model_update_data_size
                     # within the self.__update function
                     # self.__update()
                     self.__update(n_local_updates)
                     # Clear worker queue after aggregation.
                     # self._worker_manager.update_worker_after_training()
-                    self.__publish_global_model()
-
-
+                    self._publish_global_model()
                 except Exception as e:
-                    message = ErrorMessage(str(e), None)
-                    LOGGER.info("*" * 20)
-                    LOGGER.info(e)
-                    LOGGER.info("THIS IS THE INTENDED MESSAGE")
-                    LOGGER.info("*" * 20)
-                    self.__notify_error_to_client(message)
+                    raise e
 
-        self.stop()
-        # thread.join()
+    def on_message_received(self, ch, method, props, body):
+        msg_received = MessageV2.deserialize(body.decode('utf-8'))
+        if msg_received['headers']['message_type'] == Config.CLIENT_INIT_MESSAGE:
+            self._response_connection(msg_received)
+        elif msg_received['headers']['message_type'] == Config.CLIENT_NOTIFY_MESSAGE:
+            self._handle_client_notify_model(msg_received)
+        elif msg_received['headers']['message_type'] == Config.CLIENT_NOTIFY_EVALUATION:
+            self._handle_client_notify_evaluation(msg_received)
 
-    # def
+
+    def _response_connection(self, msg_received):
+        MessageV2.print_message(msg_received)
+        client_id = msg_received['headers']['client_id']
+        session_id = str(uuid.uuid4())
+        content = msg_received['content']
+
+
+        if msg_received['headers']['session_id'] in self._worker_manager.list_all_worker_session_id():
+            reconnect = True
+            worker = self._worker_manager.get_worker_by_id(client_id)
+            access_key, secret_key = worker.access_key_id, worker.secret_key_id
+        else:
+            reconnect = False
+            worker = Worker(
+                    session_id=session_id,
+                    worker_id=client_id,
+                    sys_info=content['system_info'],
+                    data_size=content['data_description']['data_size'],
+                    qod=content['data_description']['qod'],
+            )
+            LOGGER.info("*" * 20)
+            LOGGER.info(worker)
+            LOGGER.info("*" * 20)
+            access_key, secret_key = self._cloud_storage.get_client_key(client_id)
+            worker.access_key_id = access_key
+            worker.secret_key_id = secret_key
+            self._worker_manager.add_worker(worker)
+
+            folder_name = f'{Config.TMP_LOCAL_MODEL_FOLDER}{worker.worker_id}'
+            if not os.path.exists(folder_name):
+                os.makedirs(folder_name)
+
+        try:
+            model_name = self._cloud_storage.get_newest_global_model().split('.')[0]
+            model_version = model_name.split('_')[1][1:]
+
+        except Exception as e:
+            model_version = -1
+
+        try:
+            self._strategy.current_version = int(model_version)
+        except Exception as e:
+            logging.error(e)
+            self._strategy.current_version = 1
+
+        model_url = self._cloud_storage.get_newest_global_model()
+        model_info = {"model_url": model_url, 
+                      "global_model_name": model_url.split("/")[-1], 
+                      "model_version": int(re.findall(r'\d+', model_url.split("/")[1])[0]) }
+        aws_info = {"access_key": access_key, 
+                    "secret_key": secret_key, 
+                    "bucket_name": self.config['aws']['bucket_name'],
+                    "region_name": self.config['aws']['region_name'],
+                    "parent": None}
+        queue_info = {"training_exchange": "", 
+                      "monitor_queue": ""}
+
+        message = MessageV2(
+                headers={'timestamp': time_now(), 'message_type': Config.SERVER_INIT_RESPONSE, 'server_id': self._server_id}, 
+                content=ResponseConnection(session_id, model_info, aws_info, queue_info, reconnect=reconnect)
+        ).to_json()
+        self.queue_producer.send_data(message)
+
+    def _handle_client_notify_model(self, msg_received):
+        MessageV2.print_message(msg_received)
+        client_id = msg_received['headers']['client_id']
+
+        # self._cloud_storage.download(remote_file_path=msg_received['content']['remote_worker_weight_path'],
+        #                                 local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + msg_received['content']['filename'])
+        self._worker_manager.add_local_update(client_id, msg_received['content'])
+        self._influxdb.write_training_process_data(msg_received)
+
+    def _handle_client_notify_evaluation(self, msg_received):
+        MessageV2.print_message(msg_received)
+        if self.__is_stop_condition(msg_received['content']):
+            content = StopTraining()
+            message = MessageV2(
+                    headers={'timestamp': time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id},
+                    content=content
+            ).to_json()
+            self.queue_producer.send_data(message)
+            self._is_stop_condition = True
+            sys.exit(0)
+
 
     def __update(self, n_local_updates):
         if n_local_updates == 1:
             self._strategy.current_version += 1
-            print("Only one update from client, passing the model to all other client in the network...")
+            LOGGER.info("Only one update from client, passing the model to all other client in the network...")
             completed_workers: dict[str, Worker] = self._worker_manager.get_completed_workers()
 
             # get the only worker
             # worker = next(iter(completed_workers.values))
             for w_id, worker in completed_workers.items():
-                print(w_id)
+                LOGGER.info(w_id)
                 self._strategy.avg_loss = worker.loss
                 self._strategy.avg_qod = worker.qod
                 self._strategy.global_model_update_data_size = worker.data_size
                 worker.is_completed = False
 
+                # print("*" * 20)
+                # print("remote file path: ", worker.get_remote_weight_file_path())
+                # print("save file path: ", worker.get_remote_weight_file_path())
+                # print("*" * 20)
+
+                remote_weight_file = worker.get_remote_weight_file_path()
+                local_weight_file = worker.get_weight_file_path()
+                self._cloud_storage.download(remote_file_path= remote_weight_file, 
+                                             local_file_path= local_weight_file)
             # print("*" * 10)
             # print(f"Avg loss, avg qod, global datasize: {self._strategy.avg_loss}, {self._strategy.avg_qod}, {self._strategy.global_model_update_data_size}")
             # print("*" * 10)
 
             # copy the worker model weight to the global model folder
             import shutil
-            local_weight_file = worker.get_weight_file_path()
+            # local_weight_file = worker.get_weight_file_path()
             save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self._strategy.get_global_model_filename()
             shutil.copy(local_weight_file, save_location)
 
 
         else:
-            print("Aggregating process...")
+            LOGGER.info("Aggregating process...")
             # calculate self._strategy.avg_qod and self_strategy.avg_loss
             # and self_strategy.global_model_update_data_size
             # within the self._strategy.aggregate function
-            self._strategy.aggregate(self._worker_manager)
+            self._strategy.aggregate(self._worker_manager, self._cloud_storage)
 
-        # calculate dynamic time ratial only when 
-        if None not in [self._start_time, self._first_arrival, self._latest_arrival]:
-            t1 = time_diff(self._start_time, self._first_arrival)
-            t2 = time_diff(self._start_time, self._latest_arrival)
+        # # calculate dynamic time ratial only when
+        # if None not in [self._start_time, self._first_arrival, self._latest_arrival]:
+        #     t1 = time_diff(self._start_time, self._first_arrival)
+        #     t2 = time_diff(self._start_time, self._latest_arrival)
 
-            # get avg complete time of current epoch
-            self._t = (t2 + t1) / 2 + 2 * t1
+        #     # get avg complete time of current epoch
+        #     self._t = (t2 + t1) / 2 
+        #     # self._t = (t2 + t1) / 2 + 2 * t1
 
-    def __is_stop_condition(self):
-        self._strategy.is_completed()
+    def __is_stop_condition(self, info):
+        for k, v in info.items():
+            if k == "loss" and self.stop_conditions.get("min_loss") is not None:
+                if v <= self.stop_conditions.get("min_loss"):
+                    LOGGER.info(f"Stop condition: loss {v} <= {self.stop_conditions.get('min_loss')}")
+                    return True
+            elif k == "performance" and self.stop_conditions.get("max_performance") is not None:
+                if v >= self.stop_conditions.get("max_performance"):
+                    LOGGER.info(f"Stop condition: performance {v} >= {self.stop_conditions.get('max_performance')}")
+                    return True
+            elif k == "version" and self.stop_conditions.get("max_version") is not None:
+                if v >= self.stop_conditions.get("max_version"):
+                    LOGGER.info(f"Stop condition: version {v} >= {self.stop_conditions.get('max_version')}")
+                    return True
 
-    def __publish_global_model(self):
-        print('Publish global model (sv notify model to client)')
+    def _publish_global_model(self):
         local_filename = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
         remote_filename = f'global-models/{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
         self._cloud_storage.upload(local_filename, remote_filename)
 
-        # Construct message
-        msg = ServerNotifyModelToClient(
-            chosen_id=[],
-            model_id=self._strategy.model_id,
+        message = MessageV2(
+            headers={"timestamp": time_now(), "message_type": Config.SERVER_NOTIFY_MESSAGE, "server_id": self._server_id},
+            content=NotifyNewModel(
+                chosen_id=[],
+                model_id=self._strategy.model_id,
+                global_model_version=self._strategy.current_version,
+                global_model_name=f'{self._strategy.model_id}_v{self._strategy.current_version}.pkl',
+                global_model_update_data_size=self._strategy.global_model_update_data_size,
+                avg_loss=self._strategy.avg_loss,
+                avg_qod=self._strategy.avg_qod,
+            )
+        ).to_json()
+        self.queue_producer.send_data(message)
 
-            global_model_version=self._strategy.current_version,
-            global_model_name=f'{self._strategy.model_id}_v{self._strategy.current_version}.pkl',
-            # values obtained after each update time
-            global_model_update_data_size=self._strategy.global_model_update_data_size,
-            avg_loss=self._strategy.avg_loss,
-            avg_qod=self._strategy.avg_qod,
-        )
-        print("*" * 20)
-        print("Notify model from server")
-        print(msg)
-        print("*" * 20)
-        # Send message
-        self.__notify_global_model_to_client(msg)
-
-#
-# def on_press(key):
-#     if key == keyboard.Key.esc:
-#         return False
-#
-#
-# def keyboard_thread():
-#     # Create a listener instance
-#     listener = keyboard.Listener(on_press=on_press)
-#
-#     # Start the listener
-#     listener.start()
-#
-#     # Wait for the listener to finish (blocking operation)
-#     listener.join()
+        # Get the starting time of the epoch and reset vars
+        self._start_time = time_now()
+        self._first_arrival = None
+        self._latest_arrival = None
