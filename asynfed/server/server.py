@@ -18,8 +18,7 @@ from asynfed.commons.conf import init_config
 from asynfed.commons.messages import MessageV2
 from asynfed.commons.utils import AmqpConsumer
 from asynfed.commons.utils import AmqpProducer
-
-from asynfed.commons.utils import time_diff, time_now
+from asynfed.commons.utils import  time_now
 
 
 from .strategies import Strategy
@@ -122,13 +121,13 @@ class Server(object):
 
         self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
         self.thread_consumer.daemon = True
-        self.queue_concumer = AmqpConsumer(self.config['queue_consumer'], self)
+        self.queue_consumer = AmqpConsumer(self.config['queue_consumer'], self)
         self.queue_producer = AmqpProducer(self.config['queue_producer'])
         LOGGER.info('Queue ready!')
 
 
     def _start_consumer(self):
-        self.queue_concumer.start()
+        self.queue_consumer.start()
 
     def start(self):
         self.thread_consumer.start()
@@ -163,12 +162,16 @@ class Server(object):
 
     def on_message_received(self, ch, method, props, body):
         msg_received = MessageV2.deserialize(body.decode('utf-8'))
-        if msg_received['headers']['message_type'] == Config.CLIENT_INIT_MESSAGE:
+        msg_type = msg_received['headers']['message_type']
+
+        if msg_type == Config.CLIENT_INIT_MESSAGE:
             self._response_connection(msg_received)
-        elif msg_received['headers']['message_type'] == Config.CLIENT_NOTIFY_MESSAGE:
+        elif msg_type == Config.CLIENT_NOTIFY_MESSAGE:
             self._handle_client_notify_model(msg_received)
-        elif msg_received['headers']['message_type'] == Config.CLIENT_NOTIFY_EVALUATION:
+        elif msg_type == Config.CLIENT_NOTIFY_EVALUATION:
             self._handle_client_notify_evaluation(msg_received)
+        elif msg_type == Config.CLIENT_PING_MESSAGE:
+            self._worker_manager.update_worker_last_ping(msg_received['headers']['client_id'])
 
 
     def _response_connection(self, msg_received):

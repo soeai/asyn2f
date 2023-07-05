@@ -1,4 +1,5 @@
 import os, sys
+from asynfed.client.messages.ping import Ping
 from asynfed.commons.utils.time_ultils import time_now
 root = os.path.dirname(os.path.dirname(os.getcwd()))
 sys.path.append(root)
@@ -36,7 +37,8 @@ lock = threading.Lock()
 class Client(object):
     def __init__(self, model: ModelWrapper, config, save_log=False):
         self.config = config
-        self._role = config['role']
+        self._role = config.get("role") or "train"
+        self._ping_time = config.get("ping_time") or 30
 
         if self._role == "train":
             self._min_epoch = config['training_params']['min_epoch']
@@ -192,7 +194,12 @@ class Client(object):
                 data_description=data_description,
             )
         ).to_json()
-        self.queue_producer.send_data(message)
+        try:
+            self.queue_producer.send_data(message)
+        except Exception as e:
+            LOGGER.error(e)
+            self._reconnect_producer()
+            self.queue_producer.send_data(message)
 
     def _handle_server_init_response(self, msg_received):
         MessageV2.print_message(msg_received)
@@ -281,9 +288,19 @@ class Client(object):
     def start(self):
         self.thread_consumer.start()
 
-        # Keep main thread alive
+        # Main thread will send ping message to server every t seconds
         while not self._is_stop_condition:
-            sleep(1)
+            sleep(30)
+            message = MessageV2(
+                    headers={"timestamp": time_now(), "message_type": Config.CLIENT_PING_MESSAGE, "session_id": self._session_id, "client_id": self._client_id},
+                    content=Ping()).to_json()
+            try:
+                self.queue_producer.send_data(message)
+            except Exception as e:
+                LOGGER.info(e)
+                self._reconnect_producer()
+                self.queue_producer.send_data(message)
+
         sys.exit(0)
 
     def start_training_thread(self):
@@ -303,4 +320,8 @@ class Client(object):
         testing_thread.daemon = True
         self._is_testing = True
         testing_thread.start()
+
+    def _reconnect_producer(self):
+        LOGGER.info("Reconnect producer.")
+        self.queue_producer = AmqpProducer(self.config['queue_producer'])
 

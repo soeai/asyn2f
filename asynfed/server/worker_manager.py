@@ -1,7 +1,8 @@
 import logging
 from typing import Dict, List
-from .objects import Worker
-# from ..commons.messages.client_notify_model_to_server import ClientNotifyModelToServer
+
+from asynfed.commons.utils.time_ultils import time_diff, time_now
+from asynfed.server.objects import Worker
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,27 +23,12 @@ class WorkerManager:
         self.history_state: Dict[int, Dict[str, Worker]] = {}
 
     def add_worker(self, worker: Worker) -> None:
-
-        # print("^" * 20)
-        # print("before add new worker")
-        # for w_id, w in self.worker_pool.items():
-        #     print(f"worker_id: {w.worker_id}, size: {w.data_size}, qod: {w.qod}, loss: {w.loss}, per: {w.performance}")
-        #     print(f"worker_session: {w.session_id}")
-        # print("^" * 20)
-
         """Add a Worker to the worker_pools attribute.
         Args:
             worker (Worker): The Worker object to add.
         """
         LOGGER.info(f"New worker added, ID: {worker.worker_id}")
         self.worker_pool[worker.worker_id] = worker
-
-        # print("^" * 20)
-        # print("after add new worker")
-        # for w_id, w in self.worker_pool.items():
-        #     print(f"worker_id: {w.worker_id}, size: {w.data_size}, qod: {w.qod}, loss: {w.loss}, per: {w.performance}")
-        #     print(f"worker_session: {w.session_id}")
-        # print("^" * 20)
 
 
     def total(self) -> int:
@@ -76,7 +62,28 @@ class WorkerManager:
         return {worker_id: self.worker_pool[worker_id] for worker_id in self.worker_pool if self.worker_pool[worker_id].is_completed == True}
 
     def get_worker_by_id(self, worker_id: str) -> Worker:
+        """
+        Return a worker object by worker_id
+        """
         return self.worker_pool[worker_id]
 
-    def list_all_worker_session_id(self) -> List:
+    def list_sessions(self) -> List:
+        """
+        Return a list of session_id
+        """
         return [self.worker_pool[worker_id].session_id for worker_id in self.worker_pool.keys()]
+
+    def update_worker_connections(self) -> None:
+        """
+        Update worker connections
+        """
+        for worker_id in self.worker_pool.keys():
+            if time_diff(time_now(), self.worker_pool[worker_id].last_ping) < 10:
+                self.worker_pool[worker_id].is_connected = True
+            else:
+                self.worker_pool[worker_id].is_connected = False
+
+
+    def update_worker_last_ping(self, worker_id):
+        self.worker_pool[worker_id].last_ping = time_now()
+

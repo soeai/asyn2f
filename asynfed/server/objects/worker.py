@@ -1,6 +1,7 @@
 from asynfed.commons.conf import Config
 # from asynfed.commons.messages.client_init_connect_to_server import SysInfo
 from asynfed.commons.messages import SysInfo
+from asynfed.commons.utils.time_ultils import time_now
 
 
 class Worker:
@@ -30,6 +31,9 @@ class Worker:
         self.data_size = data_size
         # loss change from update time to update time
         self.loss = 0.0
+
+        self.last_ping = time_now()
+        self.is_connected = True
 
 
     def get_weight_file_path(self):
