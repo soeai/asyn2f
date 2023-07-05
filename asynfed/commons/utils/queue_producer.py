@@ -1,4 +1,6 @@
 import pika, uuid
+import logging
+LOGGER = logging.getLogger(__name__)
 
 class AmqpProducer(object):
     # Init an amqp client handling the connection to amqp servier
@@ -13,12 +15,14 @@ class AmqpProducer(object):
         self.exchange_type = configuration["exchange_type"]
         self.routing_key = configuration["routing_key"]
         self.log_flag = log
+        self._connect()
 
+    def _connect(self):
         # Connect to RabbitMQ host
-        if "amqps://" in configuration["end_point"]:
-            self.connection = pika.BlockingConnection(pika.URLParameters(configuration["end_point"]))
+        if "amqps://" in self.conf["end_point"]:
+            self.connection = pika.BlockingConnection(pika.URLParameters(self.conf["end_point"]))
         else:
-            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=configuration["end_point"]))
+            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=self.conf["end_point"]))
 
             # Create a channel
         self.channel = self.connection.channel()
@@ -35,8 +39,15 @@ class AmqpProducer(object):
         if routing_key == None:
             routing_key = self.routing_key
         self.sub_properties = pika.BasicProperties(correlation_id=corr_id, expiration=str(expiration))
-        self.channel.basic_publish(exchange=self.exchange_name, routing_key=routing_key,
-                                   properties=self.sub_properties, body=body_mess)
+        try:
+            self.channel.basic_publish(exchange=self.exchange_name, routing_key=routing_key,
+                                    properties=self.sub_properties, body=body_mess)
+        except Exception as e:
+            LOGGER.error(f"Error when sending message: {e}")
+            LOGGER.info("Reconnecting to RabbitMQ server...")
+            self._connect()
+            self.channel.basic_publish(exchange=self.exchange_name, routing_key=routing_key,
+                                    properties=self.sub_properties, body=body_mess)
         # if self.log_flag:
         #     self.mess_logging.log_request(body_mess,corr_id)
 

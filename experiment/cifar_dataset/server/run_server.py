@@ -48,5 +48,5 @@ conf = {
     }
 }
 strategy = AsynFL()
-fedasync_server = Server(strategy, conf, save_log= True)
+fedasync_server = Server(strategy, conf, save_log=False)
 fedasync_server.start()

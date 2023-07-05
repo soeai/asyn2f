@@ -4,16 +4,19 @@ import pika, json
 class AmqpConsumer(object):
     # Init an amqp client handling the connection to amqp servier
     def __init__(self, configuration: dict, host_object: object = None):
+        self.conf = configuration
         self.host_object = host_object
         self.exchange_name = configuration["exchange_name"]
         self.exchange_type = configuration["exchange_type"]
         self.routing_key = configuration["routing_key"]
-
+        self._connect()
+    
+    def _connect(self):
         # Connect to RabbitMQ host
-        if "amqps://" in configuration["end_point"]:
-            self.connection = pika.BlockingConnection(pika.URLParameters(configuration["end_point"]))
+        if "amqps://" in self.conf["end_point"]:
+            self.connection = pika.BlockingConnection(pika.URLParameters(self.conf["end_point"]))
         else:
-            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=configuration["end_point"]))
+            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=self.conf["end_point"]))
 
         # Create a channel
         self.channel = self.connection.channel()
@@ -22,7 +25,7 @@ class AmqpConsumer(object):
         self.channel.exchange_declare(exchange=self.exchange_name, exchange_type=self.exchange_type)
 
         # Declare a queue to receive prediction response
-        self.queue = self.channel.queue_declare(queue=configuration["queue_name"], exclusive=False)
+        self.queue = self.channel.queue_declare(queue=self.conf["queue_name"], exclusive=False)
         self.queue_name = self.queue.method.queue
         # Binding the exchange to the queue with specific routing
         self.channel.queue_bind(exchange=self.exchange_name, queue=self.queue_name, routing_key=self.routing_key)

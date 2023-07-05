@@ -23,6 +23,7 @@ class Config:
     SERVER_INIT_RESPONSE = "server_init_resp"
     SERVER_NOTIFY_MESSAGE = "server_notify"
     SERVER_STOP_TRAINING = "server_stop_training"
+    SERVER_PING_TO_CLIENT = "server_ping_to_client"
 
     # this folder is used to save local models
     TMP_LOCAL_MODEL_FOLDER = "./weights/local_weights/"

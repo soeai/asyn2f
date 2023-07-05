@@ -27,7 +27,7 @@ class WorkerManager:
         Args:
             worker (Worker): The Worker object to add.
         """
-        LOGGER.info(f"New worker added, ID: {worker.worker_id}")
+        # LOGGER.info(f"New worker added, ID: {worker.worker_id}")
         self.worker_pool[worker.worker_id] = worker
 
 
@@ -72,6 +72,12 @@ class WorkerManager:
         Return a list of session_id
         """
         return [self.worker_pool[worker_id].session_id for worker_id in self.worker_pool.keys()]
+
+    def list_connected_workers(self) -> List:
+        """
+        Return a list of connected worker_id
+        """
+        return [worker_id for worker_id in self.worker_pool.keys() if self.worker_pool[worker_id].is_connected == True]
 
     def update_worker_connections(self) -> None:
         """

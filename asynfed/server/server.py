@@ -2,6 +2,8 @@ from datetime import datetime
 import os, sys
 import re
 
+from asynfed.server.messages.ping_to_client import PingToClient
+
 
 root = os.path.dirname(os.path.dirname(os.getcwd()))
 sys.path.append(root)
@@ -86,6 +88,7 @@ class Server(object):
 
         self.config = config
         self._t = config.get('t') or 15
+        self.ping_time = config.get('ping_time') or 30
         self._strategy = strategy
         # variables
         self._is_downloading = False
@@ -123,14 +126,34 @@ class Server(object):
         self.thread_consumer.daemon = True
         self.queue_consumer = AmqpConsumer(self.config['queue_consumer'], self)
         self.queue_producer = AmqpProducer(self.config['queue_producer'])
+
+        self.ping_thread = threading.Thread(target=self._ping, name="fedasync_server_ping_thread")
+        self.ping_thread.daemon = True
+
         LOGGER.info('Queue ready!')
 
 
     def _start_consumer(self):
         self.queue_consumer.start()
 
+    def _start_ping(self):
+        self.ping_thread.start()
+
+    def _ping(self):
+        while True:
+            for client_id in self._worker_manager.list_connected_workers():
+                LOGGER.info(f'Ping to client {client_id}')
+                content = PingToClient(client_id)
+                message = MessageV2(
+                        headers={'timestamp': time_now(), 'message_type': Config.SERVER_PING_TO_CLIENT, 'server_id': self._server_id},
+                        content=content
+                ).to_json()
+                self.queue_producer.send_data(message)
+            sleep(self.ping_time)
+
     def start(self):
         self.thread_consumer.start()
+        self._start_ping()
         while True:
             if self._is_stop_condition or self.__is_stop_condition({"version": self._strategy.current_version}):
                 content = StopTraining()
@@ -171,6 +194,7 @@ class Server(object):
         elif msg_type == Config.CLIENT_NOTIFY_EVALUATION:
             self._handle_client_notify_evaluation(msg_received)
         elif msg_type == Config.CLIENT_PING_MESSAGE:
+            MessageV2.print_message(msg_received)
             self._worker_manager.update_worker_last_ping(msg_received['headers']['client_id'])
 
 
@@ -181,7 +205,7 @@ class Server(object):
         content = msg_received['content']
 
 
-        if msg_received['headers']['session_id'] in self._worker_manager.list_all_worker_session_id():
+        if msg_received['headers']['session_id'] in self._worker_manager.list_sessions():
             reconnect = True
             worker = self._worker_manager.get_worker_by_id(client_id)
             access_key, secret_key = worker.access_key_id, worker.secret_key_id
