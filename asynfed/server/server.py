@@ -79,9 +79,9 @@ class Server(object):
             self.stop_conditions = config.get('stop_conditions')
         else:
             self.stop_conditions = {
-                'max_version': 50,
-                'max_performance': 0.9,
-                'min_loss': 0.1,
+                'max_version': 300,
+                'max_performance': 0.95,
+                'min_loss': 0.01,
             }
         self._is_stop_condition = False
 

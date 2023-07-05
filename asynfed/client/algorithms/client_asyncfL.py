@@ -98,7 +98,7 @@ class ClientAsyncFl(Client):
             # load current local weight
             current_local_model_filename = f'{self._client_id}_v{self._local_epoch}.pkl'
             current_local_weights = self._load_weights_from_file(current_local_model_filename, Config.TMP_LOCAL_MODEL_FOLDER)
-            LOGGER.info("Loaded. ")
+            LOGGER.info("Loaded.")
             LOGGER.info("*" * 20)
             self.model.set_weights(current_local_weights)
 
@@ -202,37 +202,6 @@ class ClientAsyncFl(Client):
                     # # break after merging 
                     # break
 
-            # if self._new_model_flag:
-            #     LOGGER.info("-" * 30)
-            #     LOGGER.info("-" * 30)
-            #     LOGGER.info("meging outside the batch training")
-            #     LOGGER.info("-" * 30)
-            #     LOGGER.info("-" * 30)
-            #     # before the merging process happens, need to retrieve current weights and global weights
-            #     # previous, current and global weights are used in the merged process
-            #     self.model.current_weights = self.model.get_weights()
-            #     # load global weights from file
-                
-            #     self._previous_merged_global_version = self._previous_global_version
-            #     self._merged_global_version = self._current_global_version
-                
-            #     global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + self._global_model_name
-            #     while not os.path.isfile(global_model_path):
-            #         LOGGER.info("*" * 20)
-            #         sleep(5)
-            #         ("Sleep 5 second when the model is not ready, then retry")
-            #         LOGGER.info("*" * 20)
-
-            #     with open(global_model_path, "rb") as f:
-            #         self.model.global_weights = pickle.load(f)
-            #     LOGGER.info(f"New model ? - {self._new_model_flag}")
-            #     LOGGER.info(
-            #         f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._merged_global_version}, current global version {self._previous_merged_global_version}")
-            #     # merging
-            #     self.__merge()
-            #     # changing flag status
-            #     self._new_model_flag = False
-
             if self.model.test_ds:
                 for test_images, test_labels in self.model.test_ds:
                     self._test_acc, self._test_loss = self.model.evaluate(test_images, test_labels)
@@ -250,44 +219,12 @@ class ClientAsyncFl(Client):
             )
             LOGGER.info("*" * 20)
 
-
-            # Save weights locally after training
-            filename = f'{self._client_id}_v{self._local_epoch}.pkl'
-            save_location = Config.TMP_LOCAL_MODEL_FOLDER + filename
-            with open(save_location, 'wb') as f:
-                pickle.dump(self.model.get_weights(), f)
-            # Print the weight location
-            LOGGER.info(f'Saved weights to {save_location}')
-
-            # # Only when the local model is save, local epoch is updated
-            # self._local_epoch += 1
-
-            # Upload the weight to the storage (the remote server)
-            remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
-            while True:
-                if self._storage_connector.upload(save_location, remote_file_path) is True:
-                    # After training, notify new model to the server.
-                    LOGGER.info("*" * 20)
-                    LOGGER.info('Notify new model to the server')
-                    message = MessageV2(
-                            headers={"timestamp": time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id},
-                            content=NotifyModel(remote_worker_weight_path=remote_file_path, 
-                                                filename=filename,
-                                                global_version_used=self._merged_global_version, 
-                                                loss=self._train_loss,
-                                                performance= self._train_acc)).to_json()
-                    self.queue_producer.send_data(message)
-                    self.update_profile()
-                    LOGGER.info(message)
-                    LOGGER.info('Notify new model to the server successfully')
-                    LOGGER.info("*" * 20)
-                    break
-
-            # # reset loss and per after each epoch
-            # self.model.reset_train_loss()
-            # self.model.reset_train_performance()
-            # self.model.reset_test_loss()
-            # self.model.reset_test_performance()
+            if (self._min_acc <= self._train_acc) or (self._min_epoch <= self._local_epoch):
+                self.__notify_local_model_to_server()
+            else:
+                LOGGER.info("*" * 20)
+                LOGGER.info(f"At epoch {self._local_epoch}, current train acc is {self._train_acc:.4f}, which does not meet either the min acc {self._min_acc} or min epoch {self._min_epoch} to notify model to server")
+                LOGGER.info("*" * 20)
 
             # break before completing the intended number of epoch
             # if the total training time excess some degree
@@ -297,6 +234,37 @@ class ClientAsyncFl(Client):
             #     delta_time_in_minute = delta_time.total_seconds() / 60
             #     if delta_time_in_minute >= self.model.delta_time:
             #         break
+
+    def __notify_local_model_to_server(self):
+     # Save weights locally after training
+        filename = f'{self._client_id}_v{self._local_epoch}.pkl'
+        save_location = Config.TMP_LOCAL_MODEL_FOLDER + filename
+        with open(save_location, 'wb') as f:
+            pickle.dump(self.model.get_weights(), f)
+        # Print the weight location
+        LOGGER.info(f'Saved weights to {save_location}')
+
+        # Upload the weight to the storage (the remote server)
+        remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
+        while True:
+            if self._storage_connector.upload(save_location, remote_file_path) is True:
+                # After training, notify new model to the server.
+                LOGGER.info("*" * 20)
+                LOGGER.info('Notify new model to the server')
+                message = MessageV2(
+                        headers={"timestamp": time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id},
+                        content=NotifyModel(remote_worker_weight_path=remote_file_path, 
+                                            filename=filename,
+                                            global_version_used=self._merged_global_version, 
+                                            loss=self._train_loss,
+                                            performance= self._train_acc)).to_json()
+                
+                self.queue_producer.send_data(message)
+                self.update_profile()
+                LOGGER.info(message)
+                LOGGER.info('Notify new model to the server successfully')
+                LOGGER.info("*" * 20)
+                break
 
     def __merge(self):
         LOGGER.info("MERGER weights.")

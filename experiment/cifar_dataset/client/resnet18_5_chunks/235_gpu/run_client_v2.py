@@ -39,6 +39,9 @@ config = {
         "dataset": "cifar10",
         "model": "resnet18",
 
+        "min_acc": 0.80,
+        "min_epoch": 100,
+
         "regularization": "l2",
         "lambda_value": 5e-4,
         "learning_rate": 1e-1,
@@ -49,7 +52,7 @@ config = {
 
         "qod": 0.45,
         "batch_size": 128,
-        "epoch": 200,
+        "epoch": 400,
 
         "tracking_point": 2000,
         "sleeping_time": 10,
@@ -95,7 +98,8 @@ print("-" * 20)
 model = Resnet18(input_features= (32, 32, 3), 
                  output_features= 10,
                  lr=config['training_params']['learning_rate'],
-                 decay_steps=int(config['training_params']['epoch'] * data_size / config['training_params']['batch_size']))
+                 decay_steps= int(200 * data_size / config['training_params']['batch_size']))
+                #  decay_steps=int(config['training_params']['epoch'] * data_size / config['training_params']['batch_size']))
                 #  decay_steps=int(Config.EPOCH * data_size / Config.BATCH_SIZE))
 # Define framework
 tensorflow_framework = TensorflowFramework(model=model, 

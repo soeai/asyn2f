@@ -14,15 +14,17 @@ conf = {
     "server_id": "test_server_id",
     "t": 30,
     "stop_conditions": {
-        "max_version": 10,
-        "max_performance": 50,
+        "max_version": 300,
+        "max_performance": 0.95,
         "min_loss": 0.02,
     },
     "aws": {
         "access_key": os.getenv("access_key"),
         "secret_key": os.getenv("secret_key"),
-        # "bucket_name": "run-clientv2-resnet18-5-chunks",
+
+        # "bucket_name": "cifar10-experiment-5-chunks",
         "bucket_name": "test-add-tester-1",
+        # "bucket_name": "cifar10-experiment-5-chunks",
         "region_name": "ap-southeast-2",
     },
     "queue_consumer": {
