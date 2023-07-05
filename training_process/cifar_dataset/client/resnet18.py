@@ -8,7 +8,7 @@ Reference:
 '''
 import tensorflow as tf
 from tensorflow.keras import layers
-from asynfed.client import TensorflowSequentialModel
+from asynfed.client_v2.frameworks.tensorflow import TensorflowSequentialModel
 
 
 class BasicBlock(tf.keras.Model):
@@ -38,9 +38,14 @@ class BasicBlock(tf.keras.Model):
 
 
 class Resnet18(TensorflowSequentialModel):
-    def __init__(self, input_features = (32, 32, 3), output_features = 10, lr = 0, decay_steps = 0):
-        super().__init__(input_features=input_features, output_features=output_features,
-                         learning_rate_fn=tf.keras.experimental.CosineDecay(lr, decay_steps= decay_steps))
+    def __init__(self, input_features = (32, 32, 3), output_features = 10, lr = None, decay_steps = 0):
+        if lr is not None:
+            super().__init__(input_features=input_features, output_features=output_features,
+                            learning_rate_fn= tf.keras.experimental.CosineDecay(lr, decay_steps= decay_steps))
+        else:
+            super().__init__(input_features=input_features, output_features=output_features,
+                            learning_rate_fn= None)
+
 
     def create_model(self, input_features, output_features):
         self.in_channels = 64
@@ -72,7 +77,13 @@ class Resnet18(TensorflowSequentialModel):
         return tf.keras.losses.CategoricalCrossentropy()
 
     def create_optimizer(self, learning_rate_fn):
-        return tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
+        # optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
+        if learning_rate_fn is not None :
+        # if learning_rate_fn:
+            optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
+        else: 
+            optimizer = tf.keras.optimizers.SGD()
+        return optimizer
 
     def create_train_metric(self):
         return tf.keras.metrics.CategoricalAccuracy(name='train_accuracy'), tf.keras.metrics.Mean(

@@ -290,14 +290,14 @@ class Server(object):
             # within the self._strategy.aggregate function
             self._strategy.aggregate(self._worker_manager, self._cloud_storage)
 
-        # calculate dynamic time ratial only when
-        if None not in [self._start_time, self._first_arrival, self._latest_arrival]:
-            t1 = time_diff(self._start_time, self._first_arrival)
-            t2 = time_diff(self._start_time, self._latest_arrival)
+        # # calculate dynamic time ratial only when
+        # if None not in [self._start_time, self._first_arrival, self._latest_arrival]:
+        #     t1 = time_diff(self._start_time, self._first_arrival)
+        #     t2 = time_diff(self._start_time, self._latest_arrival)
 
-            # get avg complete time of current epoch
-            self._t = (t2 + t1) / 2 
-            # self._t = (t2 + t1) / 2 + 2 * t1
+        #     # get avg complete time of current epoch
+        #     self._t = (t2 + t1) / 2 
+        #     # self._t = (t2 + t1) / 2 + 2 * t1
 
     def __is_stop_condition(self, info):
         for k, v in info.items():

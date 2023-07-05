@@ -45,9 +45,17 @@ class ClientAsyncFl(Client):
         # self._merged_global_version = self._current_global_version
 
     def _get_model_dim_ready(self):
-       for images, labels in self.model.train_ds:
+
+        if self._role == "train":
+        # if self.model.train_ds is not None:
+            ds = self.model.train_ds
+        else:
+            ds = self.model.test_ds
+        for images, labels in ds:
             self.model.fit(images, labels)
             break
+        
+        
        
     def _load_weights_from_file(self, file_name, folder):
         full_path = folder + file_name
@@ -70,7 +78,6 @@ class ClientAsyncFl(Client):
         # by training the model before loading the global weights
         self._get_model_dim_ready()
         self._merged_global_version = self._current_global_version
-
 
         # check whether the client rejoin or training from the begining
         if self._local_epoch <= 1:
@@ -118,11 +125,10 @@ class ClientAsyncFl(Client):
         # quit after a number of epoch
         # or after a sufficient period of time
         from datetime import datetime
-        start_time = datetime.now()
-        LOGGER.info("-" * 20)
+        # start_time = datetime.now()
+
         LOGGER.info("-" * 20)
         LOGGER.info(self._local_epoch)
-        LOGGER.info("-" * 20)
         LOGGER.info("-" * 20)
         for i in range(self.model.epoch):
             self._local_epoch += 1
@@ -144,11 +150,11 @@ class ClientAsyncFl(Client):
             # training per several epoch
             LOGGER.info(f"Enter epoch {self._local_epoch}")
 
-            # # reset loss and per after each epoch
-            # self.model.reset_train_loss()
-            # self.model.reset_train_performance()
-            # self.model.reset_test_loss()
-            # self.model.reset_test_performance()
+            # reset loss and per after each epoch
+            self.model.reset_train_loss()
+            self.model.reset_train_performance()
+            self.model.reset_test_loss()
+            self.model.reset_test_performance()
 
             for images, labels in self.model.train_ds:
                 # Tracking the training process every x samples 
@@ -195,36 +201,36 @@ class ClientAsyncFl(Client):
                     # # break after merging 
                     # break
 
-            if self._new_model_flag:
-                LOGGER.info("-" * 30)
-                LOGGER.info("-" * 30)
-                LOGGER.info("meging outside the batch training")
-                LOGGER.info("-" * 30)
-                LOGGER.info("-" * 30)
-                # before the merging process happens, need to retrieve current weights and global weights
-                # previous, current and global weights are used in the merged process
-                self.model.current_weights = self.model.get_weights()
-                # load global weights from file
+            # if self._new_model_flag:
+            #     LOGGER.info("-" * 30)
+            #     LOGGER.info("-" * 30)
+            #     LOGGER.info("meging outside the batch training")
+            #     LOGGER.info("-" * 30)
+            #     LOGGER.info("-" * 30)
+            #     # before the merging process happens, need to retrieve current weights and global weights
+            #     # previous, current and global weights are used in the merged process
+            #     self.model.current_weights = self.model.get_weights()
+            #     # load global weights from file
                 
-                self._previous_merged_global_version = self._previous_global_version
-                self._merged_global_version = self._current_global_version
+            #     self._previous_merged_global_version = self._previous_global_version
+            #     self._merged_global_version = self._current_global_version
                 
-                global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + self._global_model_name
-                while not os.path.isfile(global_model_path):
-                    LOGGER.info("*" * 20)
-                    sleep(5)
-                    ("Sleep 5 second when the model is not ready, then retry")
-                    LOGGER.info("*" * 20)
+            #     global_model_path = Config.TMP_GLOBAL_MODEL_FOLDER + self._global_model_name
+            #     while not os.path.isfile(global_model_path):
+            #         LOGGER.info("*" * 20)
+            #         sleep(5)
+            #         ("Sleep 5 second when the model is not ready, then retry")
+            #         LOGGER.info("*" * 20)
 
-                with open(global_model_path, "rb") as f:
-                    self.model.global_weights = pickle.load(f)
-                LOGGER.info(f"New model ? - {self._new_model_flag}")
-                LOGGER.info(
-                    f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._merged_global_version}, current global version {self._previous_merged_global_version}")
-                # merging
-                self.__merge()
-                # changing flag status
-                self._new_model_flag = False
+            #     with open(global_model_path, "rb") as f:
+            #         self.model.global_weights = pickle.load(f)
+            #     LOGGER.info(f"New model ? - {self._new_model_flag}")
+            #     LOGGER.info(
+            #         f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._merged_global_version}, current global version {self._previous_merged_global_version}")
+            #     # merging
+            #     self.__merge()
+            #     # changing flag status
+            #     self._new_model_flag = False
 
             if self.model.test_ds:
                 for test_images, test_labels in self.model.test_ds:
@@ -276,11 +282,11 @@ class ClientAsyncFl(Client):
                     LOGGER.info("*" * 20)
                     break
 
-            # reset loss and per after each epoch
-            self.model.reset_train_loss()
-            self.model.reset_train_performance()
-            self.model.reset_test_loss()
-            self.model.reset_test_performance()
+            # # reset loss and per after each epoch
+            # self.model.reset_train_loss()
+            # self.model.reset_train_performance()
+            # self.model.reset_test_loss()
+            # self.model.reset_test_performance()
 
             # break before completing the intended number of epoch
             # if the total training time excess some degree
@@ -358,17 +364,32 @@ class ClientAsyncFl(Client):
         self.model.set_weights(self.model.merged_weights)
 
     def _test(self):
-        self._get_model_dim_ready()
         current_local_weights = self._load_weights_from_file(self._global_model_name, Config.TMP_GLOBAL_MODEL_FOLDER)
-        self.model.set_weights(current_local_weights)
+        try:
+            self.model.set_weights(current_local_weights)
+        except Exception as e:
+            LOGGER.info(e)
+            self._get_model_dim_ready()
+            self.model.set_weights(current_local_weights)
+
+        # reset after each global version
+        self.model.reset_test_loss()
+        self.model.reset_test_performance()
+        
         LOGGER.info('Testing the model')
         for test_images, test_labels in tqdm(self.model.test_ds):
             performance, loss = self.model.evaluate(test_images, test_labels)
 
         content = NotifyEvaluation(self._global_model_name, performance, loss)
+        LOGGER.info("*" * 20)
         LOGGER.info(content.__dict__)
+        LOGGER.info("*" * 20)
         message = MessageV2(
             headers={'timestamp': time_now(), 'message_type': Config.CLIENT_NOTIFY_EVALUATION, 'session_id': self._session_id, 'client_id': self._client_id},
             content=content
         ).to_json()
+        
         self.queue_producer.send_data(message)
+
+        self._new_model_flag = False
+

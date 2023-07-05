@@ -14,7 +14,7 @@ from tensorflow.keras import Model
 
 
 class TensorflowSequentialModel(Model):
-    def __init__(self, input_features, output_features, learning_rate_fn):
+    def __init__(self, input_features, output_features, learning_rate_fn = None):
         super().__init__()
         self.create_model(input_features, output_features)
         # loss

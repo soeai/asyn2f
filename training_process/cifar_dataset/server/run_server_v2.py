@@ -15,13 +15,14 @@ conf = {
     "t": 30,
     "stop_conditions": {
         "max_version": 10,
-        "max_performance": 0.01,
-        "min_loss": 10.01,
+        "max_performance": 50,
+        "min_loss": 0.02,
     },
     "aws": {
         "access_key": os.getenv("access_key"),
         "secret_key": os.getenv("secret_key"),
-        "bucket_name": "run-clientv2-resnet18-5-chunks",
+        # "bucket_name": "run-clientv2-resnet18-5-chunks",
+        "bucket_name": "test-add-tester",
         "region_name": "ap-southeast-2",
     },
     "queue_consumer": {

@@ -17,7 +17,7 @@ class TensorflowFramework(ModelWrapper):
     # Tensorflow Model must be an inheritant of class tensorflow.keras.Model
     # model, data_size, train_ds is required
     # test_ds is optional
-    def __init__(self, model: Model, data_size, train_ds, test_ds, config: dict):
+    def __init__(self, model: Model, data_size, train_ds, test_ds, config: dict, role: str = "train"):
         super().__init__()
         '''
         - model must have an optimizer, a loss object, and trainining metric 
@@ -36,15 +36,26 @@ class TensorflowFramework(ModelWrapper):
             for tensorflow framework can be found at tensorflow_sequential_model.py
         '''
         self.model = model
-
-        self.epoch = config['training_params']['epoch']
-        self.qod = config['training_params']['qod']
-        self.delta_time = config['training_params']['delta_time']
-        self.data_size = data_size
         self.train_ds = train_ds
         self.test_ds = test_ds
-        self.regularization = config['training_params']['regularization']
-        self.lambda_value = config['training_params']['lambda_value']
+        self.data_size = data_size
+
+        if role == "train":
+            self.epoch = config['training_params']['epoch']
+            self.qod = config['training_params']['qod']
+            self.delta_time = config['training_params']['delta_time']
+            self.regularization = config['training_params']['regularization']
+            self.lambda_value = config['training_params']['lambda_value']
+        
+            # self.data_size = data_size
+        else:
+            self.epoch = None
+            self.qod = None
+            self.delta_time = None
+            self.regularization = None
+            self.lambda_value = None
+
+            # self.data_size = None
 
     def set_weights(self, weights):
         return self.model.set_weights(weights)

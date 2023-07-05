@@ -295,35 +295,3 @@ class Client(object):
         self._is_testing = True
         testing_thread.start()
 
-
-# if __name__ == '__main__':
-#     scheduler = BackgroundScheduler()
-
-# # your code goes here
-
-
-#     config = {
-#         "client_id": "002",
-#         "queue_consumer": {
-#             'exchange_name': 'asynfl_exchange',
-#             'exchange_type': 'topic',
-#             'queue_name': 'server_queue',
-#             'routing_key': 'client.#',
-#             'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
-#         },
-#         "queue_producer": {
-#             'exchange_name': 'asynfl_exchange',
-#             'exchange_type': 'topic',
-#             'queue_name': 'server_consumer',
-#             'routing_key': 'server.#',
-#             'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
-#         }
-#     }
-#     class NewClient(Client):
-#         def train(self):
-#             pass
-#     client = NewClient(config)
-#     client.start()
-
-#     scheduler.start()
-#     pause.days(1) # or it can anything as per your need
