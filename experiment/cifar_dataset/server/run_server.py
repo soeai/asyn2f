@@ -22,9 +22,8 @@ conf = {
         "access_key": os.getenv("access_key"),
         "secret_key": os.getenv("secret_key"),
 
-        # "bucket_name": "cifar10-experiment-5-chunks",
-        "bucket_name": "test-add-tester-1",
-        # "bucket_name": "cifar10-experiment-5-chunks",
+        "bucket_name": "cifar10-experiment-5-chunks",
+        # "bucket_name": "test-add-tester-1",
         "region_name": "ap-southeast-2",
     },
     "queue_consumer": {
@@ -49,5 +48,5 @@ conf = {
     }
 }
 strategy = AsynFL()
-fedasync_server = Server(strategy, conf, save_log=False)
+fedasync_server = Server(strategy, conf, save_log= True)
 fedasync_server.start()

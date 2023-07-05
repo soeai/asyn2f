@@ -38,8 +38,9 @@ class Client(object):
         self.config = config
         self._role = config['role']
 
-        self._min_epoch = config['training_params']['min_epoch']
-        self._min_acc = config['training_params']['min_acc']
+        if self._role == "train":
+            self._min_epoch = config['training_params']['min_epoch']
+            self._min_acc = config['training_params']['min_acc']
         
         self._is_stop_condition = False
         # Dependencies

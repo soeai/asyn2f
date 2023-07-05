@@ -39,7 +39,7 @@ config = {
         "dataset": "cifar10",
         "model": "resnet18",
 
-        "min_acc": 80.0,
+        "min_acc": 0.80,
         "min_epoch": 100,
 
         "regularization": "l2",

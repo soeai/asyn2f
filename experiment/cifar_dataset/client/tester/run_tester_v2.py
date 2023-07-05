@@ -39,6 +39,7 @@ config = {
         "gpu_index": 0,
         "batch_size": 128,
     }
+
 }
 
 import tensorflow as tf
