@@ -8,6 +8,7 @@ import pickle
 
 from asynfed.client.messages import NotifyEvaluation
 from asynfed.client.messages import NotifyModel
+from asynfed.client.messages.require_stop import RequireStop
 from asynfed.commons import Config
 from asynfed.client import Client
 
@@ -54,6 +55,9 @@ class ClientAsyncFl(Client):
             self._sleeping_time = config['training_params']['sleeping_time']
             self._tracking_period = config['training_params']['tracking_point']
             self._beta = config['training_params']['beta']
+        elif self._role == "test":
+            self.expected_performance = config.get('expected_performance') or 0.9
+            self.expected_loss = config.get('expected_loss') or 0.1
 
 
     def _get_model_dim_ready(self):
@@ -373,4 +377,10 @@ class ClientAsyncFl(Client):
         self.queue_producer.send_data(message)
 
         self._new_model_flag = False
+        if performance > self.config.get('expected_perofrmance') or loss < self.config.get('expected_loss'):
+            message = MessageV2(
+                headers={'timestamp': time_now(), 'message_type': Config.CLIENT_NOTIFY_STOP, 'session_id': self._session_id, 'client_id': self._client_id},
+                content=RequireStop(self._global_model_name, performance, loss)
+            )
+        
 

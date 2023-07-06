@@ -11,8 +11,6 @@ import threading
 import uuid
 from time import sleep
 
-from datetime import datetime
-
 from abc import abstractmethod
 from asynfed.client.client_storage_connector import ClientStorage
 

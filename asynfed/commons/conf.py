@@ -20,6 +20,7 @@ class Config:
     CLIENT_NOTIFY_MESSAGE = "client_notify"
     CLIENT_NOTIFY_EVALUATION = "client.notify.evaluation"
     CLIENT_PING_MESSAGE = "client_ping"
+    CLIENT_REQUIRE_STOP = "client_require_stop"
     SERVER_INIT_RESPONSE = "server_init_resp"
     SERVER_NOTIFY_MESSAGE = "server_notify"
     SERVER_STOP_TRAINING = "server_stop_training"
