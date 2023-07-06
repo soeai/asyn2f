@@ -2,6 +2,7 @@
 import os
 import sys
 import argparse
+from datetime import datetime
 root = os.path.dirname(os.getcwd())
 sys.path.append(root)
 
@@ -9,17 +10,28 @@ import flwr as fl
 import tensorflow as tf
 from data_preprocessing import *
 from resnet18 import Resnet18
+import logging
 
+if not os.path.exists('client_logs'):
+    os.makedirs('client_logs')
+LOG_FORMAT = '%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'
+logging.basicConfig(
+    level=logging.INFO,
+    format=LOG_FORMAT,
+    filename=f"client_logs/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log",
+    filemode='a',
+    datefmt='%H:%M:%S'
+)
 def start_client(args):
 
     if args.gpu is not None:
         try:
             tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[args.gpu], 'GPU')
-            print("Using GPU: ", tf.config.list_physical_devices('GPU')[args.gpu])
+            logging.info(f"Using GPU: {tf.config.list_physical_devices('GPU')[args.gpu]}")
         except:
-            print("GPU not found, use CPU instead")
+            logging.info("GPU not found, use CPU instead")
     else:
-        print("Using CPU")
+        logging.info("Using CPU")
 
     chunk = args.chunk
     train_path = f'data/chunk_{chunk}.pickle'
@@ -28,7 +40,7 @@ def start_client(args):
     x_train, y_train, data_size = preprocess_dataset(train_path)
     x_test, y_test, _ = preprocess_dataset(test_path)
 
-    print('datasize: ', data_size, 'x_train shape:', x_train.shape, 'y_train shape:', y_train.shape, 'x_test shape:', x_test.shape, 'y_test shape:', y_test.shape)
+    logging.info(f'x_train shape: {x_train.shape} -- y_train shape: {y_train.shape} -- x_test shape: {x_test.shape} -- y_test shape: {y_test.shape}')
 
     
     datagen = get_datagen()
@@ -73,12 +85,16 @@ def start_client(args):
 
         def fit(self, parameters, config):
             model.set_weights(parameters)
-            model.fit(x_train, y_train, epochs=1, batch_size=32, steps_per_epoch=args.steps_per_epoch)
+            model.fit(x_train, y_train, epochs=1, batch_size=32, steps_per_epoch=args.steps_per_epoch or data_size//batch_size)
             return model.get_weights(), len(x_train), {}
 
         def evaluate(self, parameters, config):
             model.set_weights(parameters)
-            loss, accuracy, _, _, _, _ = model.evaluate(x_test, y_test, batch_size=batch_size, return_dict=False)
+            loss, accuracy = model.evaluate(x_test, y_test, batch_size=batch_size, return_dict=False)
+            try:
+                logging.info(f"round: {config['current_round']} -- loss: {loss} -- acc: {accuracy}")
+            except:
+                logging.info(f"loss: {loss} -- acc: {accuracy}")
             return loss, len(x_test), {"accuracy": accuracy}
 
 
@@ -89,9 +105,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Federated Learning Client")
         
     parser.add_argument("--gpu", type=int, default=0, help="Specify the GPU index")
-    parser.add_argument("--chunk", type=int, default=2, help="Specify the chunk size")
+    parser.add_argument("--chunk", type=int, default=1, help="Specify the chunk size")
     parser.add_argument("--address", type=str, default="0.0.0.0:8080", help="Specify the server address")
-    parser.add_argument("--steps_per_epoch", type=int, default=50, help="Specify the number of steps per epoch")
+    parser.add_argument("--steps_per_epoch", type=int, default=None, help="Specify the number of steps per epoch")
 
     args = parser.parse_args()
     start_client(args)
