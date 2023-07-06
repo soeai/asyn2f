@@ -20,7 +20,7 @@ load_dotenv()
 scheduler = BackgroundScheduler()
 
 config = {
-    "client_id": "local-client-2",
+    "client_id": "local-client",
     "role": "train",
     "queue_consumer": {
         'exchange_name': 'asynfl_exchange',

@@ -60,6 +60,8 @@ config = {
     }
 }
 
+
+
 import tensorflow as tf
 print("*" * 20)
 if tf.config.list_physical_devices('GPU'):

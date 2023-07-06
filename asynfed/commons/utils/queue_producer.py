@@ -43,8 +43,7 @@ class AmqpProducer(object):
             LOGGER.info(e)
             LOGGER.exception("Connection lost. Reconnecting...")
             self._setup_connection()
-            sleep(15)
-            
+            # sleep(5)
             self.send_data(body_mess, corr_id, routing_key, expiration)
 
     def get(self):

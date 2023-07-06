@@ -89,7 +89,7 @@ class Server(object):
 
         self.config = config
         self._t = config.get('t') or 15
-        self.ping_time = config.get('ping_time') or 30
+        self.ping_time = config.get('ping_time') or 300
         self._strategy = strategy
         # variables
         self._is_downloading = False
@@ -159,22 +159,22 @@ class Server(object):
             if self._is_stop_condition:
                 LOGGER.info('Stop condition is reached!')
                 break
-            if self.__is_stop_condition({"version": self._strategy.current_version}):
-                content = StopTraining()
-                message = MessageV2(
-                        headers={'timestamp': time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id},
-                        content=content
-                        ).to_json()
-                self.queue_producer.send_data(message)
+            # if self.__is_stop_condition({"version": self._strategy.current_version}):
+            #     content = StopTraining()
+            #     message = MessageV2(
+            #             headers={'timestamp': time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id},
+            #             content=content
+            #             ).to_json()
+            #     self.queue_producer.send_data(message)
 
-                best_weight = None  
-                best_acc = 0
-                for k, v in self.weights_trained.items():
-                    if v['performance'] > best_acc:
-                        best_acc = v['performance']
-                        best_weight = k
-                LOGGER.info(f'Best weight: {best_weight} - acc: {best_acc} -- loss: {self.weights_trained[best_weight]["loss"]}')
-                break
+            #     best_weight = None  
+            #     best_acc = 0
+            #     for k, v in self.weights_trained.items():
+            #         if v['performance'] > best_acc:
+            #             best_acc = v['performance']
+            #             best_weight = k
+            #     LOGGER.info(f'Best weight: {best_weight} - acc: {best_acc} -- loss: {self.weights_trained[best_weight]["loss"]}')
+            #     break
 
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
@@ -367,9 +367,14 @@ class Server(object):
                 if v >= self.stop_conditions.get("max_performance"):
                     LOGGER.info(f"Stop condition: performance {v} >= {self.stop_conditions.get('max_performance')}")
                     return True
-            elif k == "version" and self.stop_conditions.get("max_version") is not None:
-                if v >= self.stop_conditions.get("max_version"):
-                    LOGGER.info(f"Stop condition: version {v} >= {self.stop_conditions.get('max_version')}")
+            # elif k == "version" and self.stop_conditions.get("max_version") is not None:
+            #     if v >= self.stop_conditions.get("max_version"):
+            #         LOGGER.info(f"Stop condition: version {v} >= {self.stop_conditions.get('max_version')}")
+            #         return True
+            elif k == "weight_file" and self.stop_conditions.get("max_version") is not None:
+                version = int(v.split("_")[-1][1])
+                if version >= self.stop_conditions.get("max_version"):
+                    LOGGER.info(f"Stop condition: version {version} >= {self.stop_conditions.get('max_version')}")
                     return True
 
     def _publish_global_model(self):
