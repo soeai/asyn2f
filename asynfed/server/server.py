@@ -156,12 +156,15 @@ class Server(object):
         self.thread_consumer.start()
         self._start_ping()
         while True:
-            if self._is_stop_condition or self.__is_stop_condition({"version": self._strategy.current_version}):
+            if self._is_stop_condition:
+                LOGGER.info('Stop condition is reached!')
+                break
+            if self.__is_stop_condition({"version": self._strategy.current_version}):
                 content = StopTraining()
                 message = MessageV2(
                         headers={'timestamp': time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id},
                         content=content
-                ).to_json()
+                        ).to_json()
                 self.queue_producer.send_data(message)
 
                 best_weight = None  
@@ -170,10 +173,7 @@ class Server(object):
                     if v['performance'] > best_acc:
                         best_acc = v['performance']
                         best_weight = k
-
                 LOGGER.info(f'Best weight: {best_weight} - acc: {best_acc} -- loss: {self.weights_trained[best_weight]["loss"]}')
-
-
                 break
 
             with lock:
@@ -292,6 +292,16 @@ class Server(object):
                     content=content
             ).to_json()
             self.queue_producer.send_data(message)
+
+            best_weight = None  
+            best_acc = 0
+            for k, v in self.weights_trained.items():
+                if v['performance'] > best_acc:
+                    best_acc = v['performance']
+                    best_weight = k
+
+            LOGGER.info(f'Best weight: {best_weight} - acc: {best_acc} -- loss: {self.weights_trained[best_weight]["loss"]}')
+
             self._is_stop_condition = True
             sys.exit(0)
 

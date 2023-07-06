@@ -21,7 +21,7 @@ scheduler = BackgroundScheduler()
 
 config = {
     "client_id": "local-client-2",
-    "role": "test",
+    "role": "train",
     "queue_consumer": {
         'exchange_name': 'asynfl_exchange',
         'exchange_type': 'topic',

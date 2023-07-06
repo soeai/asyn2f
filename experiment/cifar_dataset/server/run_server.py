@@ -15,7 +15,7 @@ conf = {
     "t": 30,
     "stop_conditions": {
         "max_version": 300,
-        "max_performance": 0.95,
+        "max_performance": 0.01,
         "min_loss": 0.02,
     },
     "aws": {
