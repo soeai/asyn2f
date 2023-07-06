@@ -49,9 +49,10 @@ class ClientAsyncFl(Client):
         # tracking_period = Config.TRACKING_POINT
         # sleeping_time = int(Config.SLEEPING_TIME)
 
-        self._batch_size = config['training_params']['batch_size']
-        self._sleeping_time = config['training_params']['sleeping_time']
-        self._tracking_period = config['training_params']['tracking_point']
+        if self._role == "train":
+            self._batch_size = config['training_params']['batch_size']
+            self._sleeping_time = config['training_params']['sleeping_time']
+            self._tracking_period = config['training_params']['tracking_point']
 
 
     def _get_model_dim_ready(self):
@@ -314,7 +315,8 @@ class ClientAsyncFl(Client):
         local_loss = self._train_loss
         global_loss = self._global_avg_loss
         # calculate alpha
-        alpha = ( (local_qod*local_size) / (local_qod*local_size + global_qod*global_size) + local_loss/(local_loss + global_loss) )
+        # alpha = ( (local_qod*local_size) / (local_qod*local_size + global_qod*global_size) + local_loss/(local_loss + global_loss) )
+        alpha = ( (local_qod*local_size) / (local_qod*local_size + global_qod*global_size) + global_loss/(local_loss + global_loss) )
         alpha = alpha / 2
 
         LOGGER.info("-" * 20)
