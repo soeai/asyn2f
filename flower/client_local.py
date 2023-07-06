@@ -48,7 +48,7 @@ def start_client(args):
 
     # HYPERPARAMETERS
     epoch = 200
-    batch_size = 128
+    batch_size = args.batch_size
 
     learning_rate = 1e-1
     lambda_value = 5e-4
@@ -85,7 +85,7 @@ def start_client(args):
 
         def fit(self, parameters, config):
             model.set_weights(parameters)
-            model.fit(x_train, y_train, epochs=1, batch_size=32, steps_per_epoch=args.steps_per_epoch or data_size//batch_size)
+            model.fit(x_train, y_train, epochs=1, batch_size=batch_size, steps_per_epoch= data_size//batch_size)
             return model.get_weights(), len(x_train), {}
 
         def evaluate(self, parameters, config):
@@ -104,10 +104,10 @@ def start_client(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Federated Learning Client")
         
-    parser.add_argument("--gpu", type=int, default=0, help="Specify the GPU index")
-    parser.add_argument("--chunk", type=int, default=1, help="Specify the chunk size")
+    parser.add_argument("--gpu", type=int, default=None, help="Specify the GPU index")
+    parser.add_argument("--chunk", type=int, default=2, help="Specify the chunk size")
     parser.add_argument("--address", type=str, default="0.0.0.0:8080", help="Specify the server address")
-    parser.add_argument("--steps_per_epoch", type=int, default=None, help="Specify the number of steps per epoch")
+    parser.add_argument("--batch_size", type=int, default=128, help="Specify the batch size")
 
     args = parser.parse_args()
     start_client(args)
