@@ -88,7 +88,7 @@ class Server(object):
 
         self.config = config
         self._t = config.get('t') or 15
-        self.ping_time = config.get('ping_time') or 30
+        self.ping_time = config.get('ping_time') or 5000
         self._strategy = strategy
         # variables
         self._is_downloading = False
@@ -131,6 +131,9 @@ class Server(object):
         self.ping_thread.daemon = True
 
         LOGGER.info('Queue ready!')
+
+        self._max_performance = 0.0
+
 
 
     def _start_consumer(self):
@@ -272,6 +275,9 @@ class Server(object):
 
     def _handle_client_notify_evaluation(self, msg_received):
         MessageV2.print_message(msg_received)
+        content = msg_received['content']
+        # if self._max_performance < content[]
+        # self.max_performance = 
         if self.__is_stop_condition(msg_received['content']):
             content = StopTraining()
             message = MessageV2(

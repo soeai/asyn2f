@@ -45,8 +45,16 @@ class ClientAsyncFl(Client):
         # self._send_init_message()
         # self._merged_global_version = self._current_global_version
 
-    def _get_model_dim_ready(self):
+        # batch_size = Config.BATCH_SIZE
+        # tracking_period = Config.TRACKING_POINT
+        # sleeping_time = int(Config.SLEEPING_TIME)
 
+        self._batch_size = config['training_params']['batch_size']
+        self._sleeping_time = config['training_params']['sleeping_time']
+        self._tracking_period = config['training_params']['tracking_point']
+
+
+    def _get_model_dim_ready(self):
         if self._role == "train":
         # if self.model.train_ds is not None:
             ds = self.model.train_ds
@@ -131,20 +139,21 @@ class ClientAsyncFl(Client):
         LOGGER.info("-" * 20)
         LOGGER.info(self._local_epoch)
         LOGGER.info("-" * 20)
+
+
+
         for i in range(self.model.epoch):
             self._local_epoch += 1
             # since the current mnist model is small, set some sleeping time
             # to avoid overhead for the queue exchange and storage server
-            LOGGER.info(f"Sleep for {Config.SLEEPING_TIME} seconds to avoid overhead")
-            sleep(int(Config.SLEEPING_TIME))
+            LOGGER.info(f"Sleep for {self._sleeping_time} seconds to avoid overhead")
+            sleep(self._sleeping_time)
             # record some info of the training process
             batch_num = 0
             # if user require
             # Tracking the training process every x samples 
             # x define by user
-            batch_size = Config.BATCH_SIZE
-            tracking_period = Config.TRACKING_POINT
-            tracking_point = tracking_period
+            tracking_point = self._tracking_period
 
             multiplier = 1
 
@@ -161,11 +170,11 @@ class ClientAsyncFl(Client):
                 # Tracking the training process every x samples 
                 # x define by user
                 batch_num += 1
-                total_trained_sample = batch_num * batch_size
+                total_trained_sample = batch_num * self._batch_size
                 if total_trained_sample > tracking_point:
                     LOGGER.info(f"Training up to {total_trained_sample} samples")
                     multiplier += 1
-                    tracking_point = tracking_period * multiplier
+                    tracking_point = tracking_point * multiplier
 
                 # get the previous weights before the new training process within each batch
                 self.model.previous_weights = self.model.get_weights()

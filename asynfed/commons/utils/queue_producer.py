@@ -1,5 +1,6 @@
 import pika, uuid
 import logging
+from time import sleep 
 
 LOGGER = logging.getLogger(__name__)
 logging.getLogger('pika').setLevel(logging.WARNING)
@@ -42,6 +43,8 @@ class AmqpProducer(object):
             LOGGER.info(e)
             LOGGER.exception("Connection lost. Reconnecting...")
             self._setup_connection()
+            sleep(15)
+            
             self.send_data(body_mess, corr_id, routing_key, expiration)
 
     def get(self):

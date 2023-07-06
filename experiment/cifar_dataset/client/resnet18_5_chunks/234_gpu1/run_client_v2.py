@@ -52,9 +52,9 @@ config = {
 
         "qod": 0.45,
         "batch_size": 128,
-        "epoch": 400,
+        "epoch": 600,
 
-        "tracking_point": 2000,
+        "tracking_point": 5000,
         "sleeping_time": 10,
         "delta_time": 1000000
     }
@@ -82,7 +82,7 @@ training_dataset_path = f"../../../../data/cifar_data/5_chunks/chunk_{config['tr
 
 # train_ds, data_size = preprocess_dataset(training_dataset_path, training = True)
 # test_ds, _ = preprocess_dataset(testing_dataset_path, training = False)
-train_ds, data_size = preprocess_dataset(training_dataset_path, batch_size = 128, training = True)
+train_ds, data_size = preprocess_dataset(training_dataset_path, batch_size = config['training_params']['batch_size'], training = True)
 test_ds, _ = preprocess_dataset(default_testing_dataset_path, training = False)
 # train_ds, data_size = preprocess_dataset("training_process/data/cifar_data/5_chunks/chunk_2.pickle", training = True)
 # test_ds, _ = preprocess_dataset("training_process/data/cifar_data/test_set.pickle", training = False)

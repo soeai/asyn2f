@@ -54,7 +54,7 @@ config = {
         "batch_size": 128,
         "epoch": 400,
 
-        "tracking_point": 2000,
+        "tracking_point": 4000,
         "sleeping_time": 10,
         "delta_time": 1000000
     }

@@ -53,9 +53,9 @@ config = {
 
         "qod": 0.45,
         "batch_size": 128,
-        "epoch": 400,
+        "epoch": 600,
 
-        "tracking_point": 2000,
+        "tracking_point": 4000,
         "sleeping_time": 10,
         "delta_time": 1000000
     }
