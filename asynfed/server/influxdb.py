@@ -15,6 +15,7 @@ class InfluxDB():
         """
         self.client = InfluxDBClient(url=config['url'], token=config['token'], org=config['org'])
         self.bucket_name = config['bucket_name']
+        self.org = config['org']
         self._create_bucket(self.bucket_name)
 
 
@@ -40,6 +41,6 @@ class InfluxDB():
             .time(msg_received['headers']['timestamp'], WritePrecision.NS)
         )
         try:
-            write_api.write(bucket=self.bucket_name, org="ttu", record=record)
+            write_api.write(bucket=self.bucket_name, org=self.org, record=record)
         except Exception as e:
             LOGGER.error(e)
