@@ -46,6 +46,8 @@ config = {
         "regularization": "l2",
         "lambda_value": 5e-4,
         "learning_rate": 1e-1,
+        "beta": 0.6,
+
 
         # setup differently for different device
         "gpu_index": 1,

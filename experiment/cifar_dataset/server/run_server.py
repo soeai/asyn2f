@@ -14,16 +14,16 @@ conf = {
     "server_id": "test_server_id",
     "t": 30,
     "stop_conditions": {
-        "max_version": 6,
-        "max_performance": 0.80,
+        "max_version": 300,
+        "max_performance": 0.95,
         "min_loss": 0.02,
     },
     "aws": {
         "access_key": os.getenv("access_key"),
         "secret_key": os.getenv("secret_key"),
 
-        # "bucket_name": "cifar10-experiment-5-chunks",
-        "bucket_name": "test-lost-connection-4",
+        "bucket_name": "cifar10-5-chunks",
+        # "bucket_name": "test-lost-connection-4",
         "region_name": "ap-southeast-2",
     },
     "queue_consumer": {
