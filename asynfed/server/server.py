@@ -84,11 +84,12 @@ class Server(object):
                 'max_performance': 0.95,
                 'min_loss': 0.01,
             }
+        self.weights_trained = {}
         self._is_stop_condition = False
 
         self.config = config
         self._t = config.get('t') or 15
-        self.ping_time = config.get('ping_time') or 5000
+        self.ping_time = config.get('ping_time') or 30
         self._strategy = strategy
         # variables
         self._is_downloading = False
@@ -132,9 +133,6 @@ class Server(object):
 
         LOGGER.info('Queue ready!')
 
-        self._max_performance = 0.0
-
-
 
     def _start_consumer(self):
         self.queue_consumer.start()
@@ -165,6 +163,17 @@ class Server(object):
                         content=content
                 ).to_json()
                 self.queue_producer.send_data(message)
+
+                best_weight = None  
+                best_acc = 0
+                for k, v in self.weights_trained.items():
+                    if v['performance'] > best_acc:
+                        best_acc = v['performance']
+                        best_weight = k
+
+                LOGGER.info(f'Best weight: {best_weight} - acc: {best_acc} -- loss: {self.weights_trained[best_weight]["loss"]}')
+
+
                 break
 
             with lock:
@@ -275,9 +284,7 @@ class Server(object):
 
     def _handle_client_notify_evaluation(self, msg_received):
         MessageV2.print_message(msg_received)
-        content = msg_received['content']
-        # if self._max_performance < content[]
-        # self.max_performance = 
+        self.weights_trained[msg_received['content']['weight_file']] = {'loss': msg_received['content']['loss'], 'performance': msg_received['content']['performance']}
         if self.__is_stop_condition(msg_received['content']):
             content = StopTraining()
             message = MessageV2(
