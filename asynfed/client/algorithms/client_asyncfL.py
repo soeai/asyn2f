@@ -53,6 +53,7 @@ class ClientAsyncFl(Client):
             self._batch_size = config['training_params']['batch_size']
             self._sleeping_time = config['training_params']['sleeping_time']
             self._tracking_period = config['training_params']['tracking_point']
+            self._beta = config['training_params']['beta']
 
 
     def _get_model_dim_ready(self):
@@ -315,9 +316,9 @@ class ClientAsyncFl(Client):
         local_loss = self._train_loss
         global_loss = self._global_avg_loss
         # calculate alpha
-        # alpha = ( (local_qod*local_size) / (local_qod*local_size + global_qod*global_size) + local_loss/(local_loss + global_loss) )
-        alpha = ( (local_qod*local_size) / (local_qod*local_size + global_qod*global_size) + global_loss/(local_loss + global_loss) )
-        alpha = alpha / 2
+        data_depend = (1 - self._beta) * (local_qod * local_size) / (local_qod * local_size + global_qod * global_size)
+        loss_depend = self._beta * global_loss / (local_loss + global_loss)
+        alpha = data_depend + loss_depend
 
         LOGGER.info("-" * 20)
         LOGGER.info(f"local loss: {local_loss}")
