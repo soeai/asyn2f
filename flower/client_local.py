@@ -12,6 +12,8 @@ from data_preprocessing import *
 from resnet18 import Resnet18
 import logging
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 if not os.path.exists('client_logs'):
     os.makedirs('client_logs')
 LOG_FORMAT = '%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'
@@ -105,7 +107,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Federated Learning Client")
         
     parser.add_argument("--gpu", type=int, default=None, help="Specify the GPU index")
-    parser.add_argument("--chunk", type=int, default=2, help="Specify the chunk size")
+    parser.add_argument("--chunk", type=int, default=4, help="Specify the chunk size")
     parser.add_argument("--address", type=str, default="0.0.0.0:8080", help="Specify the server address")
     parser.add_argument("--batch_size", type=int, default=128, help="Specify the batch size")
 
