@@ -95,8 +95,9 @@ def start_server(args):
             # Return aggregated loss and metrics (i.e., aggregated accuracy)
             return aggregated_loss, {"accuracy": aggregated_accuracy}
     strategy = AggregateCustomMetricStrategy(
-        min_fit_clients=args.min_worker,
-        min_evaluate_clients=args.min_worker,
+        # min_fit_clients=args.min_worker,
+        # min_evaluate_clients=args.min_worker,
+        min_available_clients=args.min_worker,
         evaluate_fn=get_evaluate_fn(model),
         on_fit_config_fn=fit_config,
     )
