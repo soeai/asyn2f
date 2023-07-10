@@ -9,6 +9,7 @@ from flower.resnet18 import Resnet18
 from flower.data_preprocessing import preprocess_dataset
 import logging
 import numpy as np
+import tensorflow as tf
 
 if not os.path.exists('server_logs'):
     os.makedirs('server_logs')
@@ -35,10 +36,16 @@ lambda_value = 5e-4
 # because we don't need to train on server
 # just build a simple model
 model = Resnet18(num_classes= 10)
+
+
+def custom_loss_with_l2_reg(y_true, y_pred):
+    l2_loss = tf.add_n([tf.nn.l2_loss(w) for w in model.trainable_weights])
+    return tf.keras.losses.categorical_crossentropy(y_true, y_pred) + lambda_value * l2_loss
+
 # Compile the model
 model.build(input_shape=(None, 32, 32, 3))
 # model.compile("adam", "sparse_categorical_crossentropy", metrics=["accuracy"])
-model.compile("adam", "categorical_crossentropy", metrics=["accuracy"])
+model.compile("adam", loss=custom_loss_with_l2_reg, metrics=["accuracy"])
 
 def fit_config(server_round: int):
     """Return training configuration dict for each round."""

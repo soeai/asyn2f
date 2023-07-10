@@ -64,15 +64,15 @@ def start_client(args):
     optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
     # regularizer = tf.keras.regularizers.l2(lambda_value)
 
-    def custom_loss_with_l2_reg():
-        def loss(y_true, y_pred):
-            l2_loss = tf.add_n([tf.nn.l2_loss(w) for w in model.trainable_weights])
-            return tf.keras.losses.categorical_crossentropy(y_true, y_pred) + lambda_value * l2_loss
+    def custom_loss_with_l2_reg(y_true, y_pred):
+        # def loss(y_true, y_pred):
+        l2_loss = tf.add_n([tf.nn.l2_loss(w) for w in model.trainable_weights])
+        return tf.keras.losses.categorical_crossentropy(y_true, y_pred) + lambda_value * l2_loss
 
-        return loss
+        # return loss
 
     # Compile the model
-    model.compile(optimizer=optimizer, loss='custom_loss_with_l2_reg', metrics=['accuracy'],
+    model.compile(optimizer=optimizer, loss=custom_loss_with_l2_reg, metrics=['accuracy'],
                 loss_weights=None, weighted_metrics=None, run_eagerly=None,
                 steps_per_execution=None)
 
