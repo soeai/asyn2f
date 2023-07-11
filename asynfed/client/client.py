@@ -12,7 +12,8 @@ import uuid
 from time import sleep
 
 from abc import abstractmethod
-from asynfed.client.client_storage_connector import ClientStorageAWS,ClientStorageMinio
+from asynfed.client.client_storage_connector import ClientStorageAWS
+from asynfed.client.client_storage_connector import ClientStorageMinio
 
 from asynfed.client.messages import InitConnection
 from asynfed.commons.conf import Config, init_config
@@ -213,7 +214,9 @@ class Client(object):
         self._global_model_name = content['model_info']['global_model_name']
         self._received_global_version = content['model_info']['model_version']
         self._model_exchange_at = content['model_info']['exchange_at']
+
         self._storage_connector = ClientStorageAWS(content['aws_info'])
+        
         # self._storage_connector = ClientStorageMinio(content['minio_info'])
         self._is_connected = True
 
