@@ -125,6 +125,10 @@ def start_server(args):
         return loss, {"accuracy": accuracy}
 
     class SavingModelStrategy(fl.server.strategy.FedAvg):
+        def __init__(self, init_round, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.init_round = init_round + 1
+
         def aggregate_fit(self, rnd, results, failures):
             aggregated_parameters, aggregated_metrics = super().aggregate_fit(rnd, results, failures)
 
@@ -143,7 +147,7 @@ def start_server(args):
         model.set_weights([pretrain_weights[key] for key in pretrain_weights.files])
 
     # Create strategy
-    strategy = SavingModelStrategy(evaluate_fn=evaluate_fn)
+    strategy = SavingModelStrategy(init_round= args.init_rounds, evaluate_fn=evaluate_fn)
 
     # fl.server.start_server(
     #     server_address=args.address,
