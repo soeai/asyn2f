@@ -54,65 +54,107 @@ def fit_config(server_round: int):
     }
     return config
 
-def get_evaluate_fn(model):
-    """Return an evaluation function for server-side evaluation."""
-    # The `evaluate` function will be called after every round
-    def evaluate(server_round, parameters , config):
-        model.set_weights(parameters)  
-        loss, accuracy = model.evaluate(x_test, y_test, return_dict=False)
-        logging.info(f"Round {server_round} | Loss: {loss} | Accuracy: {accuracy}")
-        return loss, {"accuracy": accuracy}
-    return evaluate
+# def get_evaluate_fn(model):
+#     """Return an evaluation function for server-side evaluation."""
+#     # The `evaluate` function will be called after every round
+#     def evaluate(server_round, parameters , config):
+#         model.set_weights(parameters)  
+#         loss, accuracy = model.evaluate(x_test, y_test, return_dict=False)
+#         logging.info(f"Round {server_round} | Loss: {loss} | Accuracy: {accuracy}")
+#         return loss, {"accuracy": accuracy}
+#     return evaluate
 
+
+# def start_server(args):
+#     class AggregateCustomMetricStrategy(fl.server.strategy.FedAvg):
+#         def aggregate_fit( self, server_round, results, failures):
+
+#             # Call aggregate_fit from base class (FedAvg) to aggregate parameters and metrics
+#             aggregated_parameters, aggregated_metrics = super().aggregate_fit(server_round, results, failures)
+
+#             if aggregated_parameters is not None:
+#                 # Convert `Parameters` to `List[np.ndarray]`
+#                 aggregated_ndarrays: List[np.ndarray] = fl.common.parameters_to_ndarrays(aggregated_parameters)
+
+#                 # Save aggregated_ndarrays
+#                 logging.info(f"Saving round {server_round} aggregated_ndarrays...")
+#                 np.savez(f"server_weights/round-{server_round}-weights.npz", *aggregated_ndarrays)
+
+#             return aggregated_parameters, aggregated_metrics
+
+#         def aggregate_evaluate(self, server_round, results, failures,):
+#             """Aggregate evaluation accuracy using weighted average."""
+
+#             if not results:
+#                 return None, {}
+
+#             # Call aggregate_evaluate from base class (FedAvg) to aggregate loss and metrics
+#             aggregated_loss, aggregated_metrics = super().aggregate_evaluate(server_round, results, failures)
+
+#             # Weigh accuracy of each client by number of examples used
+#             accuracies = [r.metrics["accuracy"] * r.num_examples for _, r in results]
+#             examples = [r.num_examples for _, r in results]
+
+#             # Aggregate and print custom metric
+#             aggregated_accuracy = sum(accuracies) / sum(examples)
+#             logging.info(f"Round {server_round} accuracy aggregated from client results: {aggregated_accuracy}")
+
+#             # Return aggregated loss and metrics (i.e., aggregated accuracy)
+#             return aggregated_loss, {"accuracy": aggregated_accuracy}
+        
+#     strategy = AggregateCustomMetricStrategy(
+#         # min_fit_clients=args.min_worker,
+#         # min_evaluate_clients=args.min_worker,
+#         min_available_clients=args.min_worker,
+#         evaluate_fn=get_evaluate_fn(model),
+#         on_fit_config_fn=fit_config,
+#     )
+
+#     fl.server.start_server(
+#         server_address=args.address,
+#         config=fl.server.ServerConfig(args.num_rounds),
+#         strategy=strategy,
+#     )
 
 def start_server(args):
-    class AggregateCustomMetricStrategy(fl.server.strategy.FedAvg):
-        def aggregate_fit( self, server_round, results, failures):
+    # The `evaluate` function will be called after every round
+    def evaluate_fn(parameters):
+        model.set_weights(parameters)  
+        loss, accuracy = model.evaluate(x_test, y_test, return_dict=False)
+        logging.info(f"Loss: {loss} | Accuracy: {accuracy}")
+        return loss, {"accuracy": accuracy}
 
-            # Call aggregate_fit from base class (FedAvg) to aggregate parameters and metrics
-            aggregated_parameters, aggregated_metrics = super().aggregate_fit(server_round, results, failures)
+    class SavingModelStrategy(fl.server.strategy.FedAvg):
+        def aggregate_fit(self, rnd, results, failures):
+            aggregated_parameters, aggregated_metrics = super().aggregate_fit(rnd, results, failures)
 
             if aggregated_parameters is not None:
-                # Convert `Parameters` to `List[np.ndarray]`
                 aggregated_ndarrays: List[np.ndarray] = fl.common.parameters_to_ndarrays(aggregated_parameters)
-
-                # Save aggregated_ndarrays
-                logging.info(f"Saving round {server_round} aggregated_ndarrays...")
-                np.savez(f"server_weights/round-{server_round}-weights.npz", *aggregated_ndarrays)
+                logging.info(f"Saving round {rnd} aggregated_ndarrays...")
+                np.savez(f"server_weights/round-{rnd}-weights.npz", *aggregated_ndarrays)
 
             return aggregated_parameters, aggregated_metrics
 
-        def aggregate_evaluate(self, server_round, results, failures,):
-            """Aggregate evaluation accuracy using weighted average."""
+    # Check if there's a pretrain weight to load from
+    weight_file = f'server_weights/round-{args.init_round}-weights.npz'
+    if os.path.isfile(weight_file):
+        logging.info(f"Loading weights from round {args.init_round}...")
+        pretrain_weights = np.load(weight_file)
+        model.set_weights([pretrain_weights[key] for key in pretrain_weights.files])
 
-            if not results:
-                return None, {}
+    # Create strategy
+    strategy = SavingModelStrategy(evaluate_fn=evaluate_fn)
 
-            # Call aggregate_evaluate from base class (FedAvg) to aggregate loss and metrics
-            aggregated_loss, aggregated_metrics = super().aggregate_evaluate(server_round, results, failures)
-
-            # Weigh accuracy of each client by number of examples used
-            accuracies = [r.metrics["accuracy"] * r.num_examples for _, r in results]
-            examples = [r.num_examples for _, r in results]
-
-            # Aggregate and print custom metric
-            aggregated_accuracy = sum(accuracies) / sum(examples)
-            logging.info(f"Round {server_round} accuracy aggregated from client results: {aggregated_accuracy}")
-
-            # Return aggregated loss and metrics (i.e., aggregated accuracy)
-            return aggregated_loss, {"accuracy": aggregated_accuracy}
-    strategy = AggregateCustomMetricStrategy(
-        # min_fit_clients=args.min_worker,
-        # min_evaluate_clients=args.min_worker,
-        min_available_clients=args.min_worker,
-        evaluate_fn=get_evaluate_fn(model),
-        on_fit_config_fn=fit_config,
-    )
-
+    # fl.server.start_server(
+    #     server_address=args.address,
+    #     config=fl.server.ServerConfig(args.num_rounds),
+    #     strategy=strategy,
+# )
     fl.server.start_server(
         server_address=args.address,
-        config=fl.server.ServerConfig(args.num_rounds),
+        config=fl.server.ServerConfig(num_rounds=args.num_rounds),
         strategy=strategy,
+        initial_parameters=fl.common.weights_to_parameters(model.get_weights()),  # set initial parameters for server
     )
 
 if __name__ == "__main__":
@@ -121,6 +163,8 @@ if __name__ == "__main__":
     parser.add_argument("--address", type=str, default="0.0.0.0:8080", help="Specify the port number")
     parser.add_argument("--min_worker", type=int, default=2, help="Specify the minimum number of workers")
     parser.add_argument("--num_rounds", type=int, default=200, help="Specify the number of iterations")
+    parser.add_argument("--init_round", type=int, default=60, help="Specify the initial round to continue training from")
+
 
     args = parser.parse_args()
     start_server(args)

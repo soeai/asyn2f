@@ -103,14 +103,14 @@ def start_client(args):
             model.fit(x_train, y_train, epochs=1, batch_size=batch_size, steps_per_epoch= data_size//batch_size)
             return model.get_weights(), len(x_train), {}
 
-        def evaluate(self, parameters, config):
-            model.set_weights(parameters)
-            loss, accuracy = model.evaluate(x_test, y_test, batch_size=batch_size, return_dict=False)
-            try:
-                logging.info(f"round: {config['current_round']} -- loss: {loss} -- acc: {accuracy}")
-            except:
-                logging.info(f"loss: {loss} -- acc: {accuracy}")
-            return loss, len(x_test), {"accuracy": accuracy}
+        # def evaluate(self, parameters, config):
+        #     model.set_weights(parameters)
+        #     loss, accuracy = model.evaluate(x_test, y_test, batch_size=batch_size, return_dict=False)
+        #     try:
+        #         logging.info(f"round: {config['current_round']} -- loss: {loss} -- acc: {accuracy}")
+        #     except:
+        #         logging.info(f"loss: {loss} -- acc: {accuracy}")
+        #     return loss, len(x_test), {"accuracy": accuracy}
 
 
     fl.client.start_numpy_client(server_address=args.address, client=CifarClient())
