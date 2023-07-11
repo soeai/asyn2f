@@ -40,9 +40,6 @@ config = {
         "dataset": "cifar10",
         "model": "resnet18",
 
-        "min_acc": 0.80,
-        "min_epoch": 100,
-
         "regularization": "l2",
         "lambda_value": 5e-4,
         "learning_rate": 1e-1,

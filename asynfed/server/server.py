@@ -72,6 +72,10 @@ class Server(object):
                 "max_performance": 0.9,
                 "min_loss": 0.1
             },
+            "model_exchange_at":{
+                    "performance": 85,
+                    "epoch": 100
+            }
         }
         """
         super().__init__()
@@ -82,8 +86,15 @@ class Server(object):
             self.stop_conditions = {
                 'max_version': 300,
                 'max_performance': 0.95,
-                'min_loss': 0.01,
+                'min_loss': 0.01
             }
+        if config.get('model_exchange_at'):
+            self.model_exchange_at = config.get("model_exchange_at")
+        else:
+            self.model_exchange_at = {
+                "performance": 85,
+                "epoch": 100}
+
         self.weights_trained = {}
         self._is_stop_condition = False
 
@@ -258,7 +269,9 @@ class Server(object):
         model_url = self._cloud_storage.get_newest_global_model()
         model_info = {"model_url": model_url, 
                       "global_model_name": model_url.split("/")[-1], 
-                      "model_version": int(re.findall(r'\d+', model_url.split("/")[1])[0]) }
+                      "model_version": int(re.findall(r'\d+', model_url.split("/")[1])[0]),
+                      "exchange_at": self.model_exchange_at
+                    }
         aws_info = {"access_key": access_key, 
                     "secret_key": secret_key, 
                     "bucket_name": self.config['aws']['bucket_name'],

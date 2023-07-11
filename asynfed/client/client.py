@@ -39,10 +39,10 @@ class Client(object):
         self._role = config.get("role") or "train"
         self._ping_time = config.get("ping_time") or 30
 
-        if self._role == "train":
-            self._min_epoch = config['training_params']['min_epoch']
-            self._min_acc = config['training_params']['min_acc']
-        
+        # if self._role == "train":
+        #     self._min_epoch = config['training_params']['min_epoch']
+        #     self._min_acc = config['training_params']['min_acc']
+        self._model_exchange_at = None
         self._is_stop_condition = False
         # Dependencies
         self._global_chosen_list = None
@@ -212,8 +212,9 @@ class Client(object):
         self._session_id = content['session_id']
         self._global_model_name = content['model_info']['global_model_name']
         self._received_global_version = content['model_info']['model_version']
-        # self._storage_connector = ClientStorageAWS(content['aws_info'])
-        self._storage_connector = ClientStorageMinio(content['minio_info'])
+        self._model_exchange_at = content['model_info']['exchange_at']
+        self._storage_connector = ClientStorageAWS(content['aws_info'])
+        # self._storage_connector = ClientStorageMinio(content['minio_info'])
         self._is_connected = True
 
         # Check for new global model version.

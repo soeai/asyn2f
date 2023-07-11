@@ -234,7 +234,9 @@ class ClientAsyncFl(Client):
             )
             LOGGER.info("*" * 20)
 
-            if (self._min_acc <= self._train_acc) or (self._min_epoch <= self._local_epoch):
+            # if (self._min_acc <= self._train_acc) or (self._min_epoch <= self._local_epoch):
+            if (self._train_acc >= self._model_exchange_at['performance'] or
+                    self._local_epoch >= self._model_exchange_at['epoch']):
                 self.__notify_local_model_to_server()
             else:
                 LOGGER.info("*" * 20)

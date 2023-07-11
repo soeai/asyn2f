@@ -7,6 +7,8 @@ class ResponseConnection:
         model_info: {
             "model_url": "model_name",
             "global_model_name": "model_version",
+            "exchange_at": {"performance": 80,
+                            "epoch": 100}
         }
         aws_info: {
             "access_key": "",
