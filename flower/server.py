@@ -47,13 +47,13 @@ model.build(input_shape=(None, 32, 32, 3))
 # model.compile("adam", "sparse_categorical_crossentropy", metrics=["accuracy"])
 model.compile("adam", loss=custom_loss_with_l2_reg, metrics=["accuracy"])
 
-#  Check if there's a pretrain weight to load from
-# weight_file = f'server_weights/round-{args.init_round}-weights.npz'
-weight_file = f'server_weights/round-60-weights.npz'
-if os.path.isfile(weight_file):
-    logging.info(f"Loading weights from round 60...")
-    pretrain_weights = np.load(weight_file)
-    model.set_weights([pretrain_weights[key] for key in pretrain_weights.files])
+# #  Check if there's a pretrain weight to load from
+# # weight_file = f'server_weights/round-{args.init_round}-weights.npz'
+# weight_file = f'server_weights/round-60-weights.npz'
+# if os.path.isfile(weight_file):
+#     logging.info(f"Loading weights from round 60...")
+#     pretrain_weights = np.load(weight_file)
+#     model.set_weights([pretrain_weights[key] for key in pretrain_weights.files])
 
 
 def fit_config(server_round: int):
@@ -136,7 +136,18 @@ def start_server(args):
     class SavingModelStrategy(fl.server.strategy.FedAvg):
         def __init__(self, init_round: int, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.init_round = init_round
+            
+            # Check if there's a pretrain weight to load from
+            weight_file = f'server_weights/round-{args.init_round}-weights.npz'
+            if os.path.isfile(weight_file):
+                logging.info(f"Loading weights from round {args.init_round}...")
+                pretrain_weights = np.load(weight_file)
+                model.set_weights([pretrain_weights[key] for key in pretrain_weights.files])
+
+                self.init_round = init_round
+            else:
+                self.init_round = 0
+
 
         def aggregate_fit(self, rnd: int, results, failures):
             aggregated_parameters, aggregated_metrics = super().aggregate_fit(rnd, results, failures)
@@ -148,15 +159,12 @@ def start_server(args):
 
             return aggregated_parameters, aggregated_metrics
 
-    # # Check if there's a pretrain weight to load from
-    # weight_file = f'server_weights/round-{args.init_round}-weights.npz'
-    # if os.path.isfile(weight_file):
-    #     logging.info(f"Loading weights from round {args.init_round}...")
-    #     pretrain_weights = np.load(weight_file)
-    #     model.set_weights([pretrain_weights[key] for key in pretrain_weights.files])
 
     # Create strategy
-    strategy = SavingModelStrategy(init_round= args.init_round, min_available_clients=args.min_worker, evaluate_fn=get_evaluate_fn(model))
+    strategy = SavingModelStrategy(init_round= args.init_round, 
+                                   min_available_clients=args.min_worker, 
+                                   initial_parameters=fl.common.ndarrays_to_parameters(model.get_weights()),
+                                   evaluate_fn=get_evaluate_fn(model))
 
     # fl.server.start_server(
     #     server_address=args.address,
@@ -168,7 +176,6 @@ def start_server(args):
         config=fl.server.ServerConfig(num_rounds=args.num_rounds),
         strategy=strategy,
         # initial_parameters=fl.common.ndarrays_to_parameters(model.get_weights()),  # set initial parameters for server
-        # initial_parameters=fl.common.weights_to_parameters(model.get_weights()),  # set initial parameters for server
     )
 
 if __name__ == "__main__":
