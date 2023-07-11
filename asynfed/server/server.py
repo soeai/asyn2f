@@ -25,7 +25,7 @@ from asynfed.commons.utils import  time_now
 
 from .strategies import Strategy
 from .objects import Worker
-from .server_storage_connector import ServerStorage
+from .server_storage_connector import ServerStorageAWS
 from .influxdb import InfluxDB
 from .worker_manager import WorkerManager
 
@@ -120,7 +120,7 @@ class Server(object):
 
         # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
-        self._cloud_storage: ServerStorage = ServerStorage(config['aws'])
+        self._cloud_storage: ServerStorageAWS = ServerStorageAWS(config['aws'])
         self._influxdb = InfluxDB(config['influxdb'])
 
         self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")

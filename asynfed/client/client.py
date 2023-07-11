@@ -12,7 +12,7 @@ import uuid
 from time import sleep
 
 from abc import abstractmethod
-from asynfed.client.client_storage_connector import ClientStorage
+from asynfed.client.client_storage_connector import ClientStorageAWS,ClientStorageMinio
 
 from asynfed.client.messages import InitConnection
 from asynfed.commons.conf import Config, init_config
@@ -31,6 +31,7 @@ logging.getLogger('pika').setLevel(logging.WARNING)
 LOGGER.setLevel(logging.INFO)
 
 lock = threading.Lock()
+
 
 class Client(object):
     def __init__(self, model: ModelWrapper, config, save_log=False):
@@ -126,7 +127,6 @@ class Client(object):
         elif msg_received['headers']['message_type'] == Config.SERVER_PING_TO_CLIENT:
             self._handle_server_ping_to_client(msg_received)
 
-
     def _handle_server_ping_to_client(self, msg_received):
         if msg_received['content']['client_id'] == self._client_id:
             MessageV2.print_message(msg_received)
@@ -134,7 +134,6 @@ class Client(object):
                     headers={"timestamp": time_now(), "message_type": Config.CLIENT_PING_MESSAGE, "session_id": self._session_id, "client_id": self._client_id},
                     content=Ping()).to_json()
             self.queue_producer.send_data(message)
-
 
     @abstractmethod
     def train(self):
@@ -189,7 +188,6 @@ class Client(object):
         except Exception as e:
             LOGGER.info(e)
 
-
     def _send_init_message(self):
         data_description = {
             'data_size': self._local_data_size,
@@ -214,7 +212,8 @@ class Client(object):
         self._session_id = content['session_id']
         self._global_model_name = content['model_info']['global_model_name']
         self._received_global_version = content['model_info']['model_version']
-        self._storage_connector = ClientStorage(content['aws_info'])
+        # self._storage_connector = ClientStorageAWS(content['aws_info'])
+        self._storage_connector = ClientStorageMinio(content['minio_info'])
         self._is_connected = True
 
         # Check for new global model version.
@@ -282,7 +281,6 @@ class Client(object):
     @abstractmethod
     def _test(self):
         pass
-
 
     def _start_consumer(self):
         self.queue_consumer.start()

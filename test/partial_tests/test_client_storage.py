@@ -8,16 +8,16 @@ sys.path.append(os.path.dirname(os.path.dirname(os.getcwd())))
 
 
 
-from asynfed.client.client_storage_connector import ClientStorage
-from asynfed.commons.utils.cloud_storage_connector import AWSConnector
-from asynfed.server.server_storage_connector import ServerStorage
+from asynfed.client.client_storage_connector import ClientStorageAWS
+from asynfed.commons.utils.storage_connector_AWS import AWSConnector
+from asynfed.server.server_storage_connector import ServerStorageAWS
 from asynfed.commons.conf import Config
 
 
 Config.STORAGE_ACCESS_KEY= 'AKIA2X4RVJV3VFDERVKZ'
 Config.STORAGE_SECRET_KEY = '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'
 Config.STORAGE_BUCKET_NAME = 'test-server01234561011010101'
-conn = ClientStorage()
+conn = ClientStorageAWS()
 
 
 remote_file_name = "global-models/testweight_v0.pkl"
