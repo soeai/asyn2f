@@ -121,7 +121,8 @@ if __name__ == '__main__':
         
     parser.add_argument("--gpu", type=int, default=None, help="Specify the GPU index")
     parser.add_argument("--chunk", type=int, default=2, help="Specify the chunk size")
-    parser.add_argument("--address", type=str, default="0.0.0.0:8080", help="Specify the server address")
+    parser.add_argument("--address", type=str, default="128.214.254.126:8080", help="Specify the server address")
+    # parser.add_argument("--address", type=str, default="0.0.0.0:8080", help="Specify the server address")
     parser.add_argument("--batch_size", type=int, default=128, help="Specify the batch size")
 
     args = parser.parse_args()
