@@ -1,6 +1,5 @@
 import logging
 import boto3
-import minio
 import json
 from asynfed.commons.utils import MinioConnector
 
@@ -11,16 +10,21 @@ LOGGER = logging.getLogger(__name__)
 class ServerStorageMinio(MinioConnector):
     def __init__(self, minio_config):
         super().__init__(minio_config)
-        # self.iam = minio.Minio(endpoint=minio_config['endpoint'],access_key=minio_config['access_key'],
-        #                         secret_key=minio_config['secret_key'])
+        self.iam = boto3.client('iam', aws_access_key_id=minio_config['access_key'],
+                                aws_secret_access_key=minio_config['secret_key'])
+        
         self.client_keys = None
-        self.bucket_name = minio_config['bucket_name']
+        # self.bucket_name = minio_config['bucket_name']
 
         try:
             logging.info(f"Creating bucket {self.bucket_name}")
-            self._minio_client.make_bucket(self.bucket_name)
+            self._s3.create_bucket(
+                Bucket=self.bucket_name,
+                # CreateBucketConfiguration={'LocationConstraint': minio_config['region_name']}
+            )            
             logging.info(f"Created bucket {self.bucket_name}")
-            # self._minio_client.put_object(Bucket=self.bucket_name, Key='global-models/')
+            self._s3.put_object(Bucket=self.bucket_name, Key='global-models/')
+
         except Exception as e:
             if 'BucketAlreadyOwnedByYou' in str(e):
                 logging.info(f"Bucket {self.bucket_name} already exists")
@@ -29,55 +33,82 @@ class ServerStorageMinio(MinioConnector):
 
         self.client_name = f'client-{self.bucket_name}'
 
-        # try:
-        #     self.iam.create_user(UserName=self.client_name)
-        # except Exception as e:
-        #     if 'EntityAlreadyExists' in str(e):
-        #         logging.info(f"User {self.client_name} already exists")
-        #     else:
-        #         logging.error(e)
+        try:
+            self.iam.create_user(UserName=self.client_name)
+        except Exception as e:
+            if 'EntityAlreadyExists' in str(e):
+                logging.info(f"User {self.client_name} already exists")
+            else:
+                logging.error(e)
 
-        # policy_arn = {
-        #     "Version": "2012-10-17",
-        #     "Statement": [
-        #         {
-        #             "Sid": "ListBucket",
-        #             "Effect": "Allow",
-        #             "Action": [
-        #                 "s3:ListBucket"
-        #             ],
-        #             "Resource": [
-        #                 f"arn:aws:s3:::{self.bucket_name}",
-        #                 f"arn:aws:s3:::{self.bucket_name}/*"
-        #             ]
-        #         },
-        #         {
-        #             "Sid": "GetGlobalModel",
-        #             "Effect": "Allow",
-        #             "Action": [
-        #                 "s3:GetObject",
-        #                 "s3:GetObjectACL"
-        #             ],
-        #             "Resource": [
-        #                 f"arn:aws:s3:::{self.bucket_name}/global-models",
-        #                 f"arn:aws:s3:::{self.bucket_name}/global-models/*"
-        #             ]
-        #         },
-        #         {
-        #             "Sid": "PutLocalModel",
-        #             "Effect": "Allow",
-        #             "Action": [
-        #                 "s3:PutObject",
-        #                 "s3:PutObjectACL"
-        #             ],
-        #             "Resource": [
-        #                 f"arn:aws:s3:::{self.bucket_name}/clients/*"
-        #             ]
-        #         }
-        #     ]
-        # }
+        policy_arn = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "ListBucket",
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:ListBucket"
+                    ],
+                    "Resource": [
+                        f"arn:aws:s3:::{self.bucket_name}",
+                        f"arn:aws:s3:::{self.bucket_name}/*"
+                    ]
+                },
+                {
+                    "Sid": "GetGlobalModel",
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:GetObject",
+                        "s3:GetObjectACL"
+                    ],
+                    "Resource": [
+                        f"arn:aws:s3:::{self.bucket_name}/global-models",
+                        f"arn:aws:s3:::{self.bucket_name}/global-models/*"
+                    ]
+                },
+                {
+                    "Sid": "PutLocalModel",
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:PutObject",
+                        "s3:PutObjectACL"
+                    ],
+                    "Resource": [
+                        f"arn:aws:s3:::{self.bucket_name}/clients/*"
+                    ]
+                }
+            ]
+        }
+
+        try:
+            policy = self.iam.create_policy(
+                PolicyName=self.bucket_name,
+                PolicyDocument=json.dumps(policy_arn),
+            )
+            self.iam.attach_user_policy(
+                UserName=self.client_name,
+                PolicyArn=policy['Policy']['Arn'],
+            )
+        except Exception as e:
+            if 'EntityAlreadyExists' in str(e):
+                logging.info(f"Policy {self.bucket_name} already exists")
+            else:
+                logging.error(e)
+
+        try:
+            self.client_keys = self.iam.create_access_key(UserName=self.client_name)['AccessKey']
+        except:
+            for key in self.iam.list_access_keys(UserName=self.client_name)['AccessKeyMetadata']:
+                if key['UserName'] == self.client_name:
+                    self.iam.delete_access_key(
+                        UserName=self.client_name,
+                        AccessKeyId=key['AccessKeyId']
+                    )
+            self.client_keys = self.iam.create_access_key(UserName=self.client_name)['AccessKey']
         self.client_access_key_id = self.client_keys['AccessKeyId']
         self.client_secret_key = self.client_keys['SecretAccessKey']
+
 
     def get_client_key(self, worker_id):
         # Generate an access key and secret key for the user

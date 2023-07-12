@@ -1,6 +1,5 @@
 import logging
 import boto3
-import minio
 import json
 from asynfed.commons.utils import AWSConnector
 
@@ -13,7 +12,7 @@ class ServerStorageAWS(AWSConnector):
         self.iam = boto3.client('iam', aws_access_key_id=aws_config['access_key'],
                                 aws_secret_access_key=aws_config['secret_key'])
         self.client_keys = None
-        self.bucket_name = aws_config['bucket_name']
+        # self.bucket_name = aws_config['bucket_name']
 
         try:
             logging.info(f"Creating bucket {self.bucket_name}")

@@ -25,7 +25,9 @@ from asynfed.commons.utils import  time_now
 
 from .strategies import Strategy
 from .objects import Worker
-from .server_storage_connector import ServerStorageAWS
+from .server_aws_storage_connector import ServerStorageAWS
+from .server_minio_storage_connector import ServerStorageMinio
+
 from .influxdb import InfluxDB
 from .worker_manager import WorkerManager
 
@@ -49,7 +51,7 @@ class Server(object):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, config: dict, save_log=False) -> None:
+    def __init__(self, strategy: Strategy, config: dict, storage="s3", save_log=False) -> None:
         """
         config structure
         {
@@ -131,7 +133,13 @@ class Server(object):
 
         # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
-        self._cloud_storage: ServerStorageAWS = ServerStorageAWS(config['aws'])
+
+        if storage == "s3":
+            self._cloud_storage: ServerStorageAWS = ServerStorageAWS(config['aws'])
+        else:
+            self._cloud_storage: ServerStorageMinio = ServerStorageMinio(config['minio'])
+
+
         self._influxdb = InfluxDB(config['influxdb'])
 
         self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
@@ -245,6 +253,7 @@ class Server(object):
             LOGGER.info(worker)
             LOGGER.info("*" * 20)
             access_key, secret_key = self._cloud_storage.get_client_key(client_id)
+            
             worker.access_key_id = access_key
             worker.secret_key_id = secret_key
             self._worker_manager.add_worker(worker)
@@ -277,6 +286,7 @@ class Server(object):
                     "bucket_name": self.config['aws']['bucket_name'],
                     "region_name": self.config['aws']['region_name'],
                     "parent": None}
+        
         queue_info = {"training_exchange": "", 
                       "monitor_queue": ""}
 

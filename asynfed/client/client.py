@@ -35,7 +35,7 @@ lock = threading.Lock()
 
 
 class Client(object):
-    def __init__(self, model: ModelWrapper, config, save_log=False):
+    def __init__(self, model: ModelWrapper, config, storage="s3", save_log=True, ):
         self.config = config
         self._role = config.get("role") or "train"
         self._ping_time = config.get("ping_time") or 30

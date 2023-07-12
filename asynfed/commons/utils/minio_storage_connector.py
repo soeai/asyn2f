@@ -55,7 +55,7 @@ class MinioConnector(ABC):
                     break
                 except Exception as e:
                     logging.error(e)
-                    sleep(AWSConnector.time_sleep)
+                    sleep(self.time_sleep)
                     t += 1
             self.parent_thread.on_upload(False)
 
