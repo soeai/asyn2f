@@ -12,7 +12,7 @@ import uuid
 from time import sleep
 
 from abc import abstractmethod
-from asynfed.client.client_storage_connector import ClientStorageAWS,ClientStorageMinio
+from asynfed.client.client_storage_connector import ClientStorageAWS, ClientStorageMinio
 
 from asynfed.client.messages import InitConnection
 from asynfed.commons.conf import Config, init_config
@@ -34,8 +34,11 @@ lock = threading.Lock()
 
 
 class Client(object):
-    def __init__(self, model: ModelWrapper, config, save_log=False):
+    def __init__(self, model: ModelWrapper, config: dict, save_log: bool = True):
+        init_config("client", save_log)
+
         self.config = config
+        # self._cloud_storage_type = storage
         self._role = config.get("role") or "train"
         self._ping_time = config.get("ping_time") or 30
 
@@ -43,6 +46,9 @@ class Client(object):
         #     self._min_epoch = config['training_params']['min_epoch']
         #     self._min_acc = config['training_params']['min_acc']
         self._model_exchange_at = None
+        self._min_acc: float
+        self._min_epoch: int
+
         self._is_stop_condition = False
         # Dependencies
         self._global_chosen_list = None
@@ -89,8 +95,6 @@ class Client(object):
         else:
             self.load_profile()
 
-
-        init_config("client", save_log)
 
         self.thread_consumer = threading.Thread(target=self._start_consumer)
         self.queue_consumer = AmqpConsumer(self.config['queue_consumer'], self)
@@ -203,7 +207,9 @@ class Client(object):
         self.queue_producer.send_data(message)
 
     def _handle_server_init_response(self, msg_received):
-        MessageV2.print_message(msg_received)
+        # MessageV2.print_message(msg_received)
+
+        LOGGER.info(msg_received)
 
         content = msg_received['content']
         if content['reconnect'] is True:
@@ -212,8 +218,21 @@ class Client(object):
         self._session_id = content['session_id']
         self._global_model_name = content['model_info']['global_model_name']
         self._received_global_version = content['model_info']['model_version']
-        self._model_exchange_at = content['model_info']['exchange_at']
-        self._storage_connector = ClientStorageAWS(content['aws_info'])
+
+
+        self._model_exchange_at = content['exchange_at']
+
+        self._min_acc = self._model_exchange_at['performance']
+        self._min_epoch = self._model_exchange_at['epoch']
+
+        # self._storage_connector = ClientStorageAWS(content['storage_info'])
+        storage_info = content['storage_info']
+        self._cloud_storage_type = storage_info['storage_type']
+        if self._cloud_storage_type == "s3":
+            self._storage_connector = ClientStorageAWS(storage_info)
+        else:
+            self._storage_connector = ClientStorageMinio(storage_info)
+
         # self._storage_connector = ClientStorageMinio(content['minio_info'])
         self._is_connected = True
 

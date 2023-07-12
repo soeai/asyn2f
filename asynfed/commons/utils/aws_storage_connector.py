@@ -16,10 +16,10 @@ class AWSConnector(ABC):
         self.secret_key = aws_config['secret_key']
         self.bucket_name = aws_config['bucket_name']
         self.region_name = aws_config['region_name']
+
         self._s3 = boto3.client('s3', aws_access_key_id=self.access_key, 
                                 aws_secret_access_key=self.secret_key, 
                                 region_name=self.region_name)
-        # self._s3 = boto3.Session().client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region_name) 
         logging.info(f'Connected to AWS server')
 
     def upload(self, local_file_path: str, remote_file_path: str, try_time=5):
@@ -76,8 +76,8 @@ class AWSConnector(ABC):
                     result = True
                     break
                 except Exception as e:
-                    raise e
                     logging.error(e)
-                    sleep(AWSConnector.time_sleep)
+                    sleep(self.time_sleep)
                     t += 1
+                    raise e
             self.parent_thread.on_download(result)

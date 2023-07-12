@@ -1,5 +1,5 @@
-from asynfed.commons.utils.storage_connector_AWS import AWSConnector
-from asynfed.commons.utils.storage_connector_Minio import MinioConnector
+from asynfed.commons.utils import AWSConnector
+from asynfed.commons.utils import MinioConnector
 
 
 class ClientStorageAWS(AWSConnector):

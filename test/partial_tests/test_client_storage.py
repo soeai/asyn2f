@@ -9,8 +9,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.getcwd())))
 
 
 from asynfed.client.client_storage_connector import ClientStorageAWS
-from asynfed.commons.utils.storage_connector_AWS import AWSConnector
-from asynfed.server.server_storage_connector import ServerStorageAWS
+from asynfed.commons.utils.aws_storage_connector import AWSConnector
+from asynfed.server.server_aws_storage_connector import ServerStorageAWS
 from asynfed.commons.conf import Config
 
 

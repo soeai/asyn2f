@@ -25,7 +25,9 @@ from asynfed.commons.utils import  time_now
 
 from .strategies import Strategy
 from .objects import Worker
-from .server_storage_connector import ServerStorageAWS
+from .server_aws_storage_connector import ServerStorageAWS
+from .server_minio_storage_connector import ServerStorageMinio
+
 from .influxdb import InfluxDB
 from .worker_manager import WorkerManager
 
@@ -49,7 +51,7 @@ class Server(object):
     - Extend this Server class and implement the stop condition methods.
     """
 
-    def __init__(self, strategy: Strategy, config: dict, save_log=False) -> None:
+    def __init__(self, strategy: Strategy, config: dict, storage: str = "minio", save_log: bool = False) -> None:
         """
         config structure
         {
@@ -79,6 +81,9 @@ class Server(object):
         }
         """
         super().__init__()
+        init_config("server", save_log)
+
+        self._cloud_storage_type = storage
 
         if config.get('stop_conditions'):
             self.stop_conditions = config.get('stop_conditions')
@@ -88,11 +93,12 @@ class Server(object):
                 'max_performance': 0.95,
                 'min_loss': 0.01
             }
+        self.model_exchange_at: dict
         if config.get('model_exchange_at'):
             self.model_exchange_at = config.get("model_exchange_at")
         else:
             self.model_exchange_at = {
-                "performance": 85,
+                "performance": 0.85,
                 "epoch": 100}
 
         self.weights_trained = {}
@@ -106,10 +112,10 @@ class Server(object):
         self._is_downloading = False
         self._is_new_global_model = False
 
-        # Record arive time for calculate dynamic waiting time for server.
-        self._start_time = None
-        self._first_arrival = None
-        self._latest_arrival = None
+        # # # Record arive time for calculate dynamic waiting time for server.
+        # self._start_time = None
+        # self._first_arrival = None
+        # self._latest_arrival = None
 
         if config.get('test'):
             self._server_id = self.config['server_id']
@@ -118,20 +124,38 @@ class Server(object):
 
         # All this information was decided by server to prevent conflict
         # because multiple server can use the same RabbitMQ, S3 server.
+        self._bucket_name: str
+        if self._cloud_storage_type == "s3":
+            if config.get('aws').get('bucket_name') is None or self.config.get('aws').get('bucket_name') == "":
+                config['aws']['bucket_name'] = self._server_id
+                self._bucket_name = self._server_id
+            else:
+                self._bucket_name = config['aws']['bucket_name']
+        else:
+            if config.get('minio').get('bucket_name') is None or self.config.get('minio').get('bucket_name') == "":
+                config['minio']['bucket_name'] = self._server_id
+                self._bucket_name = self._server_id
+            else:
+                self._bucket_name = config['minio']['bucket_name']
 
-        if config.get('aws').get('bucket_name') is None or self.config.get('aws').get('bucket_name') == "":
-            config['aws']['bucket_name'] = self._server_id
-        
-        init_config("server", save_log)
 
         LOGGER.info(f'\n\nServer Info:\n\tQueue In : {self.config["queue_consumer"]}'
                     f'\n\tQueue Out : {self.config["queue_producer"]}'
-                    f'\n\tS3 Bucket: {self.config["aws"]["bucket_name"]}'
+                    f'\n\tS3 Bucket: {self._bucket_name}'
                     f'\n\n')
 
         # Initialize dependencies
         self._worker_manager: WorkerManager = WorkerManager()
-        self._cloud_storage: ServerStorageAWS = ServerStorageAWS(config['aws'])
+
+        if storage == "s3":
+            self._cloud_storage: ServerStorageAWS = ServerStorageAWS(config['aws'])
+        elif storage == "minio":
+            self._cloud_storage: ServerStorageMinio = ServerStorageMinio(config['minio'])
+        else:
+            LOGGER.info("There is no cloud storage")
+            sys.exit(0)
+
+
         self._influxdb = InfluxDB(config['influxdb'])
 
         self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
@@ -198,7 +222,6 @@ class Server(object):
                     # calculate self._strategy.avg_qod and self._strategy.avg_loss
                     # and self_strategy.global_model_update_data_size
                     # within the self.__update function
-                    # self.__update()
                     self.__update(n_local_updates)
                     # Clear worker queue after aggregation.
                     # self._worker_manager.update_worker_after_training()
@@ -245,6 +268,7 @@ class Server(object):
             LOGGER.info(worker)
             LOGGER.info("*" * 20)
             access_key, secret_key = self._cloud_storage.get_client_key(client_id)
+            
             worker.access_key_id = access_key
             worker.secret_key_id = secret_key
             self._worker_manager.add_worker(worker)
@@ -272,17 +296,26 @@ class Server(object):
                       "model_version": int(re.findall(r'\d+', model_url.split("/")[1])[0]),
                       "exchange_at": self.model_exchange_at
                     }
-        aws_info = {"access_key": access_key, 
+        
+        storage_info = {"storage_type": self._cloud_storage_type,
+                    "access_key": access_key,
                     "secret_key": secret_key, 
-                    "bucket_name": self.config['aws']['bucket_name'],
-                    "region_name": self.config['aws']['region_name'],
-                    "parent": None}
+                    "parent": None,
+                    "bucket_name": self._bucket_name}
+        
+        if self._cloud_storage_type == "s3":
+            storage_info['region_name'] = self.config['aws']['region_name']
+        else:
+            storage_info['region_name'] = self.config['minio']['region_name']
+            storage_info['endpoint_url'] = self.config['minio']['endpoint_url']
+
+        
         queue_info = {"training_exchange": "", 
                       "monitor_queue": ""}
 
         message = MessageV2(
                 headers={'timestamp': time_now(), 'message_type': Config.SERVER_INIT_RESPONSE, 'server_id': self._server_id}, 
-                content=ResponseConnection(session_id, model_info, aws_info, queue_info, reconnect=reconnect)
+                content=ResponseConnection(session_id, model_info, storage_info, queue_info, self.model_exchange_at, reconnect=reconnect)
         ).to_json()
         self.queue_producer.send_data(message)
 
@@ -409,7 +442,7 @@ class Server(object):
         ).to_json()
         self.queue_producer.send_data(message)
 
-        # Get the starting time of the epoch and reset vars
-        self._start_time = time_now()
-        self._first_arrival = None
-        self._latest_arrival = None
+        # # Get the starting time of the epoch and reset vars
+        # self._start_time = time_now()
+        # self._first_arrival = None
+        # self._latest_arrival = None
