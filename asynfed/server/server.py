@@ -83,6 +83,7 @@ class Server(object):
         super().__init__()
         init_config("server", save_log)
 
+
         self._cloud_storage_type = storage
 
         if config.get('stop_conditions'):
@@ -108,6 +109,8 @@ class Server(object):
         self._t = config.get('t') or 15
         self.ping_time = config.get('ping_time') or 300
         self._strategy = strategy
+        self._strategy._aggregating: bool = False
+
         # variables
         self._is_downloading = False
         self._is_new_global_model = False
@@ -325,6 +328,14 @@ class Server(object):
 
         # self._cloud_storage.download(remote_file_path=msg_received['content']['remote_worker_weight_path'],
         #                                 local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + msg_received['content']['filename'])
+        #     sleep(5)
+        worker = self._worker_manager.get_worker_by_id(client_id)
+        # freeze the state of worker that joining the aggregating process
+        # waiting for the server to aggregate the global model
+        while worker.is_aggregating:
+            LOGGER.info(f"Receiving new local model notify from client {client_id}, but it is now joining the aggregating process. Sleep for 3 second and check the state again")
+            sleep(3)
+
         self._worker_manager.add_local_update(client_id, msg_received['content'])
         self._influxdb.write_training_process_data(msg_received)
 
@@ -392,7 +403,9 @@ class Server(object):
             # calculate self._strategy.avg_qod and self_strategy.avg_loss
             # and self_strategy.global_model_update_data_size
             # within the self._strategy.aggregate function
-            self._strategy.aggregate(self._worker_manager, self._cloud_storage)
+            # self._strategy._aggerating = True
+            completed_workers: dict[str, Worker] = self._worker_manager.get_completed_workers()
+            self._strategy.aggregate(completed_workers, self._cloud_storage)
 
         # # calculate dynamic time ratial only when
         # if None not in [self._start_time, self._first_arrival, self._latest_arrival]:

@@ -8,7 +8,8 @@ Reference:
 '''
 import tensorflow as tf
 from tensorflow.keras import layers
-from asynfed.client import TensorflowSequentialModel
+# from asynfed.client import TensorflowSequentialModel
+from asynfed.client.frameworks.tensorflow import TensorflowSequentialModel
 
 
 class BasicBlock(tf.keras.Model):

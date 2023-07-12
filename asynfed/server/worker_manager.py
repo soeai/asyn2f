@@ -48,10 +48,11 @@ class WorkerManager:
 
     def add_local_update(self, client_id, message_content: dict):
         # update worker states with information from local worker.
-        self.worker_pool[client_id].weight_file = message_content['remote_worker_weight_path']
-        self.worker_pool[client_id].current_version = message_content['global_version_used']
-        self.worker_pool[client_id].loss = message_content['loss']
-        self.worker_pool[client_id].is_completed = True
+        worker: Worker = self.worker_pool[client_id]
+        worker.weight_file = message_content['remote_worker_weight_path']
+        worker.current_version = message_content['global_version_used']
+        worker.loss = message_content['loss']
+        worker.is_completed = True
 
 
     # def update_worker_after_training(self):

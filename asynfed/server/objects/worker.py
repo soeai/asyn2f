@@ -13,13 +13,13 @@ class Worker:
     def __init__(self, session_id: str, worker_id: str, sys_info: SysInfo = None, data_size: int = 10,
                  qod: float = 0.1) -> None:
         # Properties
-
+        self.is_aggregating: bool = False
+        self.is_completed: bool = False
         self.alpha = None
         self.session_id = session_id
         self.worker_id = worker_id
         self.sys_info = sys_info
         self.current_version = 0
-        self.is_completed = False
         self.access_key_id = None
         self.secret_key_id = None
         self.n_update = 0
