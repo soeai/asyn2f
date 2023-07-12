@@ -108,6 +108,7 @@ tensorflow_framework = TensorflowFramework(model=model,
 
 
 tf_client = ClientAsyncFl(model=tensorflow_framework,config=config, save_log=False)
+# tf_client = ClientAsyncFl(model=tensorflow_framework,config=config, save_log=True)
 tf_client.start()
 scheduler.start()
 pause.days(1) # or it can anything as per your need

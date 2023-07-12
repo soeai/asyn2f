@@ -19,17 +19,30 @@ conf = {
         "min_loss": 0.02,
     },
     "model_exchange_at":{
-        "performance": 0.95,
-        "epoch": 150
+        "performance": 0.85,
+        "epoch": 100
     },
     "aws": {
-        "access_key": os.getenv("access_key"),
-        "secret_key": os.getenv("secret_key"),
+        "access_key": os.getenv("aws_access_key"),
+        "secret_key": os.getenv("aws_secret_key"),
 
         "bucket_name": "cifar10-5-chunks",
         # "bucket_name": "test-lost-connection-4",
         "region_name": "ap-southeast-2",
     },
+    "minio": {
+        "access_key": os.getenv("minio_access_key"),
+        "secret_key": os.getenv("minio_secret_key"),
+
+        "client_access_key": os.getenv("client_access_key"),
+        "client_secret_key": os.getenv("client_secret_key"),
+        "endpoint_url": "http://128.214.254.126:9000",
+
+        "bucket_name": "test-cifar-client-5-chunks",
+        # "bucket_name": "test-lost-connection-4",
+        "region_name": "ap-southeast-2",
+    },
+
     "queue_consumer": {
         'exchange_name': 'asynfl_exchange',
         'exchange_type': 'topic',
@@ -52,5 +65,6 @@ conf = {
     }
 }
 strategy = AsynFL()
-fedasync_server = Server(strategy, conf, save_log=True)
+fedasync_server = Server(strategy, conf, storage= "minio", save_log=False)
+# fedasync_server = Server(strategy, conf, storage= "minio", save_log=True)
 fedasync_server.start()

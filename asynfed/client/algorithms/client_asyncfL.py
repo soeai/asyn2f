@@ -55,6 +55,9 @@ class ClientAsyncFl(Client):
             self._sleeping_time = config['training_params']['sleeping_time']
             self._tracking_period = config['training_params']['tracking_point']
             self._beta = config['training_params']['beta']
+
+            # self._min_acc = self._model_exchange_at['performance']
+            # self._min_epoch = self._model_exchange_at['epoch']
         elif self._role == "test":
             self.expected_performance = config.get('expected_performance') or 0.9
             self.expected_loss = config.get('expected_loss') or 0.1
@@ -234,9 +237,7 @@ class ClientAsyncFl(Client):
             )
             LOGGER.info("*" * 20)
 
-            # if (self._min_acc <= self._train_acc) or (self._min_epoch <= self._local_epoch):
-            if (self._train_acc >= self._model_exchange_at['performance'] or
-                    self._local_epoch >= self._model_exchange_at['epoch']):
+            if (self._min_acc <= self._train_acc) or (self._min_epoch <= self._local_epoch):
                 self.__notify_local_model_to_server()
             else:
                 LOGGER.info("*" * 20)

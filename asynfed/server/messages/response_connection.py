@@ -18,11 +18,17 @@ class ResponseConnection:
         queue_info: {
             training_exchange: "",
             monitor_queue: "",
+
+        "model_exchange_at":{
+            "performance": 0.35,
+            "epoch": 3
+        },
         }
     """
-    def __init__(self, session_id, model_info: dict, aws_info: dict, queue_info: dict, reconnect: bool):
+    def __init__(self, session_id, model_info: dict, storage_info: dict, queue_info: dict, exchange_at: dict, reconnect: bool):
         self.session_id = session_id
         self.model_info = model_info
-        self.aws_info = aws_info
+        self.storage_info = storage_info
         self.queue_info = queue_info
+        self.exchange_at = exchange_at 
         self.reconnect = reconnect

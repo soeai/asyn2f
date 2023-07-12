@@ -20,7 +20,6 @@ class AWSConnector(ABC):
         self._s3 = boto3.client('s3', aws_access_key_id=self.access_key, 
                                 aws_secret_access_key=self.secret_key, 
                                 region_name=self.region_name)
-        # self._s3 = boto3.Session().client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region_name) 
         logging.info(f'Connected to AWS server')
 
     def upload(self, local_file_path: str, remote_file_path: str, try_time=5):
