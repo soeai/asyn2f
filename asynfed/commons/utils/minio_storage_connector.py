@@ -15,10 +15,10 @@ class MinioConnector(ABC):
     time_sleep = 10
     def __init__(self, minio_config, parent=None) -> None:
         self.parent_thread = parent
-        self.access_key = minio_config['access_key']
-        self.secret_key = minio_config['secret_key']
-        self.bucket_name = minio_config['bucket_name']
-        self.endpoint_url = minio_config['endpoint_url']
+        self.access_key: str = minio_config['access_key']
+        self.secret_key: str = minio_config['secret_key']
+        self.bucket_name: str = minio_config['bucket_name']
+        self.endpoint_url: str = minio_config['endpoint_url']
         
         self._s3 = boto3.client('s3',
                                 endpoint_url=self.endpoint_url,
