@@ -19,10 +19,10 @@ conf = {
         "min_loss": 0.02,
     },
     "model_exchange_at":{
-        # "performance": 0.85,
-        # "epoch": 100
-        "performance": 0.35,
-        "epoch": 3
+        "performance": 0.85,
+        "epoch": 100
+        # "performance": 0.35,
+        # "epoch": 3
     },
     "aws": {
         "access_key": os.getenv("aws_access_key"),
@@ -40,8 +40,8 @@ conf = {
         "client_secret_key": os.getenv("client_secret_key"),
         "endpoint_url": "http://128.214.254.126:9000",
 
-        # "bucket_name": "test-cifar-client-5-chunks",
-        "bucket_name": "test-aggregating-formula",
+        "bucket_name": "test-cifar-client-5-chunks",
+        # "bucket_name": "test-aggregating-formula",
         "region_name": "ap-southeast-2",
     },
 

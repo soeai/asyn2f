@@ -35,7 +35,8 @@ class AsynFL(Strategy):
 
     # def aggregate(self, worker_manager: WorkerManager, cloud_storage):
     # def aggregate(self, completed_workers: Dict[str, Worker], cloud_storage):
-    def aggregate(self, completed_workers: dict[str, Worker], cloud_storage):
+    # def aggregate(self, completed_workers: dict [str, Worker], cloud_storage):
+    def aggregate(self, completed_workers, cloud_storage):
     # def aggregate(self, worker_manager: WorkerManager, cloud_storage: ServerStorage):
         # calculate avg, loss and datasize here
         # Get all workers that has the weight version with server
@@ -113,6 +114,7 @@ class AsynFL(Strategy):
         #     for i, layer in enumerate(worker_weights):
         #         merged_weight[i] += alpha * layer
 
+        merged_weight = None
         # download weight of each worker
         for w_id, worker in completed_workers.items():
             # download only when aggregating

@@ -1,5 +1,7 @@
 import logging
+from typing import List
 from asynfed.commons.utils import MinioConnector
+from time import sleep 
 
 LOGGER = logging.getLogger(__name__)
 
@@ -64,3 +66,42 @@ class ServerStorageMinio(MinioConnector):
             logging.info(f'Success! Bucket {self.bucket_name} deleted.')
         except Exception as e:
             logging.error(f'Error! Bucket {self.bucket_name} was not deleted. {e}')
+
+
+    def list_files(self, parent_folder: str = "clients", target_folder: str = ''):
+        """Lists all files in the specified folder and its subfolders within the MinIO bucket"""
+        try:
+            logging.info(f'Listing files in folder: {parent_folder}...')
+            response = self._s3.list_objects_v2(Bucket=self.bucket_name, Prefix=parent_folder, Delimiter='/')
+            files = []
+
+            if 'Contents' in response:
+                files += [file['Key'] for file in response['Contents'] if target_folder in file['Key']]
+
+            if 'CommonPrefixes' in response:
+                subfolders = [prefix['Prefix'] for prefix in response['CommonPrefixes']]
+                for subfolder in subfolders:
+                    files += self.list_files(subfolder, target_folder=target_folder)
+
+            logging.info(f'Found {len(files)} files in folder: {parent_folder}')
+
+            # remove the target folder path
+            files = [file for file in files if len(file.split("/")[-1]) != 0]
+            return files
+        except Exception as e:
+            logging.error(e)
+            return []
+
+        
+    def delete_files(self, file_keys: List[str]):
+        """Deletes a list of files from the MinIO bucket"""
+        try:
+            objects = [{'Key': file_key} for file_key in file_keys]
+            delete_request = {'Objects': objects}
+
+            self._s3.delete_objects(Bucket=self.bucket_name, Delete=delete_request)
+            return True
+
+        except Exception as e:
+            logging.error(e)
+            return False
