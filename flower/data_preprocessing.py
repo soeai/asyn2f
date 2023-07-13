@@ -4,6 +4,13 @@ import numpy as np
 import pickle
 from keras.preprocessing.image import ImageDataGenerator
 
+
+def normalize(images):
+    """Normalize data with mean and std."""
+    mean = np.array([0.49139968, 0.48215841, 0.4465309])
+    std = np.array([0.24703223, 0.24348513, 0.26158784])
+    return (images - mean) / std
+
 def load_to_numpy_array(dataset_path: str, height: int = 32, width: int = 32, channels: int = 3):
  # Load the cifar digit dataset files into numpy arrays
     with open(dataset_path, "rb") as f:
@@ -27,7 +34,10 @@ def load_to_numpy_array(dataset_path: str, height: int = 32, width: int = 32, ch
 def preprocess_dataset(dataset_path):
     x, y = load_to_numpy_array(dataset_path= dataset_path)
     x = x / 255
+    x = normalize(x)
+
     data_size = len(x)
+    
     y = tf.keras.utils.to_categorical(y, 10)
 
     return x, y, data_size
@@ -40,11 +50,14 @@ def get_datagen():
 
         images = tf.image.pad_to_bounding_box(images, padding, padding, target_size, target_size)
         images = tf.image.random_crop(images, (image_size, image_size, 3))
+        images = tf.image.random_flip_left_right(images)
         
         return images
 
     # Create an ImageDataGenerator with the custom_preprocessing function
+    # datagen = ImageDataGenerator(preprocessing_function=custom_preprocessing,
+    #                             horizontal_flip=True)
     datagen = ImageDataGenerator(preprocessing_function=custom_preprocessing,
-                                horizontal_flip=True)
+                                horizontal_flip=False)
 
     return datagen

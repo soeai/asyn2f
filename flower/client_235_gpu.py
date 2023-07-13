@@ -35,12 +35,13 @@ def start_client(args):
 
     chunk = args.chunk
     train_path = f'data/chunk_{chunk}.pickle'
-    test_path = 'data/test_set.pickle'
+    # test_path = 'data/test_set.pickle'
 
     x_train, y_train, data_size = preprocess_dataset(train_path)
-    x_test, y_test, _ = preprocess_dataset(test_path)
+    # x_test, y_test, _ = preprocess_dataset(test_path)
 
-    logging.info(f'x_train shape: {x_train.shape} -- y_train shape: {y_train.shape} -- x_test shape: {x_test.shape} -- y_test shape: {y_test.shape}')
+    logging.info(f'x_train shape: {x_train.shape} -- y_train shape: {y_train.shape}')
+    # logging.info(f'x_train shape: {x_train.shape} -- y_train shape: {y_train.shape} -- x_test shape: {x_test.shape} -- y_test shape: {y_test.shape}')
 
     
     datagen = get_datagen()
@@ -64,31 +65,19 @@ def start_client(args):
     optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
 
     def custom_loss_with_l2_reg(y_true, y_pred):
-        # def loss(y_true, y_pred):
         l2_loss = tf.add_n([tf.nn.l2_loss(w) for w in model.trainable_weights])
         return tf.keras.losses.categorical_crossentropy(y_true, y_pred) + lambda_value * l2_loss
 
-        # return loss
+
+
+    # Build the model
+    model.build(input_shape=(None, 32, 32, 3))
+
 
     # Compile the model
     model.compile(optimizer=optimizer, loss=custom_loss_with_l2_reg, metrics=['accuracy'],
                 loss_weights=None, weighted_metrics=None, run_eagerly=None,
                 steps_per_execution=None)
-    # regularizer = tf.keras.regularizers.l2(lambda_value)
-    #
-    # # Compile the model
-    # model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'],
-    #             loss_weights=None, weighted_metrics=None, run_eagerly=None,
-    #             steps_per_execution=None)
-    # Build the model
-    model.build(input_shape=(None, 32, 32, 3))
-
-    # Apply L2 regularization to applicable layers
-    # for layer in model.layers:
-    #     if isinstance(layer, tf.keras.layers.Conv2D) or isinstance(layer, tf.keras.layers.Dense):
-    #         layer.kernel_regularizer = regularizer
-    #     if hasattr(layer, 'bias_regularizer') and layer.use_bias:
-    #         layer.bias_regularizer = regularizer
 
 
     class CifarClient(fl.client.NumPyClient):
