@@ -34,6 +34,7 @@ class AsynFL(Strategy):
         return alpha
 
     # def aggregate(self, worker_manager: WorkerManager, cloud_storage):
+    # def aggregate(self, completed_workers: Dict[str, Worker], cloud_storage):
     def aggregate(self, completed_workers: dict[str, Worker], cloud_storage):
     # def aggregate(self, worker_manager: WorkerManager, cloud_storage: ServerStorage):
         # calculate avg, loss and datasize here
@@ -129,7 +130,7 @@ class AsynFL(Strategy):
 
             # initialized zero array if merged weight is None
             if merged_weight is None:
-                merged_weight = [np.zeros(layer.shape) for layer in worker_weights]
+                merged_weight = [np.zeros(layer.shape, dtype=np.float32) for layer in worker_weights]
 
             for i, layer in enumerate(worker_weights):
                 merged_weight[i] += worker.alpha * layer
