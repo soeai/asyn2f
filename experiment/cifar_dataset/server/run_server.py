@@ -41,7 +41,7 @@ conf = {
         "endpoint_url": "http://128.214.254.126:9000",
 
         # "bucket_name": "test-cifar-client-5-chunks",
-        "bucket_name": "test-minio-connection",
+        "bucket_name": "test-aggregating-formula",
         "region_name": "ap-southeast-2",
     },
 
@@ -67,6 +67,6 @@ conf = {
     }
 }
 strategy = AsynFL()
-# fedasync_server = Server(strategy, conf, storage= "minio", save_log=False)
-fedasync_server = Server(strategy, conf, storage= "minio", save_log=True)
+# fedasync_server = Server(strategy, conf, storage= "minio", save_log=True)
+fedasync_server = Server(strategy, conf, storage= "minio", save_log=False)
 fedasync_server.start()

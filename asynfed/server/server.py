@@ -13,6 +13,7 @@ import logging
 import threading
 import uuid
 from time import sleep
+import copy
 
 from asynfed.commons import Config
 from asynfed.commons.conf import init_config
@@ -329,12 +330,12 @@ class Server(object):
         # self._cloud_storage.download(remote_file_path=msg_received['content']['remote_worker_weight_path'],
         #                                 local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + msg_received['content']['filename'])
         #     sleep(5)
-        worker = self._worker_manager.get_worker_by_id(client_id)
+        # worker = self._worker_manager.get_worker_by_id(client_id)
         # freeze the state of worker that joining the aggregating process
         # waiting for the server to aggregate the global model
-        while worker.is_aggregating:
-            LOGGER.info(f"Receiving new local model notify from client {client_id}, but it is now joining the aggregating process. Sleep for 3 second and check the state again")
-            sleep(3)
+        # while worker.is_aggregating:
+        #     LOGGER.info(f"Receiving new local model notify from client {client_id}, but it is now joining the aggregating process. Sleep for 2 second and check the state again")
+        #     sleep(2)
 
         self._worker_manager.add_local_update(client_id, msg_received['content'])
         self._influxdb.write_training_process_data(msg_received)
@@ -400,12 +401,14 @@ class Server(object):
 
         else:
             LOGGER.info("Aggregating process...")
-            # calculate self._strategy.avg_qod and self_strategy.avg_loss
-            # and self_strategy.global_model_update_data_size
-            # within the self._strategy.aggregate function
-            # self._strategy._aggerating = True
             completed_workers: dict[str, Worker] = self._worker_manager.get_completed_workers()
-            self._strategy.aggregate(completed_workers, self._cloud_storage)
+            worker_list = copy.deepcopy(completed_workers)
+            # update the state after passing it to aggregation process
+            for w_id, worker in completed_workers.items():
+                worker.is_completed = False
+            self._strategy.aggregate(worker_list, self._cloud_storage)
+            # self._strategy.aggregate(completed_workers, self._cloud_storage)
+
 
         # # calculate dynamic time ratial only when
         # if None not in [self._start_time, self._first_arrival, self._latest_arrival]:

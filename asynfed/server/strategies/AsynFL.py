@@ -45,14 +45,15 @@ class AsynFL(Strategy):
         self.current_version += 1
         total_completed_worker = len(completed_workers)
 
+
         # update the state of worker so that when there is new message, 
         # it wait for the aggregating process to end
         LOGGER.info("*" * 20)
         for w_id, worker in completed_workers.items():
             # update aggregating state to freeze the updating info when receiving message from client
-            worker.is_aggregating = True
+            # worker.is_aggregating = True
             # reset completed state 
-            worker.is_completed = False
+            # worker.is_completed = False
             LOGGER.info(f"{worker.worker_id} qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
         LOGGER.info("*" * 20)
         
@@ -83,15 +84,42 @@ class AsynFL(Strategy):
             LOGGER.info(f"{w_id}: {worker.alpha}")
         LOGGER.info("*" * 20)
 
-        merged_weight = None
+        # # save the info of local and remote weight file of each worker
+        # # then update the aggregating state for worker
+        # # to allow it to continue update state 
+        # # when receiving local model notify from client
+        # aggregating_info = []
+        # for w_id, worker in completed_workers.items():
+        #     remote_weight_file = worker.get_remote_weight_file_path()
+        #     local_weight_file = worker.get_weight_file_path()
+        #     alpha = worker.alpha
+        #     # update the state
+        #     worker.is_aggregating = False
+        #     aggregating_info.append((remote_weight_file, local_weight_file, alpha))
+
+
+        # merged_weight = None
+        # for remote_weight_file, local_weight_file, alpha in aggregating_info:
+        #     cloud_storage.download(remote_file_path= remote_weight_file, 
+        #                     local_file_path= local_weight_file)
+
+        #     worker_weights = self.get_model_weights(local_weight_file)
+
+        #     # initialized zero array if merged weight is None
+        #     if merged_weight is None:
+        #         merged_weight = [np.zeros(layer.shape) for layer in worker_weights]
+
+        #     for i, layer in enumerate(worker_weights):
+        #         merged_weight[i] += alpha * layer
+
         # download weight of each worker
-        for cli_id, worker in completed_workers.items():
+        for w_id, worker in completed_workers.items():
             # download only when aggregating
             remote_weight_file = worker.get_remote_weight_file_path()
             local_weight_file = worker.get_weight_file_path()
 
-            # update the state of worker 
-            worker.is_aggregating = False
+            # # update the state of worker 
+            # worker.is_aggregating = False
 
             cloud_storage.download(remote_file_path= remote_weight_file, 
                                         local_file_path= local_weight_file)
