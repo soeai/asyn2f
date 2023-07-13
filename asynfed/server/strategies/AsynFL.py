@@ -63,8 +63,9 @@ class AsynFL(Strategy):
 
         sum_alpha = 0.0
 
-        # print("Alpha before being normalized")
+        LOGGER.info(f"Total data: {self.global_model_update_data_size}, avg_loss: {self.avg_loss}, avg_qod: {self.avg_qod}")
 
+        # print("Alpha before being normalized")
         for w_id, worker in completed_workers.items():
             LOGGER.info(f"Current global version: {self.current_version}")
             LOGGER.info(f"worker id {worker.worker_id} with global version used {worker.current_version}")
@@ -73,7 +74,6 @@ class AsynFL(Strategy):
             worker.alpha = self.compute_alpha(worker)
             sum_alpha += worker.alpha
 
-        LOGGER.info(f"Total data: {self.global_model_update_data_size}, avg_loss: {self.avg_loss}, avg_qod: {self.avg_qod}")
 
 
         LOGGER.info("*" * 20)
@@ -104,7 +104,7 @@ class AsynFL(Strategy):
                 merged_weight = [np.zeros(layer.shape) for layer in worker_weights]
 
             for i, layer in enumerate(worker_weights):
-                merged_weight[i] += ( 1 / total_completed_worker ) * worker.alpha * layer
+                merged_weight[i] += worker.alpha * layer
 
 
         # save weight file.

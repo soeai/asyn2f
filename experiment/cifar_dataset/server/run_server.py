@@ -19,8 +19,10 @@ conf = {
         "min_loss": 0.02,
     },
     "model_exchange_at":{
-        "performance": 0.85,
-        "epoch": 100
+        # "performance": 0.85,
+        # "epoch": 100
+        "performance": 0.35,
+        "epoch": 3
     },
     "aws": {
         "access_key": os.getenv("aws_access_key"),
