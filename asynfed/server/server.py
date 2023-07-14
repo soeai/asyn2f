@@ -2,6 +2,7 @@ from datetime import datetime
 import json
 import os, sys
 import re
+from typing import Dict
 
 from asynfed.server.messages.ping_to_client import PingToClient
 
@@ -79,7 +80,10 @@ class Server(object):
         # _t is the waiting period between two aggregating process
         self._t = self.config.get('t') or 30
         self.ping_time = self.config.get('ping_time') or 300
-        
+        self.clean_cloud_period = self.config.get('clean_cloud_storage_period') or 300
+        self.global_keep_version = self.config.get('keep_version') or 5
+        self.local_keep_version = self.config.get('keep_version') or 3
+
         # deal with either default config or random with test mode
         self._server_id: str
         if test:
@@ -105,6 +109,10 @@ class Server(object):
         self.ping_thread = threading.Thread(target=self._ping, name="fedasync_server_ping_thread")
         self.ping_thread.daemon = True
 
+        # clean cloud storage thread
+        self.clean_cloud_thread = threading.Thread(target=self._clean_cloud_storage, name="fedasync_server_clean_cloud_thread")
+        self.clean_cloud_thread.daemon = True
+
         LOGGER.info('Queue ready!')
 
         LOGGER.info(f'\n\nServer Info:\n\tQueue In : {self.config["queue_consumer"]}'
@@ -116,6 +124,7 @@ class Server(object):
     def start(self):
         self.thread_consumer.start()
         self.ping_thread.start()
+        self.clean_cloud_thread.start()
     
         while True:
             if self._is_stop_condition:
@@ -211,6 +220,38 @@ class Server(object):
                 ).to_json()
                 self.queue_producer.send_data(message)
             sleep(self.ping_time)
+
+    def _clean_cloud_storage(self):
+        while True:
+            sleep(self.clean_cloud_period)
+
+            LOGGER.info("CLEANING TIME")
+            # clean global folder first
+            files = self._cloud_storage.list_files("global-models")
+            threshold = self._strategy.current_version - self.global_keep_version
+
+            if self.best_model.model_name != "":
+                best_model_name = self.best_model.model_name
+                best_model_version = int(re.search(r"v(\d+)", best_model_name.split("_")[1]).group(1))
+            else:
+                best_model_name = None
+
+            versions = [int(file.split("_")[-1].split(".")[0].split("v")[-1]) for file in files]
+            delete_list = [file for file, version in zip(files, versions) if version <= threshold and version != best_model_version]
+
+            if delete_list is not []:
+                self._cloud_storage.delete_files(delete_list)
+
+            # clients folder
+            workers = self._worker_manager.get_all_worker()
+            for w_id, worker in workers.items():
+                files = self._cloud_storage.list_files(parent_folder= "clients", target_folder=w_id)
+                threshold = worker.newest_used_version - self.local_keep_version
+
+                delete_list = [file for file in files if int(file.split("_")[-1].split(".")[0].split("v")[-1]) <= threshold]
+                if delete_list is not []:
+                    self._cloud_storage.delete_files(delete_list)
+
 
 
     def _response_connection(self, msg_received):
@@ -333,10 +374,12 @@ class Server(object):
         else:
             LOGGER.info("Aggregating process...")
             completed_workers: dict[str, Worker] = self._worker_manager.get_completed_workers()
-            worker_list = copy.deepcopy(completed_workers)
             # update the state after passing it to aggregation process
             for w_id, worker in completed_workers.items():
                 worker.is_completed = False
+                worker.newest_used_version = worker.current_version
+
+            worker_list = copy.deepcopy(completed_workers)
             self._strategy.aggregate(worker_list, self._cloud_storage)
 
 
@@ -357,7 +400,7 @@ class Server(object):
                     return True
 
 
-    def _pass_one_local_model(self, completed_worker: dict [str, Worker]):
+    def _pass_one_local_model(self, completed_worker: Dict [str, Worker]):
         for w_id, worker in completed_worker.items():
             LOGGER.info(w_id)
             self._strategy.avg_loss = worker.loss
@@ -365,6 +408,7 @@ class Server(object):
             self._strategy.global_model_update_data_size = worker.data_size
             worker.is_completed = False
 
+            worker.newest_used_version = worker.current_version
             # download worker weight file
             remote_weight_file = worker.get_remote_weight_file_path()
             local_weight_file = worker.get_weight_file_path()

@@ -71,7 +71,7 @@ class ServerStorageMinio(MinioConnector):
     def list_files(self, parent_folder: str = "clients", target_folder: str = ''):
         """Lists all files in the specified folder and its subfolders within the MinIO bucket"""
         try:
-            logging.info(f'Listing files in folder: {parent_folder}...')
+            # logging.info(f'Listing files in folder: {parent_folder}...')
             response = self._s3.list_objects_v2(Bucket=self.bucket_name, Prefix=parent_folder, Delimiter='/')
             files = []
 
@@ -83,7 +83,7 @@ class ServerStorageMinio(MinioConnector):
                 for subfolder in subfolders:
                     files += self.list_files(subfolder, target_folder=target_folder)
 
-            logging.info(f'Found {len(files)} files in folder: {parent_folder}')
+            # logging.info(f'Found {len(files)} files in folder: {parent_folder}')
 
             # remove the target folder path
             files = [file for file in files if len(file.split("/")[-1]) != 0]

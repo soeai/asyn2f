@@ -19,10 +19,10 @@ conf = {
         "min_loss": 0.02,
     },
     "model_exchange_at":{
-        # "performance": 0.85,
-        # "epoch": 100
-        "performance": 0.25,
-        "epoch": 2
+        "performance": 0.85,
+        "epoch": 100
+        # "performance": 0.25,
+        # "epoch": 2
     },
     # "aws": {
     #     "access_key": os.getenv("aws_access_key"),
@@ -40,8 +40,9 @@ conf = {
         "client_secret_key": os.getenv("client_secret_key"),
         "endpoint_url": "http://128.214.254.126:9000",
 
+        "bucket_name": "cifar-10-5-chunks",
         # "bucket_name": "test-cifar-client-5-chunks",
-        "bucket_name": "test-refactor-10",
+        # "bucket_name": "test-refactor-13",
         # "bucket_name": "test-aggregating-formula",
         "region_name": "ap-southeast-2",
     },
@@ -68,6 +69,6 @@ conf = {
     }
 }
 strategy = AsynFL()
-# fedasync_server = Server(strategy, conf, storage= "minio", save_log=True)
-fedasync_server = Server(strategy, conf, storage= "minio", save_log=False)
+fedasync_server = Server(strategy, conf, storage= "minio", save_log=True)
+# fedasync_server = Server(strategy, conf, storage= "minio", save_log=False)
 fedasync_server.start()

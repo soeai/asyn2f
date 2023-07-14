@@ -1,0 +1,14 @@
+INFO       09:13:50 root                           __init__                             29  : Connected to MinIO server
+INFO       09:13:50 root                           create_bucket                        18  : Creating bucket cifar-10-5-chunks
+INFO       09:13:50 root                           create_bucket                        24  : Created bucket cifar-10-5-chunks
+INFO       09:13:53 asynfed.server.server          __init__                             116 : Queue ready!
+INFO       09:13:53 asynfed.server.server          __init__                             118 : 
+
+Server Info:
+	Queue In : {'exchange_name': 'asynfl_exchange', 'exchange_type': 'topic', 'queue_name': 'server_consumer', 'routing_key': 'server.#', 'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'}
+	Queue Out : {'exchange_name': 'asynfl_exchange', 'exchange_type': 'topic', 'queue_name': 'server_queue', 'routing_key': 'client.#', 'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'}
+	S3 Bucket: cifar-10-5-chunks
+
+
+INFO       09:13:53 asynfed.server.server          start                                139 : No local update found, sleep for 30 seconds...
+INFO       09:14:23 asynfed.server.server          start                                139 : No local update found, sleep for 30 seconds...

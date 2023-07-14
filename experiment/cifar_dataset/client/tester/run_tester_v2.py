@@ -80,8 +80,8 @@ tensorflow_framework = TensorflowFramework(model=model,
 
 
 # tf_client = ClientAsyncFl(model=tensorflow_framework,config=config)
-# tf_client = ClientAsyncFl(model=tensorflow_framework, config=config, save_log=True)
-tf_client = ClientAsyncFl(model=tensorflow_framework, config=config, save_log=False)
+tf_client = ClientAsyncFl(model=tensorflow_framework, config=config, save_log=True)
+# tf_client = ClientAsyncFl(model=tensorflow_framework, config=config, save_log=False)
 
 tf_client.start()
 scheduler.start()

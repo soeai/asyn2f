@@ -38,7 +38,7 @@ class WorkerManager:
         """
         return len(self.worker_pool)
 
-    def get_all(self) -> Dict[str, Worker]:
+    def get_all_worker(self) -> Dict [str, Worker]:
         """Get all Workers from the worker_pools attribute.
         Returns:
            Dict[str, Worker]: A dictionary of all Worker objects in the
