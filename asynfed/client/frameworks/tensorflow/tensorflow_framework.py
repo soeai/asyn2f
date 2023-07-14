@@ -43,9 +43,9 @@ class TensorflowFramework(ModelWrapper):
         if role == "train":
             self.epoch = config['training_params']['epoch']
             self.qod = config['training_params']['qod']
-            self.delta_time = config['training_params']['delta_time']
             self.regularization = config['training_params']['regularization']
             self.lambda_value = config['training_params']['lambda_value']
+            # self.delta_time = config['others']['delta_time']
         
             # self.data_size = data_size
         else:

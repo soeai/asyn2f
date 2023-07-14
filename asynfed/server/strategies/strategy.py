@@ -10,7 +10,7 @@ class Strategy(ABC):
     """
 
     def __init__(self):
-        self.current_version = 1
+        self.current_version: int = 1
         self.model_id = str(uuid.uuid4())
         # change after each update time
         self.global_model_update_data_size = 0
@@ -24,14 +24,17 @@ class Strategy(ABC):
     def select_client(self, all_clients) -> List[str]:
         """ Implement the client selection logic by
         """
+        pass
 
     @abstractmethod
-    def aggregate(self, completed_workers, cloud_storage) -> None:
+    def aggregate(self, completed_workers, cloud_storage):
         """Aggregate algorithm.
         """
+        pass
 
     @abstractmethod
     def get_model_weights(self, file_path):
         """
         """
+        pass
 

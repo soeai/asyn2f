@@ -35,9 +35,12 @@ config = {
         'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
     },
     "testing_params": {
-        # setup differently for different device
         "gpu_index": 0,
         "batch_size": 128,
+    },
+    "stop_conditions": {
+        "expected_performance": 0.95,
+        "expected_loss": 0.02,
     }
 
 }

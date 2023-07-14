@@ -1,10 +1,11 @@
 import logging
 import boto3
 import json
+
+
 from asynfed.commons.utils import AWSConnector
 
 LOGGER = logging.getLogger(__name__)
-
 
 class ServerStorageAWS(AWSConnector):
     def __init__(self, aws_config):
@@ -12,7 +13,6 @@ class ServerStorageAWS(AWSConnector):
         self.iam = boto3.client('iam', aws_access_key_id=aws_config['access_key'],
                                 aws_secret_access_key=aws_config['secret_key'])
         self.client_keys = None
-        # self.bucket_name = aws_config['bucket_name']
 
         try:
             logging.info(f"Creating bucket {self.bucket_name}")
@@ -132,9 +132,9 @@ class ServerStorageAWS(AWSConnector):
             LOGGER.info("*" * 20)
             return 'global-models/testweight_v1.pkl'
 
-    def delete_bucket(self):
-        try:
-            self._s3.delete_bucket(Bucket=self.bucket_name)
-            logging.info(f'Success! Bucket {self.bucket_name} deleted.')
-        except Exception as e:
-            logging.error(f'Error! Bucket {self.bucket_name} was not deleted. {e}')
+    # def delete_bucket(self):
+    #     try:
+    #         self._s3.delete_bucket(Bucket=self.bucket_name)
+    #         logging.info(f'Success! Bucket {self.bucket_name} deleted.')
+    #     except Exception as e:
+    #         logging.error(f'Error! Bucket {self.bucket_name} was not deleted. {e}')

@@ -60,12 +60,12 @@ class ServerStorageMinio(MinioConnector):
             LOGGER.info("*" * 20)
             return 'global-models/testweight_v1.pkl'
 
-    def delete_bucket(self):
-        try:
-            self._s3.delete_bucket(Bucket=self.bucket_name)
-            logging.info(f'Success! Bucket {self.bucket_name} deleted.')
-        except Exception as e:
-            logging.error(f'Error! Bucket {self.bucket_name} was not deleted. {e}')
+    # def delete_bucket(self):
+    #     try:
+    #         self._s3.delete_bucket(Bucket=self.bucket_name)
+    #         logging.info(f'Success! Bucket {self.bucket_name} deleted.')
+    #     except Exception as e:
+    #         logging.error(f'Error! Bucket {self.bucket_name} was not deleted. {e}')
 
 
     def list_files(self, parent_folder: str = "clients", target_folder: str = ''):
