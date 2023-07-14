@@ -242,7 +242,7 @@ class Server(object):
 
             if delete_list:
                 LOGGER.info("=" * 20)
-                LOGGER.info(f"current global version: {current_version}, threshold: {threshold}")
+                LOGGER.info(f"current global version: {current_version}, best model version: {best_model_version}, threshold: {threshold}")
                 LOGGER.info(delete_list)
                 LOGGER.info("=" * 20)
                 self._cloud_storage.delete_files(delete_list)
@@ -251,7 +251,8 @@ class Server(object):
             workers = self._worker_manager.get_all_worker()
             for w_id, worker in workers.items():
                 files = self._cloud_storage.list_files(parent_folder= "clients", target_folder=w_id)
-                threshold = worker.newest_used_version - self.local_keep_version
+                worker_current_update_version = worker.newest_used_version
+                threshold = worker_current_update_version - self.local_keep_version
 
                 delete_list = [file for file in files if int(file.split("_")[-1].split(".")[0].split("v")[-1]) <= threshold]
                 if delete_list:
