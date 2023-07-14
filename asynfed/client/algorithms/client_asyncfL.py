@@ -50,14 +50,16 @@ class ClientAsyncFl(Client):
             self._expected_performance: float = config.get('stop_conditions', {}).get('expected_performance', 0.95)
             self._expected_loss: float = config.get('stop_conditions', {}).get('expected_loss', 0.02)
 
+
     def train(self):
+        # for notifying global version used to server purpose
+        self._merged_global_version = self._current_global_version
+
         # for tensorflow model, there is some conflict in the dimension of 
         # an initialized model and al already trained one
         # fixed this problem
         # by training the model before loading the global weights
         current_global_weights = self._load_weights_from_file(self._global_model_name, Config.TMP_GLOBAL_MODEL_FOLDER)
-        # for notifying global version used to server purpose
-        self._merged_global_version = self._current_global_version
         try:
             self.model.set_weights(current_global_weights)
         except Exception as e:
@@ -73,17 +75,10 @@ class ClientAsyncFl(Client):
         LOGGER.info("ClientModel Start Training")
         LOGGER.info("=" * 40)
 
-        for i in range(self.model.epoch):
-            self._local_epoch += 1
+        for _ in range(self.model.epoch):
             # record some info of the training process
+            self._local_epoch += 1
             batch_num = 0
-            # if user require
-            # Tracking the training process every x samples 
-            # x define by user
-            if self._tracking_period is not None:
-                self._tracking_point = self._tracking_period
-                self._multiplier = 1
-
             # training per several epoch
             LOGGER.info(f"Enter epoch {self._local_epoch}")
 
@@ -93,39 +88,42 @@ class ClientAsyncFl(Client):
             self.model.reset_test_loss()
             self.model.reset_test_performance()
 
+            # if user require
+            # Tracking the training process every x samples 
+            # x define by user
+            if self._tracking_period is not None:
+                self._tracking_point = self._tracking_period
+                self._multiplier = 1
+
+            # training in each batch
             for images, labels in self.model.train_ds:
                 batch_num += 1
+                # get the previous weights before the new training process within each batch
+                self.model.previous_weights = self.model.get_weights()
+                # training normally
+                self._train_acc, self._train_loss = self.model.fit(images, labels)
 
                 # Tracking the training process every x samples 
                 # x define by user as trakcing_period
                 if self._tracking_period is not None:
                     self._tracking_training_process(batch_num)
 
-                # get the previous weights before the new training process within each batch
-                self.model.previous_weights = self.model.get_weights()
-                # training normally
-                self._train_acc, self._train_loss = self.model.fit(images, labels)
-
                 # merging when receiving a new global model
                 if self._new_model_flag:
-                    # before the merging process happens, need to retrieve current weights and global weights
-                    # previous, current and global weights are used in the merged process
-
                     # update some tracking info
                     self._previous_merged_global_version = self._previous_global_version
                     self._merged_global_version = self._current_global_version
 
+                    # before the merging process happens, need to retrieve current weights and global weights
+                    # previous, current and global weights are used in the merged process
                     self.model.current_weights = self.model.get_weights()
                     # load global weights from file
-                    LOGGER.info("=" * 20)
-                    LOGGER.info("THIS IS INTENDED")
-                    LOGGER.info("=" * 20)
-
                     self.model.global_weights = self._load_weights_from_file(self._global_model_name, Config.TMP_GLOBAL_MODEL_FOLDER)
 
                     LOGGER.info(f"New model ? - {self._new_model_flag}")
                     LOGGER.info(
                         f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._merged_global_version}, current global version {self._previous_merged_global_version}")
+                        
                     # merging
                     self.__merge()
                     # changing flag status
@@ -176,7 +174,7 @@ class ClientAsyncFl(Client):
             self._get_model_dim_ready()
             self.model.set_weights(current_global_weights)
 
-        # reset after each global version
+        # reset state after testing each global model
         self.model.reset_test_loss()
         self.model.reset_test_performance()
         
@@ -195,8 +193,7 @@ class ClientAsyncFl(Client):
         
         self.queue_producer.send_data(message)
 
-        self._new_model_flag = False
-
+        # check the stop conditions
         if performance > self._expected_performance or loss < self._expected_loss:
             message = MessageV2(
                 headers={'timestamp': time_now(), 'message_type': Config.CLIENT_NOTIFY_STOP, 'session_id': self._session_id, 'client_id': self._client_id},
@@ -316,4 +313,4 @@ class ClientAsyncFl(Client):
         if total_trained_sample > self._tracking_point:
             LOGGER.info(f"Training up to {total_trained_sample} samples")
             self._multiplier += 1
-            self._tracking_point = self._tracking_point * self._multiplier
+            self._tracking_point = self._tracking_period * self._multiplier

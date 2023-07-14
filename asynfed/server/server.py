@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 import os, sys
 import re
 
@@ -16,7 +17,7 @@ from time import sleep
 import copy
 
 from asynfed.commons import Config
-from asynfed.commons.conf import init_config
+from asynfed.commons.conf import init_config as _init_config
 
 from asynfed.commons.messages import MessageV2
 from asynfed.commons.utils import AmqpConsumer
@@ -25,7 +26,7 @@ from asynfed.commons.utils import  time_now
 
 
 from .strategies import Strategy
-from .objects import Worker
+from .objects import Worker, BestModel
 from .server_aws_storage_connector import ServerStorageAWS
 from .server_minio_storage_connector import ServerStorageMinio
 
@@ -51,8 +52,7 @@ class Server(object):
     - This is the abstract class for server, we delegate the stop condition to be decided by user.
     - Extend this Server class and implement the stop condition methods.
     """
-
-    def __init__(self, strategy: Strategy, config: dict, storage: str = "minio", save_log: bool = False) -> None:
+    def __init__(self, strategy: Strategy, config: dict, storage: str = "minio", test: bool = False, save_log: bool = False) -> None:
         """
         config structure
         {
@@ -76,144 +76,80 @@ class Server(object):
                 "min_loss": 0.1
             },
             "model_exchange_at":{
-                    "performance": 85,
+                    "performance": 0.85,
                     "epoch": 100
             }
         }
         """
         super().__init__()
-        init_config("server", save_log)
-
-
-        self._cloud_storage_type = storage
-
-        if config.get('stop_conditions'):
-            self.stop_conditions = config.get('stop_conditions')
-        else:
-            self.stop_conditions = {
-                'max_version': 300,
-                'max_performance': 0.95,
-                'min_loss': 0.01
-            }
-        self.model_exchange_at: dict
-        if config.get('model_exchange_at'):
-            self.model_exchange_at = config.get("model_exchange_at")
-        else:
-            self.model_exchange_at = {
-                "performance": 0.85,
-                "epoch": 100}
-
-        self.weights_trained = {}
-        self._is_stop_condition = False
+        # initialized some config for server
+        _init_config("server", save_log)
 
         self.config = config
-        self._t = config.get('t') or 15
-        self.ping_time = config.get('ping_time') or 300
         self._strategy = strategy
-        self._strategy._aggregating: bool = False
 
-        # variables
-        self._is_downloading = False
-        self._is_new_global_model = False
+        self._cloud_storage_type = storage
+        self.stop_conditions = self.config.get('stop_conditions', {'max_version': 300, 'max_performance': 0.95, 'min_loss': 0.01})
+        self.model_exchange_at = self.config.get('model_exchange_at', {"performance": 0.85, "epoch": 100})
 
-        # # # Record arive time for calculate dynamic waiting time for server.
-        # self._start_time = None
-        # self._first_arrival = None
-        # self._latest_arrival = None
+        # stop conditions
+        self._is_stop_condition = False
 
-        if config.get('test'):
-            self._server_id = self.config['server_id']
+        # initialize an object to save best model
+        self.best_model = BestModel()
+
+        # time related
+        # _t is the waiting period between two aggregating process
+        self._t = self.config.get('t') or 30
+        self.ping_time = self.config.get('ping_time') or 300
+        
+        # 
+
+        self._server_id: str
+        if test:
+            self._server_id = self.config.get('server_id', f'server-{str(uuid.uuid4())}')
         else:
             self._server_id = f'server-{str(uuid.uuid4())}'
 
-        # All this information was decided by server to prevent conflict
-        # because multiple server can use the same RabbitMQ, S3 server.
-        self._bucket_name: str
-        if self._cloud_storage_type == "s3":
-            if config.get('aws').get('bucket_name') is None or self.config.get('aws').get('bucket_name') == "":
-                config['aws']['bucket_name'] = self._server_id
-                self._bucket_name = self._server_id
-            else:
-                self._bucket_name = config['aws']['bucket_name']
-        else:
-            if config.get('minio').get('bucket_name') is None or self.config.get('minio').get('bucket_name') == "":
-                config['minio']['bucket_name'] = self._server_id
-                self._bucket_name = self._server_id
-            else:
-                self._bucket_name = config['minio']['bucket_name']
 
+        self._bucket_name: str
+        # Initialize dependencies
+        self._cloud_storage, self._bucket_name = self._set_up_cloud_storage()
+        self._worker_manager: WorkerManager = WorkerManager()
+        self._influxdb = InfluxDB(config['influxdb'])
+
+        # queue
+        self.queue_consumer = AmqpConsumer(self.config['queue_consumer'], self)
+        self.queue_producer = AmqpProducer(self.config['queue_producer'])
+
+        self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
+        self.thread_consumer.daemon = True
+
+        # ping thread
+        self.ping_thread = threading.Thread(target=self._ping, name="fedasync_server_ping_thread")
+        self.ping_thread.daemon = True
+
+        LOGGER.info('Queue ready!')
 
         LOGGER.info(f'\n\nServer Info:\n\tQueue In : {self.config["queue_consumer"]}'
                     f'\n\tQueue Out : {self.config["queue_producer"]}'
                     f'\n\tS3 Bucket: {self._bucket_name}'
                     f'\n\n')
 
-        # Initialize dependencies
-        self._worker_manager: WorkerManager = WorkerManager()
+        # # # Record arive time for calculate dynamic waiting time for server.
+        # self._start_time = None
+        # self._first_arrival = None
+        # self._latest_arrival = None
 
-        if storage == "s3":
-            self._cloud_storage: ServerStorageAWS = ServerStorageAWS(config['aws'])
-        elif storage == "minio":
-            self._cloud_storage: ServerStorageMinio = ServerStorageMinio(config['minio'])
-        else:
-            LOGGER.info("There is no cloud storage")
-            sys.exit(0)
-
-
-        self._influxdb = InfluxDB(config['influxdb'])
-
-        self.thread_consumer = threading.Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
-        self.thread_consumer.daemon = True
-        self.queue_consumer = AmqpConsumer(self.config['queue_consumer'], self)
-        self.queue_producer = AmqpProducer(self.config['queue_producer'])
-
-        self.ping_thread = threading.Thread(target=self._ping, name="fedasync_server_ping_thread")
-        self.ping_thread.daemon = True
-
-        LOGGER.info('Queue ready!')
-
-
-    def _start_consumer(self):
-        self.queue_consumer.start()
-
-    def _start_ping(self):
-        self.ping_thread.start()
-
-    def _ping(self):
-        while True:
-            for client_id in self._worker_manager.list_connected_workers():
-                LOGGER.info(f'Ping to client {client_id}')
-                content = PingToClient(client_id)
-                message = MessageV2(
-                        headers={'timestamp': time_now(), 'message_type': Config.SERVER_PING_TO_CLIENT, 'server_id': self._server_id},
-                        content=content
-                ).to_json()
-                self.queue_producer.send_data(message)
-            sleep(self.ping_time)
 
     def start(self):
         self.thread_consumer.start()
-        self._start_ping()
+        self.ping_thread.start()
+    
         while True:
             if self._is_stop_condition:
                 LOGGER.info('Stop condition is reached!')
                 break
-            # if self.__is_stop_condition({"version": self._strategy.current_version}):
-            #     content = StopTraining()
-            #     message = MessageV2(
-            #             headers={'timestamp': time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id},
-            #             content=content
-            #             ).to_json()
-            #     self.queue_producer.send_data(message)
-
-            #     best_weight = None  
-            #     best_acc = 0
-            #     for k, v in self.weights_trained.items():
-            #         if v['performance'] > best_acc:
-            #             best_acc = v['performance']
-            #             best_weight = k
-            #     LOGGER.info(f'Best weight: {best_weight} - acc: {best_acc} -- loss: {self.weights_trained[best_weight]["loss"]}')
-            #     break
 
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
@@ -223,13 +159,9 @@ class Server(object):
             elif n_local_updates > 0:
                 try:
                     LOGGER.info(f'Start update global model with {n_local_updates} local updates')
-                    # calculate self._strategy.avg_qod and self._strategy.avg_loss
-                    # and self_strategy.global_model_update_data_size
-                    # within the self.__update function
-                    self.__update(n_local_updates)
-                    # Clear worker queue after aggregation.
-                    # self._worker_manager.update_worker_after_training()
+                    self._update(n_local_updates)
                     self._publish_global_model()
+
                 except Exception as e:
                     raise e
 
@@ -246,6 +178,66 @@ class Server(object):
         elif msg_type == Config.CLIENT_PING_MESSAGE:
             MessageV2.print_message(msg_received)
             self._worker_manager.update_worker_last_ping(msg_received['headers']['client_id'])
+        
+    def _publish_global_model(self):
+        # increment the current version to 1
+        self._strategy.current_version += 1
+
+        local_filename = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
+        remote_filename = f'global-models/{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
+
+        self._cloud_storage.upload(local_filename, remote_filename)
+
+        message = MessageV2(
+            headers={"timestamp": time_now(), "message_type": Config.SERVER_NOTIFY_MESSAGE, "server_id": self._server_id},
+            content=NotifyNewModel(
+                chosen_id=[],
+                model_id=self._strategy.model_id,
+                global_model_version=self._strategy.current_version,
+                global_model_name=f'{self._strategy.model_id}_v{self._strategy.current_version}.pkl',
+                global_model_update_data_size=self._strategy.global_model_update_data_size,
+                avg_loss=self._strategy.avg_loss,
+                avg_qod=self._strategy.avg_qod,
+            )
+        ).to_json()
+        self.queue_producer.send_data(message)
+
+
+    def _set_up_cloud_storage(self):
+        storage_type = 'aws' if self._cloud_storage_type == "s3" else 'minio'
+        bucket_name = self.config.get(storage_type, {}).get('bucket_name')
+
+        if not bucket_name:
+            bucket_name = self._server_id
+            self.config.setdefault(storage_type, {})['bucket_name'] = bucket_name
+
+
+        if self._cloud_storage_type == "s3":
+            cloud_storage: ServerStorageAWS = ServerStorageAWS(self.config['aws'])
+        elif self._cloud_storage_type == "minio":
+            cloud_storage: ServerStorageMinio = ServerStorageMinio(self.config['minio'])
+        else:
+            LOGGER.info("There is no cloud storage")
+            sys.exit(0)
+
+        return cloud_storage, bucket_name
+
+
+    def _start_consumer(self):
+        self.queue_consumer.start()
+
+
+    def _ping(self):
+        while True:
+            for client_id in self._worker_manager.list_connected_workers():
+                LOGGER.info(f'Ping to client {client_id}')
+                content = PingToClient(client_id)
+                message = MessageV2(
+                        headers={'timestamp': time_now(), 'message_type': Config.SERVER_PING_TO_CLIENT, 'server_id': self._server_id},
+                        content=content
+                ).to_json()
+                self.queue_producer.send_data(message)
+            sleep(self.ping_time)
 
 
     def _response_connection(self, msg_received):
@@ -260,6 +252,7 @@ class Server(object):
             worker = self._worker_manager.get_worker_by_id(client_id)
             access_key, secret_key = worker.access_key_id, worker.secret_key_id
         else:
+            # new entry
             reconnect = False
             worker = Worker(
                     session_id=session_id,
@@ -268,43 +261,39 @@ class Server(object):
                     data_size=content['data_description']['data_size'],
                     qod=content['data_description']['qod'],
             )
-            LOGGER.info("*" * 20)
-            LOGGER.info(worker)
-            LOGGER.info("*" * 20)
+            # create keys to cloud storage for worker
             access_key, secret_key = self._cloud_storage.get_client_key(client_id)
-            
             worker.access_key_id = access_key
             worker.secret_key_id = secret_key
+
+            # add to the worker manager 
             self._worker_manager.add_worker(worker)
 
+            # create a local folder name to store weight file of worker
             folder_name = f'{Config.TMP_LOCAL_MODEL_FOLDER}{worker.worker_id}'
             if not os.path.exists(folder_name):
                 os.makedirs(folder_name)
 
-        try:
-            model_name = self._cloud_storage.get_newest_global_model().split('.')[0]
-            model_version = model_name.split('_')[1][1:]
+        LOGGER.info("*" * 20)
+        LOGGER.info(worker)
+        LOGGER.info("*" * 20)
 
-        except Exception as e:
-            model_version = -1
-
-        try:
-            self._strategy.current_version = int(model_version)
-        except Exception as e:
-            logging.error(e)
-            self._strategy.current_version = 1
+        # notify newest global model to worker
 
         model_url = self._cloud_storage.get_newest_global_model()
+        global_model_name = model_url.split("/")[-1]
+        model_version = int(re.search(r"v(\d+)", global_model_name.split("_")[1]).group(1))
+        self._strategy.current_version = model_version
+
         model_info = {"model_url": model_url, 
-                      "global_model_name": model_url.split("/")[-1], 
-                      "model_version": int(re.findall(r'\d+', model_url.split("/")[1])[0]),
+                      "global_model_name": global_model_name, 
+                      "model_version": model_version,
                       "exchange_at": self.model_exchange_at
                     }
         
         storage_info = {"storage_type": self._cloud_storage_type,
                     "access_key": access_key,
                     "secret_key": secret_key, 
-                    "parent": None,
                     "bucket_name": self._bucket_name}
         
         if self._cloud_storage_type == "s3":
@@ -323,55 +312,53 @@ class Server(object):
         ).to_json()
         self.queue_producer.send_data(message)
 
+
     def _handle_client_notify_model(self, msg_received):
         MessageV2.print_message(msg_received)
         client_id = msg_received['headers']['client_id']
-
-        # self._cloud_storage.download(remote_file_path=msg_received['content']['remote_worker_weight_path'],
-        #                                 local_file_path=Config.TMP_LOCAL_MODEL_FOLDER + msg_received['content']['filename'])
-        #     sleep(5)
-        # worker = self._worker_manager.get_worker_by_id(client_id)
-        # freeze the state of worker that joining the aggregating process
-        # waiting for the server to aggregate the global model
-        # while worker.is_aggregating:
-        #     LOGGER.info(f"Receiving new local model notify from client {client_id}, but it is now joining the aggregating process. Sleep for 2 second and check the state again")
-        #     sleep(2)
-
+        # only update the remote local weight path, not download to the device
         self._worker_manager.add_local_update(client_id, msg_received['content'])
+        # write to influx db
         self._influxdb.write_training_process_data(msg_received)
+
+
 
     def _handle_client_notify_evaluation(self, msg_received):
         MessageV2.print_message(msg_received)
-        self.weights_trained[msg_received['content']['weight_file']] = {'loss': msg_received['content']['loss'], 'performance': msg_received['content']['performance']}
-        if self.__is_stop_condition(msg_received['content']):
+
+        info = msg_received['content']
+
+        if info['performance'] > self.best_model.performance:
+            self.best_model.update(info)
+            self._write_record()
+
+        info['version'] = int(re.search(r"v(\d+)", info['weight_file'].split("_")[1]).group(1))
+
+        if self._check_stop_conditions(info):
             content = StopTraining()
             message = MessageV2(
                     headers={'timestamp': time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id},
                     content=content
             ).to_json()
             self.queue_producer.send_data(message)
-
-            best_weight = None  
-            best_acc = 0
-            for k, v in self.weights_trained.items():
-                if v['performance'] > best_acc:
-                    best_acc = v['performance']
-                    best_weight = k
-
-            LOGGER.info(f'Best weight: {best_weight} - acc: {best_acc} -- loss: {self.weights_trained[best_weight]["loss"]}')
+            LOGGER.info("=" * 50)
+            LOGGER.info("Stop condition met. Log out best model")
+            LOGGER.info(self.best_model)
+            LOGGER.info("=" * 50)
 
             self._is_stop_condition = True
             sys.exit(0)
 
+        else:
+            LOGGER.info(f"Up to testing global epoch {info['version']}. Best model is:")
+            LOGGER.info(self.best_model)
+            
 
-    def __update(self, n_local_updates):
+    def _update(self, n_local_updates):
         if n_local_updates == 1:
-            self._strategy.current_version += 1
             LOGGER.info("Only one update from client, passing the model to all other client in the network...")
             completed_workers: dict[str, Worker] = self._worker_manager.get_completed_workers()
 
-            # get the only worker
-            # worker = next(iter(completed_workers.values))
             for w_id, worker in completed_workers.items():
                 LOGGER.info(w_id)
                 self._strategy.avg_loss = worker.loss
@@ -379,25 +366,17 @@ class Server(object):
                 self._strategy.global_model_update_data_size = worker.data_size
                 worker.is_completed = False
 
-                # print("*" * 20)
-                # print("remote file path: ", worker.get_remote_weight_file_path())
-                # print("save file path: ", worker.get_remote_weight_file_path())
-                # print("*" * 20)
-
+                # download worker weight file
                 remote_weight_file = worker.get_remote_weight_file_path()
                 local_weight_file = worker.get_weight_file_path()
                 self._cloud_storage.download(remote_file_path= remote_weight_file, 
                                              local_file_path= local_weight_file)
-            # print("*" * 10)
-            # print(f"Avg loss, avg qod, global datasize: {self._strategy.avg_loss}, {self._strategy.avg_qod}, {self._strategy.global_model_update_data_size}")
-            # print("*" * 10)
 
             # copy the worker model weight to the global model folder
             import shutil
-            # local_weight_file = worker.get_weight_file_path()
-            save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self._strategy.get_global_model_filename()
+            save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self._strategy.get_new_global_model_filename()
+            # LOGGER.info(save_location)
             shutil.copy(local_weight_file, save_location)
-
 
         else:
             LOGGER.info("Aggregating process...")
@@ -407,19 +386,9 @@ class Server(object):
             for w_id, worker in completed_workers.items():
                 worker.is_completed = False
             self._strategy.aggregate(worker_list, self._cloud_storage)
-            # self._strategy.aggregate(completed_workers, self._cloud_storage)
 
 
-        # # calculate dynamic time ratial only when
-        # if None not in [self._start_time, self._first_arrival, self._latest_arrival]:
-        #     t1 = time_diff(self._start_time, self._first_arrival)
-        #     t2 = time_diff(self._start_time, self._latest_arrival)
-
-        #     # get avg complete time of current epoch
-        #     self._t = (t2 + t1) / 2 
-        #     # self._t = (t2 + t1) / 2 + 2 * t1
-
-    def __is_stop_condition(self, info):
+    def _check_stop_conditions(self, info):
         for k, v in info.items():
             if k == "loss" and self.stop_conditions.get("min_loss") is not None:
                 if v <= self.stop_conditions.get("min_loss"):
@@ -429,36 +398,24 @@ class Server(object):
                 if v >= self.stop_conditions.get("max_performance"):
                     LOGGER.info(f"Stop condition: performance {v} >= {self.stop_conditions.get('max_performance')}")
                     return True
-            # elif k == "version" and self.stop_conditions.get("max_version") is not None:
-            #     if v >= self.stop_conditions.get("max_version"):
-            #         LOGGER.info(f"Stop condition: version {v} >= {self.stop_conditions.get('max_version')}")
-            #         return True
-            elif k == "weight_file" and self.stop_conditions.get("max_version") is not None:
-                version = int(v.split("_")[-1][1])
-                if version >= self.stop_conditions.get("max_version"):
-                    LOGGER.info(f"Stop condition: version {version} >= {self.stop_conditions.get('max_version')}")
+                
+            elif k == "version" and self.stop_conditions.get("max_version") is not None:
+                if v >= self.stop_conditions.get("max_version"):
+                    LOGGER.info(f"Stop condition: version {v} >= {self.stop_conditions.get('max_version')}")
                     return True
 
-    def _publish_global_model(self):
-        local_filename = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
-        remote_filename = f'global-models/{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
-        self._cloud_storage.upload(local_filename, remote_filename)
 
-        message = MessageV2(
-            headers={"timestamp": time_now(), "message_type": Config.SERVER_NOTIFY_MESSAGE, "server_id": self._server_id},
-            content=NotifyNewModel(
-                chosen_id=[],
-                model_id=self._strategy.model_id,
-                global_model_version=self._strategy.current_version,
-                global_model_name=f'{self._strategy.model_id}_v{self._strategy.current_version}.pkl',
-                global_model_update_data_size=self._strategy.global_model_update_data_size,
-                avg_loss=self._strategy.avg_loss,
-                avg_qod=self._strategy.avg_qod,
-            )
-        ).to_json()
-        self.queue_producer.send_data(message)
+    def _write_record(self):
+        folder_name = "best_model"
+        if not os.path.exists(folder_name):
+            os.makedirs(folder_name)
+        # write the record of best model
+        data = {
+            "filename": self.best_model.model_name,
+            "performance": self.best_model.performance,
+            "loss": self.best_model.loss
+        }
+        with open(f"{folder_name}/{self._server_id}.json", "w") as file:
+            json.dump(data, file)
 
-        # # Get the starting time of the epoch and reset vars
-        # self._start_time = time_now()
-        # self._first_arrival = None
-        # self._latest_arrival = None
+    

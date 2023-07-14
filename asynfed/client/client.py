@@ -40,7 +40,6 @@ class Client(object):
         self.config = config
         self._role = config.get("role") or "train"
 
-
         # fixed property
         self.model = model
         self._local_data_size = self.model.data_size
@@ -75,18 +74,19 @@ class Client(object):
 
         self._client_id = self.config.get('client_id') or str(uuid.uuid4())
         self._session_id = ""
-
+        # some boolean variable to track the state of client
         self._is_connected = False
         self._is_training = False
         self._new_model_flag = False
 
-        # save in profile
+        # properties saved in profile file
         self._save_global_avg_qod = None
         self._save_global_avg_loss = None
         self._save_global_model_update_data_size = None
         self._save_global_model_version = None
 
-        # self.config['queue_consumer']['queue_name'] = "queue_" + self._client_id
+        # set up a queue for each client
+        self.config['queue_consumer']['queue_name'] = "queue_" + self._client_id
 
         # Initialize profile for client
         if not os.path.exists("profile.json"):
@@ -94,6 +94,7 @@ class Client(object):
         else:
             self._load_profile()
 
+        # queue related
         self.thread_consumer = threading.Thread(target=self._start_consumer)
         self.queue_consumer = AmqpConsumer(self.config['queue_consumer'], self)
         self.queue_producer = AmqpProducer(self.config['queue_producer'])
@@ -114,17 +115,38 @@ class Client(object):
     def test(self):
         pass
 
-    def on_download(self, result):
-        if result:
-            self._new_model_flag = True
-            # LOGGER.info(f"Successfully downloaded new global model, version {self._global_model_version}")
-            LOGGER.info(f"ON PARENT")
-        else:
-            LOGGER.info("Download model failed. Passed this version!")
 
-    def on_upload(self, result):
-        pass
+    # Run the client
+    def start(self):
+        self.thread_consumer.start()
+        while not self._is_stop_condition:
+            sleep(30)
 
+        sys.exit(0)
+
+    def start_training_thread(self):
+        LOGGER.info("Start training thread.")
+        training_thread = threading.Thread(
+            target=self.train,
+            name="client_training_thread")
+        training_thread.daemon = True
+        self._is_training = True
+        training_thread.start()
+
+    # for tester, don't need to create a thread 
+    # because tester don't need to run all the time
+    # just test when receiving global notify message from server
+    # def start_testing_thread(self):
+    #     LOGGER.info("Start testing thread.")
+    #     testing_thread = threading.Thread(
+    #         target=self.test,
+    #         name="client_testing_thread")
+    #     testing_thread.daemon = True
+    #     self._is_testing = True
+    #     testing_thread.start()
+
+
+    # queue handling
     def on_message_received(self, ch, method, props, body):
         msg_received = MessageV2.deserialize(body.decode('utf-8'))
 
@@ -142,6 +164,34 @@ class Client(object):
         elif msg_received['headers']['message_type'] == Config.SERVER_PING_TO_CLIENT:
             self._handle_server_ping_to_client(msg_received)
 
+
+    # cloud storage - report result on parent process
+    def on_download(self, result):
+        if result:
+            self._new_model_flag = True
+            LOGGER.info(f"ON PARENT. Successfully downloaded new global model, version {self._current_global_version}")
+        else:
+            LOGGER.info("ON PARENT. Download model failed. Passed this version!")
+
+    def on_upload(self, result):
+        pass
+
+
+    def _send_init_message(self):
+        data_description = {
+            'data_size': self._local_data_size,
+            'qod': self._local_qod,
+        }
+        message = MessageV2(
+            headers={'timestamp': time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
+            content=InitConnection(
+                role=self._role,
+                data_description=data_description,
+            )
+        ).to_json()
+        self.queue_producer.send_data(message)
+
+    # queue handling functions
     def _handle_server_ping_to_client(self, msg_received):
         if msg_received['content']['client_id'] == self._client_id:
             MessageV2.print_message(msg_received)
@@ -151,6 +201,112 @@ class Client(object):
             self.queue_producer.send_data(message)
 
 
+    def _handle_server_init_response(self, msg_received):
+        # MessageV2.print_message(msg_received)
+        LOGGER.info(msg_received)
+
+        content = msg_received['content']
+        if content['reconnect'] is True:
+            LOGGER.info("Reconnect to server.")
+
+        self._session_id = content['session_id']
+        self._global_model_name = content['model_info']['global_model_name']
+        self._received_global_version = content['model_info']['model_version']
+
+
+        self._model_exchange_at = content['exchange_at']
+        self._min_acc = self._model_exchange_at['performance']
+        self._min_epoch = self._model_exchange_at['epoch']
+
+        # connect to cloud storage service provided by server
+        storage_info = content['storage_info']
+        self._cloud_storage_type = storage_info['storage_type']
+        if self._cloud_storage_type == "s3":
+            self._storage_connector = ClientStorageAWS(storage_info)
+        else:
+            self._storage_connector = ClientStorageMinio(storage_info, parent=None)
+            # self._storage_connector = ClientStorageMinio(storage_info, parent= self)
+
+        self._is_connected = True
+
+        # Check for new global model version.
+        if self._current_global_version < self._received_global_version:
+            self._current_global_version = self._received_global_version
+            LOGGER.info("Detect new global version.")
+            local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
+
+            while True:
+                if self._storage_connector.download(remote_file_path=content['model_info']['model_url'], 
+                                                local_file_path=local_path):
+                    break
+                LOGGER.info("Download model failed. Retry in 5 seconds.")
+                sleep(5)
+
+        # update info in profile file
+        self._update_profile()
+
+        if self._role == "train":
+            self.start_training_thread()
+
+        # for testing, do not need to start thread
+        # because tester just test whenever it receive new model 
+        elif self._role == "test":
+            self.test()
+        # elif self._role == "test":
+        #     self.start_testing_thread()
+
+    def _handle_server_notify_message(self, msg_received):
+        content = msg_received['content']
+        with lock:
+            # ----- receive and load global message ----
+            self._global_chosen_list = content['chosen_id']
+
+            # update latest model info
+            self._global_model_name = content['global_model_name']
+            self._received_global_version = content['global_model_version']
+
+            # global info for merging process
+            self._global_model_update_data_size = content['global_model_update_data_size']
+            self._global_avg_loss = content['avg_loss']
+            self._global_avg_qod = content['avg_qod']
+            LOGGER.info("*" * 20)
+            LOGGER.info(
+                f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
+            LOGGER.info("*" * 20)
+
+            # save the previous local version of the global model to log it to file
+            self._previous_global_version = self._current_global_version
+            # update local version (the latest global model that the client have)
+            self._current_global_version = self._received_global_version
+
+            remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
+            local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
+
+            LOGGER.info("Downloading new global model............")
+
+            while True:
+                if self._storage_connector.download(remote_file_path=remote_path,
+                                                    local_file_path=local_path):
+                    break
+                LOGGER.info("Download model failed. Retry in 5 seconds.")
+                sleep(5)
+
+            LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
+            self._new_model_flag = True
+            # print the content only when succesfully download new model
+            MessageV2.print_message(msg_received)
+            
+
+        # test everytime receive new global model notify from server
+        if self._role == "test":
+            self.test()
+
+
+    def _start_consumer(self):
+        self.queue_consumer.start()
+
+
+    # profile related
     def _create_message(self):
         data = {
             "session_id": self._session_id,
@@ -195,143 +351,4 @@ class Client(object):
         except Exception as e:
             LOGGER.info(e)
 
-    def _send_init_message(self):
-        data_description = {
-            'data_size': self._local_data_size,
-            'qod': self._local_qod,
-        }
-        message = MessageV2(
-            headers={'timestamp': time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
-            content=InitConnection(
-                role=self._role,
-                data_description=data_description,
-            )
-        ).to_json()
-        self.queue_producer.send_data(message)
-
-    def _handle_server_init_response(self, msg_received):
-        # MessageV2.print_message(msg_received)
-        LOGGER.info(msg_received)
-
-        content = msg_received['content']
-        if content['reconnect'] is True:
-            LOGGER.info("Reconnect to server.")
-
-        self._session_id = content['session_id']
-        self._global_model_name = content['model_info']['global_model_name']
-        self._received_global_version = content['model_info']['model_version']
-
-
-        self._model_exchange_at = content['exchange_at']
-        self._min_acc = self._model_exchange_at['performance']
-        self._min_epoch = self._model_exchange_at['epoch']
-
-        # connect to cloud storage service provided by server
-        storage_info = content['storage_info']
-        self._cloud_storage_type = storage_info['storage_type']
-        if self._cloud_storage_type == "s3":
-            self._storage_connector = ClientStorageAWS(storage_info)
-        else:
-            self._storage_connector = ClientStorageMinio(storage_info)
-
-        self._is_connected = True
-
-        # Check for new global model version.
-        if self._current_global_version < self._received_global_version:
-            self._current_global_version = self._received_global_version
-            LOGGER.info("Detect new global version.")
-            local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
-
-            while True:
-                if self._storage_connector.download(remote_file_path=content['model_info']['model_url'], 
-                                                local_file_path=local_path):
-                    break
-                LOGGER.info("Download model failed. Retry in 5 seconds.")
-                sleep(5)
-
-        # update info in profile file
-        self._update_profile()
-
-        if self._role == "train":
-            self.start_training_thread()
-        # for testing, do not need to start thread
-        # because tester just test whenever it receive new model 
-        elif self._role == "test":
-            self.test()
-        # elif self._role == "test":
-        #     self.start_testing_thread()
-
-    def _handle_server_notify_message(self, msg_received):
-        content = msg_received['content']
-        MessageV2.print_message(msg_received)
-        with lock:
-            # ----- receive and load global message ----
-            self._global_chosen_list = content['chosen_id']
-
-            # update latest model info
-            self._global_model_name = content['global_model_name']
-            self._received_global_version = content['global_model_version']
-
-            # global info for merging process
-            self._global_model_update_data_size = content['global_model_update_data_size']
-            self._global_avg_loss = content['avg_loss']
-            self._global_avg_qod = content['avg_qod']
-            LOGGER.info("*" * 20)
-            LOGGER.info(
-                f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
-            LOGGER.info("*" * 20)
-
-            # save the previous local version of the global model to log it to file
-            self._previous_global_version = self._current_global_version
-            # update local version (the latest global model that the client have)
-            self._current_global_version = self._received_global_version
-
-            remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
-            local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
-
-            LOGGER.info("Downloading new global model............")
-
-            while True:
-                if self._storage_connector.download(remote_file_path=remote_path,
-                                                    local_file_path=local_path):
-                    break
-                LOGGER.info("Download model failed. Retry in 5 seconds.")
-                sleep(5)
-
-            LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
-            self._new_model_flag = True
-
-        # test everytime receive new global model notify from server
-        if self._role == "test":
-            self.test()
-
-
-    def _start_consumer(self):
-        self.queue_consumer.start()
-
-    # Run the client
-    def start(self):
-        self.thread_consumer.start()
-        while not self._is_stop_condition:
-            sleep(300)
-
-        sys.exit(0)
-
-    def start_training_thread(self):
-        LOGGER.info("Start training thread.")
-        training_thread = threading.Thread(
-            target=self.train,
-            name="client_training_thread")
-        training_thread.daemon = True
-        self._is_training = True
-        training_thread.start()
-
-    # def start_testing_thread(self):
-    #     LOGGER.info("Start testing thread.")
-    #     testing_thread = threading.Thread(
-    #         target=self.test,
-    #         name="client_testing_thread")
-    #     testing_thread.daemon = True
-    #     self._is_testing = True
-    #     testing_thread.start()
 

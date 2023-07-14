@@ -27,7 +27,7 @@ class AsynFL(Strategy):
     def compute_alpha(self, worker: Worker) -> float:
         # avoid division by zero
         alpha  = worker.qod * worker.data_size / (worker.loss + 1e-7)
-        alpha /= (self.current_version - worker.current_version)
+        alpha /= (self.update_version - worker.current_version)
         return alpha
 
     def aggregate(self, completed_workers: Dict [str, Worker], cloud_storage):
@@ -36,7 +36,8 @@ class AsynFL(Strategy):
         LOGGER.info("-" * 20)
 
         # increment the current version
-        self.current_version += 1
+        self.update_version = self.current_version + 1
+        # self.current_version += 1
         total_completed_worker = len(completed_workers)
 
         # log out worker info
@@ -55,9 +56,9 @@ class AsynFL(Strategy):
         sum_alpha = 0.0
         LOGGER.info("*" * 20)
         for w_id, worker in completed_workers.items():
-            LOGGER.info(f"Current global version: {self.current_version}")
+            LOGGER.info(f"Update global version: {self.update_version}")
             LOGGER.info(f"worker id {worker.worker_id} with global version used {worker.current_version}")
-            LOGGER.info(f"substract: {self.current_version - worker.current_version}")
+            LOGGER.info(f"substract: {self.update_version - worker.current_version}")
             
             worker.alpha = self.compute_alpha(worker)
             sum_alpha += worker.alpha
@@ -95,7 +96,8 @@ class AsynFL(Strategy):
 
 
         # save weight file.
-        save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self.get_global_model_filename()
+        # increment here to begin upload the model
+        save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self.get_new_global_model_filename()
         with open(save_location, "wb") as f:
             pickle.dump(merged_weights, f)
         LOGGER.info('=' * 20)
@@ -115,3 +117,5 @@ class AsynFL(Strategy):
             weights = pickle.load(f)
             
         return weights
+    
+    # class

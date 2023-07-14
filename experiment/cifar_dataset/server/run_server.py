@@ -24,14 +24,14 @@ conf = {
         "performance": 0.25,
         "epoch": 2
     },
-    "aws": {
-        "access_key": os.getenv("aws_access_key"),
-        "secret_key": os.getenv("aws_secret_key"),
+    # "aws": {
+    #     "access_key": os.getenv("aws_access_key"),
+    #     "secret_key": os.getenv("aws_secret_key"),
 
-        "bucket_name": "cifar10-5-chunks",
-        # "bucket_name": "test-lost-connection-4",
-        "region_name": "ap-southeast-2",
-    },
+    #     "bucket_name": "cifar10-5-chunks",
+    #     # "bucket_name": "test-lost-connection-4",
+    #     "region_name": "ap-southeast-2",
+    # },
     "minio": {
         "access_key": os.getenv("minio_access_key"),
         "secret_key": os.getenv("minio_secret_key"),
@@ -41,7 +41,7 @@ conf = {
         "endpoint_url": "http://128.214.254.126:9000",
 
         # "bucket_name": "test-cifar-client-5-chunks",
-        "bucket_name": "test-refactor-1",
+        "bucket_name": "test-refactor-10",
         # "bucket_name": "test-aggregating-formula",
         "region_name": "ap-southeast-2",
     },

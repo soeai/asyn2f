@@ -17,8 +17,11 @@ class Strategy(ABC):
         self.avg_loss = 0.0
         self.avg_qod = 0.0
 
-    def get_global_model_filename(self):
+    def get_current_global_model_filename(self):
         return f"{self.model_id}_v{self.current_version}.pkl"
+    
+    def get_new_global_model_filename(self):
+        return f"{self.model_id}_v{self.current_version + 1}.pkl"
 
     @abstractmethod
     def select_client(self, all_clients) -> List[str]:
