@@ -40,7 +40,7 @@ conf = {
         "client_secret_key": os.getenv("client_secret_key"),
         "endpoint_url": "http://128.214.254.126:9000",
 
-        "bucket_name": "cifar-10-5-chunks",
+        "bucket_name": "cifar10-5-chunks-2",
         # "bucket_name": "test-cifar-client-5-chunks",
         # "bucket_name": "test-refactor-13",
         # "bucket_name": "test-aggregating-formula",

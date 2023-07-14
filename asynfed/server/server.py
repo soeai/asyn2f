@@ -80,9 +80,9 @@ class Server(object):
         # _t is the waiting period between two aggregating process
         self._t = self.config.get('t') or 30
         self.ping_time = self.config.get('ping_time') or 300
-        self.clean_cloud_period = self.config.get('clean_cloud_storage_period') or 300
+        self.clean_cloud_period = self.config.get('clean_cloud_storage_period') or 360
         self.global_keep_version = self.config.get('keep_version') or 5
-        self.local_keep_version = self.config.get('keep_version') or 3
+        self.local_keep_version = self.config.get('keep_version') or 5
 
         # deal with either default config or random with test mode
         self._server_id: str
@@ -228,18 +228,23 @@ class Server(object):
             LOGGER.info("CLEANING TIME")
             # clean global folder first
             files = self._cloud_storage.list_files("global-models")
-            threshold = self._strategy.current_version - self.global_keep_version
+            current_version = self._strategy.current_version
+            threshold = current_version - self.global_keep_version
 
             if self.best_model.model_name != "":
                 best_model_name = self.best_model.model_name
                 best_model_version = int(re.search(r"v(\d+)", best_model_name.split("_")[1]).group(1))
             else:
-                best_model_name = None
+                best_model_version = None
 
             versions = [int(file.split("_")[-1].split(".")[0].split("v")[-1]) for file in files]
             delete_list = [file for file, version in zip(files, versions) if version <= threshold and version != best_model_version]
 
-            if delete_list is not []:
+            if delete_list:
+                LOGGER.info("=" * 20)
+                LOGGER.info(current_version, threshold)
+                LOGGER.info(delete_list)
+                LOGGER.info("=" * 20)
                 self._cloud_storage.delete_files(delete_list)
 
             # clients folder
@@ -249,7 +254,11 @@ class Server(object):
                 threshold = worker.newest_used_version - self.local_keep_version
 
                 delete_list = [file for file in files if int(file.split("_")[-1].split(".")[0].split("v")[-1]) <= threshold]
-                if delete_list is not []:
+                if delete_list:
+                    LOGGER.info("=" * 20)
+                    LOGGER.info(w_id, worker.newest_used_version, threshold)
+                    LOGGER.info(delete_list)
+                    LOGGER.info("=" * 20)
                     self._cloud_storage.delete_files(delete_list)
 
 
@@ -377,6 +386,7 @@ class Server(object):
             # update the state after passing it to aggregation process
             for w_id, worker in completed_workers.items():
                 worker.is_completed = False
+
                 worker.newest_used_version = worker.current_version
 
             worker_list = copy.deepcopy(completed_workers)
