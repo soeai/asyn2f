@@ -55,32 +55,9 @@ class Server(object):
     def __init__(self, strategy: Strategy, config: dict, storage: str = "minio", test: bool = False, save_log: bool = False) -> None:
         """
         config structure
-        {
-            "server_id": "",
-            "bucket_name": "",
-            "region_name": "ap-southeast-2",
-            "t": 15,
-            "queue_consumer": {
-                'exchange_name': 'asynfl_exchange',
-                'exchange_type': 'topic',
-                'routing_key': 'server.#',
-                'end_point': ''},
-            "queue_producer": {
-                'exchange_name': 'asynfl_exchange',
-                'exchange_type': 'topic',
-                'routing_key': 'client.#',
-                'end_point': ""}
-            "stop_conditions": {
-                "max_version": 50,
-                "max_performance": 0.9,
-                "min_loss": 0.1
-            },
-            "model_exchange_at":{
-                    "performance": 0.85,
-                    "epoch": 100
-            }
-        }
+
         """
+
         super().__init__()
         # initialized some config for server
         _init_config("server", save_log)
@@ -103,8 +80,7 @@ class Server(object):
         self._t = self.config.get('t') or 30
         self.ping_time = self.config.get('ping_time') or 300
         
-        # 
-
+        # deal with either default config or random with test mode
         self._server_id: str
         if test:
             self._server_id = self.config.get('server_id', f'server-{str(uuid.uuid4())}')
@@ -136,11 +112,6 @@ class Server(object):
                     f'\n\tS3 Bucket: {self._bucket_name}'
                     f'\n\n')
 
-        # # # Record arive time for calculate dynamic waiting time for server.
-        # self._start_time = None
-        # self._first_arrival = None
-        # self._latest_arrival = None
-
 
     def start(self):
         self.thread_consumer.start()
@@ -149,7 +120,9 @@ class Server(object):
         while True:
             if self._is_stop_condition:
                 LOGGER.info('Stop condition is reached!')
-                break
+                # close the program
+                sys.exit(0)
+
 
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
@@ -246,7 +219,6 @@ class Server(object):
         session_id = str(uuid.uuid4())
         content = msg_received['content']
 
-
         if msg_received['headers']['session_id'] in self._worker_manager.list_sessions():
             reconnect = True
             worker = self._worker_manager.get_worker_by_id(client_id)
@@ -322,7 +294,6 @@ class Server(object):
         self._influxdb.write_training_process_data(msg_received)
 
 
-
     def _handle_client_notify_evaluation(self, msg_received):
         MessageV2.print_message(msg_received)
 
@@ -347,7 +318,6 @@ class Server(object):
             LOGGER.info("=" * 50)
 
             self._is_stop_condition = True
-            sys.exit(0)
 
         else:
             LOGGER.info(f"Up to testing global epoch {info['version']}. Best model is:")
@@ -357,26 +327,8 @@ class Server(object):
     def _update(self, n_local_updates):
         if n_local_updates == 1:
             LOGGER.info("Only one update from client, passing the model to all other client in the network...")
-            completed_workers: dict[str, Worker] = self._worker_manager.get_completed_workers()
-
-            for w_id, worker in completed_workers.items():
-                LOGGER.info(w_id)
-                self._strategy.avg_loss = worker.loss
-                self._strategy.avg_qod = worker.qod
-                self._strategy.global_model_update_data_size = worker.data_size
-                worker.is_completed = False
-
-                # download worker weight file
-                remote_weight_file = worker.get_remote_weight_file_path()
-                local_weight_file = worker.get_weight_file_path()
-                self._cloud_storage.download(remote_file_path= remote_weight_file, 
-                                             local_file_path= local_weight_file)
-
-            # copy the worker model weight to the global model folder
-            import shutil
-            save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self._strategy.get_new_global_model_filename()
-            # LOGGER.info(save_location)
-            shutil.copy(local_weight_file, save_location)
+            completed_worker: dict[str, Worker] = self._worker_manager.get_completed_workers()
+            self._pass_one_local_model(completed_worker)
 
         else:
             LOGGER.info("Aggregating process...")
@@ -404,6 +356,26 @@ class Server(object):
                     LOGGER.info(f"Stop condition: version {v} >= {self.stop_conditions.get('max_version')}")
                     return True
 
+
+    def _pass_one_local_model(self, completed_worker: dict [str, Worker]):
+        for w_id, worker in completed_worker.items():
+            LOGGER.info(w_id)
+            self._strategy.avg_loss = worker.loss
+            self._strategy.avg_qod = worker.qod
+            self._strategy.global_model_update_data_size = worker.data_size
+            worker.is_completed = False
+
+            # download worker weight file
+            remote_weight_file = worker.get_remote_weight_file_path()
+            local_weight_file = worker.get_weight_file_path()
+            self._cloud_storage.download(remote_file_path= remote_weight_file, 
+                                        local_file_path= local_weight_file)
+
+        # copy the worker model weight to the global model folder
+        import shutil
+        save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self._strategy.get_new_global_model_filename()
+        # LOGGER.info(save_location)
+        shutil.copy(local_weight_file, save_location)
 
     def _write_record(self):
         folder_name = "best_model"
