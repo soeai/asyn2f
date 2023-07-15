@@ -1,6 +1,7 @@
 import os, sys
 from asynfed.client.messages.ping import Ping
-from asynfed.commons.utils.time_ultils import time_now
+import asynfed.commons.utils.time_ultils as time_utils
+
 root = os.path.dirname(os.path.dirname(os.getcwd()))
 sys.path.append(root)
 
@@ -133,18 +134,6 @@ class Client(object):
         self._is_training = True
         training_thread.start()
 
-    # for tester, don't need to create a thread 
-    # because tester don't need to run all the time
-    # just test when receiving global notify message from server
-    # def start_testing_thread(self):
-    #     LOGGER.info("Start testing thread.")
-    #     testing_thread = threading.Thread(
-    #         target=self.test,
-    #         name="client_testing_thread")
-    #     testing_thread.daemon = True
-    #     self._is_testing = True
-    #     testing_thread.start()
-
 
     # queue handling
     def on_message_received(self, ch, method, props, body):
@@ -183,7 +172,7 @@ class Client(object):
             'qod': self._local_qod,
         }
         message = MessageV2(
-            headers={'timestamp': time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
+            headers={'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
             content=InitConnection(
                 role=self._role,
                 data_description=data_description,
@@ -196,7 +185,7 @@ class Client(object):
         if msg_received['content']['client_id'] == self._client_id:
             MessageV2.print_message(msg_received)
             message = MessageV2(
-                    headers={"timestamp": time_now(), "message_type": Config.CLIENT_PING_MESSAGE, "session_id": self._session_id, "client_id": self._client_id},
+                    headers={"timestamp": time_utils.time_now(), "message_type": Config.CLIENT_PING_MESSAGE, "session_id": self._session_id, "client_id": self._client_id},
                     content=Ping()).to_json()
             self.queue_producer.send_data(message)
 

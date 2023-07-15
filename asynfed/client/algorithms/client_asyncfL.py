@@ -13,7 +13,7 @@ from asynfed.commons import Config
 from asynfed.client import Client
 
 from asynfed.commons.messages import MessageV2
-from asynfed.commons.utils import time_now
+import asynfed.commons.utils.time_ultils as time_utils
 from asynfed.commons import Config
 
 LOGGER = logging.getLogger(__name__)
@@ -187,7 +187,7 @@ class ClientAsyncFl(Client):
         LOGGER.info(content.__dict__)
         LOGGER.info("*" * 20)
         message = MessageV2(
-            headers={'timestamp': time_now(), 'message_type': Config.CLIENT_NOTIFY_EVALUATION, 'session_id': self._session_id, 'client_id': self._client_id},
+            headers={'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_NOTIFY_EVALUATION, 'session_id': self._session_id, 'client_id': self._client_id},
             content=content
         ).to_json()
         
@@ -196,7 +196,7 @@ class ClientAsyncFl(Client):
         # check the stop conditions
         if performance > self._expected_performance or loss < self._expected_loss:
             message = MessageV2(
-                headers={'timestamp': time_now(), 'message_type': Config.CLIENT_NOTIFY_STOP, 'session_id': self._session_id, 'client_id': self._client_id},
+                headers={'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_NOTIFY_STOP, 'session_id': self._session_id, 'client_id': self._client_id},
                 content=RequireStop(self._global_model_name, performance, loss)
             )
         
@@ -218,7 +218,7 @@ class ClientAsyncFl(Client):
                 LOGGER.info("*" * 20)
                 LOGGER.info('Notify new model to the server')
                 message = MessageV2(
-                        headers={"timestamp": time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id},
+                        headers={"timestamp": time_utils.time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id},
                         content=NotifyModel(remote_worker_weight_path=remote_file_path, 
                                             filename=filename,
                                             global_version_used=self._merged_global_version, 

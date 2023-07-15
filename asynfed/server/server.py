@@ -1,7 +1,4 @@
 
-root = os.path.dirname(os.path.dirname(os.getcwd()))
-sys.path.append(root)
-
 import os
 import sys
 import json
@@ -12,6 +9,10 @@ from time import sleep
 import uuid
 import copy
 import concurrent.futures
+
+
+root = os.path.dirname(os.path.dirname(os.getcwd()))
+sys.path.append(root)
 
 from asynfed.commons import Config
 from asynfed.commons.messages import MessageV2
@@ -183,6 +184,7 @@ class Server(object):
         if self._cloud_storage_type == "aws_s3":
             cloud_storage: ServerStorageAWS = ServerStorageAWS(self._config['cloud_storage']['aws_s3'])
         elif self._cloud_storage_type == "minio":
+            self._config['cloud_storage']['minio']['bucket_name'] = self._bucket_name
             cloud_storage: ServerStorageMinio = ServerStorageMinio(self._config['cloud_storage']['minio'])
         else:
             LOGGER.info("There is no cloud storage")
@@ -304,11 +306,11 @@ class Server(object):
                     "secret_key": secret_key, 
                     "bucket_name": self._bucket_name}
         
-        if self._cloud_storage_type == "s3":
-            storage_info['region_name'] = self._config['aws']['region_name']
+        if self._cloud_storage_type == "aws_s3":
+            storage_info['region_name'] = self._config['cloud_storage']['aws_s3']['region_name']
         else:
-            storage_info['region_name'] = self._config['minio']['region_name']
-            storage_info['endpoint_url'] = self._config['minio']['endpoint_url']
+            storage_info['region_name'] = self._config['cloud_storage']['minio']['region_name']
+            storage_info['endpoint_url'] = self._config['cloud_storage']['minio']['endpoint_url']
 
         
         queue_info = {"training_exchange": "", 

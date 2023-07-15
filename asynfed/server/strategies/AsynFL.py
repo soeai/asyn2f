@@ -83,7 +83,7 @@ class AsynFL(Strategy):
                                         local_file_path= local_weight_file)
             
             # Load the weight from file
-            worker_weights = self.get_model_weights(local_weight_file)
+            worker_weights = self._get_model_weights(local_weight_file)
 
             # initialized zero array if merged weight is None
             if merged_weights is None:
@@ -105,7 +105,7 @@ class AsynFL(Strategy):
         LOGGER.info('=' * 20)
         
 
-    def get_model_weights(self, file_path):
+    def _get_model_weights(self, file_path):
         while not os.path.isfile(file_path):
             LOGGER.info("*" * 20)
             LOGGER.info("Sleep 5 second when the the download process is not completed, then retry")
@@ -118,4 +118,3 @@ class AsynFL(Strategy):
             
         return weights
     
-    # class
