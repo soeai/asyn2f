@@ -80,9 +80,9 @@ class Server(object):
         # _t is the waiting period between two aggregating process
         self._t = self.config.get('t') or 30
         self.ping_time = self.config.get('ping_time') or 300
-        self.clean_cloud_period = self.config.get('clean_cloud_storage_period') or 360
+        self.clean_cloud_period = self.config.get('clean_cloud_storage_period') or 300
         self.global_keep_version = self.config.get('keep_version') or 5
-        self.local_keep_version = self.config.get('keep_version') or 5
+        self.local_keep_version = self.config.get('keep_version') or 3
 
         # deal with either default config or random with test mode
         self._server_id: str
@@ -223,7 +223,7 @@ class Server(object):
 
     def _clean_cloud_storage(self):
         while True:
-            sleep(self.clean_cloud_period)
+            # sleep(self.clean_cloud_period)
 
             LOGGER.info("CLEANING TIME")
             # clean global folder first
@@ -242,6 +242,7 @@ class Server(object):
 
             if delete_list:
                 LOGGER.info("=" * 20)
+                LOGGER.info("Delete files in global-models folder")
                 LOGGER.info(f"current global version: {current_version}, best model version: {best_model_version}, threshold: {threshold}")
                 LOGGER.info(delete_list)
                 LOGGER.info("=" * 20)
@@ -250,18 +251,19 @@ class Server(object):
             # clients folder
             workers = self._worker_manager.get_all_worker()
             for w_id, worker in workers.items():
-                files = self._cloud_storage.list_files(parent_folder= "clients", target_folder=w_id)
-                worker_current_update_version = worker.newest_used_version
-                threshold = worker_current_update_version - self.local_keep_version
+                files = self._cloud_storage.list_files(parent_folder= "clients", target_folder= w_id)
+
+                threshold = worker.update_local_version_used - self.local_keep_version
 
                 delete_list = [file for file in files if int(file.split("_")[-1].split(".")[0].split("v")[-1]) <= threshold]
                 if delete_list:
                     LOGGER.info("=" * 20)
-                    LOGGER.info(f"worker id: {w_id}, current update version: {worker.newest_used_version}, threshold: {threshold}")
+                    LOGGER.info(f"worker id: {w_id}, current update version: {worker.update_local_version_used}, threshold: {threshold}")
                     LOGGER.info(delete_list)
                     LOGGER.info("=" * 20)
                     self._cloud_storage.delete_files(delete_list)
 
+            sleep(self.clean_cloud_period)
 
 
     def _response_connection(self, msg_received):
@@ -302,7 +304,6 @@ class Server(object):
         LOGGER.info("*" * 20)
 
         # notify newest global model to worker
-
         model_url = self._cloud_storage.get_newest_global_model()
         global_model_name = model_url.split("/")[-1]
         model_version = int(re.search(r"v(\d+)", global_model_name.split("_")[1]).group(1))
@@ -384,12 +385,15 @@ class Server(object):
         else:
             LOGGER.info("Aggregating process...")
             completed_workers: dict[str, Worker] = self._worker_manager.get_completed_workers()
-            # update the state after passing it to aggregation process
+            
+            # reset the state of worker in completed workers list
             for w_id, worker in completed_workers.items():
                 worker.is_completed = False
+                # keep track of the latest local version of worker used for cleaning task
+                model_filename = worker.get_remote_weight_file_path().split('/')[-1]
+                worker.update_local_version_used = int(re.search(r"v(\d+)", model_filename.split("_")[1]).group(1))
 
-                worker.newest_used_version = worker.current_version
-
+            # pass out a copy of completed worker to aggregating process
             worker_list = copy.deepcopy(completed_workers)
             self._strategy.aggregate(worker_list, self._cloud_storage)
 
@@ -419,18 +423,23 @@ class Server(object):
             self._strategy.global_model_update_data_size = worker.data_size
             worker.is_completed = False
 
-            worker.newest_used_version = worker.current_version
             # download worker weight file
             remote_weight_file = worker.get_remote_weight_file_path()
             local_weight_file = worker.get_weight_file_path()
             self._cloud_storage.download(remote_file_path= remote_weight_file, 
                                         local_file_path= local_weight_file)
 
+            # keep track of the latest local version of worker used for cleaning task
+            model_filename = remote_weight_file.split('/')[-1]
+            worker.update_local_version_used = int(re.search(r"v(\d+)", model_filename.split("_")[1]).group(1))
+
+
         # copy the worker model weight to the global model folder
         import shutil
         save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self._strategy.get_new_global_model_filename()
         # LOGGER.info(save_location)
         shutil.copy(local_weight_file, save_location)
+
 
     def _write_record(self):
         folder_name = "best_model"

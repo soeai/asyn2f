@@ -18,11 +18,13 @@ class Worker:
         self.session_id = session_id
         self.worker_id = worker_id
         self.sys_info = sys_info
-        self.current_version = 0
-        self.newest_used_version = 0 
+        self.current_version: int = 0
+
+        self.update_local_version_used: int = 0
         
         self.access_key_id = None
         self.secret_key_id = None
+        
         self.n_update = 0
         self.weight_file = ""
         

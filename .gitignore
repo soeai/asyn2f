@@ -17,6 +17,7 @@ profile.json
 # Log Files
 logs
 *.log
+nohup.out
 
 # Weights
 weights
@@ -36,4 +37,3 @@ dist
 
 # Test Profiles
 profile.json
-
