@@ -223,7 +223,7 @@ class Server(object):
 
     def _clean_cloud_storage(self):
         while True:
-            sleep(self.clean_cloud_period)
+            sleep(self.clean_cloud_storage_period)
 
             LOGGER.info("CLEANING TIME")
             # clean global folder first
@@ -243,8 +243,8 @@ class Server(object):
             if delete_list:
                 LOGGER.info("=" * 20)
                 LOGGER.info("Delete files in global-models folder")
-                LOGGER.info(f"current global version: {current_version}, best model version: {best_model_version}, threshold: {threshold}")
-                LOGGER.info(delete_list)
+                LOGGER.info(f"current global version: {current_version}, best model version: {best_model_version}, threshold: {threshold}, total deleted files: {len(delete_list)}")
+                LOGGER.info(versions)
                 LOGGER.info("=" * 20)
                 self._cloud_storage.delete_files(delete_list)
 
@@ -258,8 +258,8 @@ class Server(object):
                 delete_list = [file for file in files if int(file.split("_")[-1].split(".")[0].split("v")[-1]) <= threshold]
                 if delete_list:
                     LOGGER.info("=" * 20)
-                    LOGGER.info(f"worker id: {w_id}, current local update version used: {worker.update_local_version_used}, threshold: {threshold}")
-                    LOGGER.info(delete_list)
+                    LOGGER.info(f"worker id: {w_id}, current local update version used: {worker.update_local_version_used}, threshold: {threshold}, total deleted files: {len(delete_list)}")
+                    LOGGER.info([int(file.split("_")[-1].split(".")[0].split("v")[-1]) for file in delete_list])
                     LOGGER.info("=" * 20)
                     self._cloud_storage.delete_files(delete_list)
 

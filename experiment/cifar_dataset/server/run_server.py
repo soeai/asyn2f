@@ -11,15 +11,18 @@ load_dotenv()
 
 
 conf = {
+    # "clean_cloud_storage_period": 180,
+    # "global_keep_version": 5,
+    # "local_keep_version": 3,
     "server_id": "test_server_id",
-    "t": 45,
+    "t": 40,
     "stop_conditions": {
         "max_version": 300,
         "max_performance": 0.95,
         "min_loss": 0.02,
     },
     "model_exchange_at":{
-        "performance": 0.85,
+        "performance": 0.8,
         "epoch": 100
         # "performance": 0.25,
         # "epoch": 2
@@ -41,6 +44,7 @@ conf = {
         "endpoint_url": "http://128.214.254.126:9000",
 
         "bucket_name": "cifar10-5-chunks",
+        # "bucket_name": "test-clean-cloud-storage",
         # "bucket_name": "test-cifar-client-5-chunks",
         # "bucket_name": "test-refactor-13",
         # "bucket_name": "test-aggregating-formula",

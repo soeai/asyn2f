@@ -99,7 +99,7 @@ print("-" * 20)
 model = Resnet18(input_features= (32, 32, 3), 
                  output_features= 10,
                  lr=config['training_params']['learning_rate'],
-                 decay_steps=int(120 * data_size / config['training_params']['batch_size']))
+                 decay_steps=int(30 * data_size / config['training_params']['batch_size']))
                 #  decay_steps=int(config['training_params']['epoch'] * data_size / config['training_params']['batch_size']))
                 #  decay_steps=int(Config.EPOCH * data_size / Config.BATCH_SIZE))
 # Define framework
