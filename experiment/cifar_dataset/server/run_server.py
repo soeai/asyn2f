@@ -11,8 +11,11 @@ load_dotenv()
 
 
 conf = {
+    # "clean_cloud_storage_period": 180,
+    # "global_keep_version": 5,
+    # "local_keep_version": 3,
     "server_id": "test_server_id",
-    "t": 45,
+    "t": 40,
     "stop_conditions": {
         "max_version": 300,
         "max_performance": 0.95,
