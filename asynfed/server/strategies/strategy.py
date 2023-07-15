@@ -35,9 +35,9 @@ class Strategy(ABC):
         """
         pass
 
-    @abstractmethod
-    def get_model_weights(self, file_path):
-        """
-        """
-        pass
+    # @abstractmethod
+    # def get_model_weights(self, file_path):
+    #     """
+    #     """
+    #     pass
 
