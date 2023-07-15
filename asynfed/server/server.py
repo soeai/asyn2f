@@ -212,6 +212,7 @@ class Server(object):
         while True:
             sleep(self._clean_cloud_storage_period)
 
+
             LOGGER.info("CLEANING TIME")
             # clean global folder first
             files = self._cloud_storage.list_files("global-models")

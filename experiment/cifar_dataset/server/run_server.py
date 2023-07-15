@@ -11,16 +11,28 @@ load_dotenv()
 
 
 conf = {
+  
     "server_id": "",
     "update_period": 30,
     "ping_time": 300,
     "save_log": True,
 
+    "stop_conditions": {
+        "max_version": 300,
+        "max_performance": 0.95,
+        "min_loss": 0.02,
+    },
+    "model_exchange_at":{
+        "performance": 0.8,
+        "epoch": 100
+        # "performance": 0.25,
+        # "epoch": 2
+    },
+
+
   "cloud_storage": {
         "type": "minio",
-
         "bucket_name": "test-refactor-code-2",
-
 
         "aws_s3": {
             "access_key": "",
@@ -51,16 +63,16 @@ conf = {
         'exchange_type': 'topic',
         'queue_name': 'server_consumer',
         'routing_key': 'server.#',
-        # 'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
-        'end_point': 'amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj'
+        'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
+#         'end_point': 'amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj'
     },
     "queue_producer": {
         'exchange_name': 'asynfl_exchange',
         'exchange_type': 'topic',
         'queue_name': 'server_queue',
         'routing_key': 'client.#',
-        # 'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
-        'end_point': "amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj"
+        'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
+#         'end_point': "amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj"
     },
     "influxdb": {
         "url": os.getenv("INFLUXDB_URL"),
