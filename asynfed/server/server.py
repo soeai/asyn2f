@@ -81,8 +81,8 @@ class Server(object):
         self._t = self.config.get('t') or 30
         self.ping_time = self.config.get('ping_time') or 300
         self.clean_cloud_period = self.config.get('clean_cloud_storage_period') or 300
-        self.global_keep_version = self.config.get('keep_version') or 5
-        self.local_keep_version = self.config.get('keep_version') or 3
+        self.global_keep_version = self.config.get('global_keep_version') or 5
+        self.local_keep_version = self.config.get('local_keep_version') or 3
 
         # deal with either default config or random with test mode
         self._server_id: str
@@ -223,7 +223,7 @@ class Server(object):
 
     def _clean_cloud_storage(self):
         while True:
-            # sleep(self.clean_cloud_period)
+            sleep(self.clean_cloud_period)
 
             LOGGER.info("CLEANING TIME")
             # clean global folder first
@@ -258,12 +258,11 @@ class Server(object):
                 delete_list = [file for file in files if int(file.split("_")[-1].split(".")[0].split("v")[-1]) <= threshold]
                 if delete_list:
                     LOGGER.info("=" * 20)
-                    LOGGER.info(f"worker id: {w_id}, current update version: {worker.update_local_version_used}, threshold: {threshold}")
+                    LOGGER.info(f"worker id: {w_id}, current local update version used: {worker.update_local_version_used}, threshold: {threshold}")
                     LOGGER.info(delete_list)
                     LOGGER.info("=" * 20)
                     self._cloud_storage.delete_files(delete_list)
 
-            sleep(self.clean_cloud_period)
 
 
     def _response_connection(self, msg_received):
