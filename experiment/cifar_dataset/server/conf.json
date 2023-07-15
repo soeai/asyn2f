@@ -1,7 +1,7 @@
 {
     "server_id": "",
-    "update_period": 40,
-    "ping_period": 300,
+    "update_period": 30,
+    "ping_time": 300,
     "save_log": true,
     "stop_conditions": {
         "max_version": 300,
@@ -9,28 +9,29 @@
         "min_loss": 0.02
     },
     "model_exchange_at": {
-        "performance": 0.85,
+        "performance": 0.8,
         "epoch": 100
     },
     "cloud_storage": {
         "type": "minio",
-
-        "bucket_name": "cifar10-5-chunks",
-
+        "bucket_name": "test-refactor-code-2",
         "aws_s3": {
             "access_key": "",
             "secret_key": "",
             "region_name": "ap-southeast-2"
         },
         "minio": {
+            "access_key": "",
             "secret_key": "",
             "client_access_key": "",
             "client_secret_key": "",
-            "endpoint_url": "",
+            "endpoint_url": "http://128.214.254.126:9000",
             "region_name": "ap-southeast-2"
         },
         "cleaning_config": {
-            "clean_cloud_storage_period": 180
+            "clean_cloud_storage_period": 300,
+            "global_keep_version_num": 5,
+            "local_keep_version_num": 3
         }
     },
     "queue_consumer": {
@@ -38,15 +39,16 @@
         "exchange_type": "topic",
         "queue_name": "server_consumer",
         "routing_key": "server.#",
-        "end_point": ""
+        "end_point": "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
     },
     "queue_producer": {
         "exchange_name": "asynfl_exchange",
         "exchange_type": "topic",
         "queue_name": "server_queue",
         "routing_key": "client.#",
-        "end_point": ""
+        "end_point": "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
     },
+
     "influxdb": {
         "url": "",
         "token": "",
