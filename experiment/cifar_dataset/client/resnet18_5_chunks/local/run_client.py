@@ -27,8 +27,8 @@ config = {
         'exchange_type': 'topic',
         'queue_name': 'server_queue',
         'routing_key': 'client.#',
-        'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
-        # 'end_point': 'amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj'
+        # 'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
+        'end_point': 'amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj'
 
     },
     "queue_producer": {
@@ -36,8 +36,8 @@ config = {
         'exchange_type': 'topic',
         'queue_name': 'server_consumer',
         'routing_key': 'server.#',
-        'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
-        # 'end_point': 'amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj'
+        # 'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
+        'end_point': 'amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj'
 
     },
     
@@ -103,7 +103,8 @@ print("-" * 20)
 model = Resnet18(input_features= (32, 32, 3), 
                  output_features= 10,
                  lr=config['training_params']['learning_rate'],
-                 decay_steps=int(60 * data_size / config['training_params']['batch_size']))
+                 decay_steps=int(25 * data_size / config['training_params']['batch_size']))
+                #  decay_steps=int(60 * data_size / config['training_params']['batch_size']))
                 #  decay_steps=int(config['training_params']['epoch'] * data_size / config['training_params']['batch_size']))
                 #  decay_steps=int(Config.EPOCH * data_size / Config.BATCH_SIZE))
 # Define framework
