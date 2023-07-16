@@ -18,8 +18,9 @@ with open('conf.json', 'r') as json_file:
 config['cloud_storage']['minio']['access_key'] = os.getenv("minio_access_key")
 config['cloud_storage']['minio']['secret_key'] = os.getenv("minio_secret_key")
 
-config['cloud_storage']['minio']['client_access_key'] = os.getenv("client_access_key")
-config['cloud_storage']['minio']['client_secret_key'] = os.getenv("client_secret_key")
+config['cloud_storage']['minio']['client_access_key'] = os.getenv("minio_client_access_key")
+config['cloud_storage']['minio']['client_secret_key'] = os.getenv("minio_client_secret_key")
+config['cloud_storage']['minio']['endpoint_url'] = os.getenv("minio_endpoint_url")
 
 # load influxdb config
 config['influxdb']['url'] = os.getenv("INFLUXDB_URL")

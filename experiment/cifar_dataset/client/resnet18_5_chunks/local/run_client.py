@@ -2,15 +2,14 @@ import os, sys
 from dotenv import load_dotenv
 import pause
 from apscheduler.schedulers.background import BackgroundScheduler
+
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))))
 sys.path.append(root)
 
-# from asynfed.commons.conf import Config
 
 from asynfed.client.algorithms import ClientAsyncFl
 from asynfed.client.frameworks.tensorflow import TensorflowFramework
 
-# from resnet18 import Resnet18
 
 from experiment.cifar_dataset.client.resnet18 import Resnet18
 from experiment.cifar_dataset.client.data_preprocessing import preprocess_dataset
@@ -42,22 +41,13 @@ print("*" * 20)
 
 # ------------oOo--------------------
 # Preprocessing data
-# default_training_dataset_path = "../../../../data/cifar_data/5_chunks/chunk_2.pickle"
 default_testing_dataset_path = "../../../../data/cifar_data/test_set.pickle"
 training_dataset_path = f"../../../../data/cifar_data/5_chunks/chunk_{config['dataset']['chunk_index']}.pickle"
-# if os.getenv("cifar_train_dataset_path"):
-#     training_dataset_path = os.getenv("cifar_train_dataset_path")
-# else:
-#     training_dataset_path = default_training_dataset_path
-    
 
-# train_ds, data_size = preprocess_dataset(training_dataset_path, training = True)
-# test_ds, _ = preprocess_dataset(testing_dataset_path, training = False)
-train_ds, data_size = preprocess_dataset(training_dataset_path, batch_size = 128, training = True)
-test_ds, _ = preprocess_dataset(default_testing_dataset_path, training = False)
-# train_ds, data_size = preprocess_dataset("training_process/data/cifar_data/5_chunks/chunk_2.pickle", training = True)
-# test_ds, _ = preprocess_dataset("training_process/data/cifar_data/test_set.pickle", training = False)
+train_ds, data_size = preprocess_dataset(training_dataset_path, batch_size = config['training_params']['batch_size'], training = True)
+test_ds, _ = preprocess_dataset(default_testing_dataset_path, batch_size= config['training_params']['batch_size'], training = False)
 # ------------oOo--------------------
+
 
 print("-" * 20)
 print("-" * 20)
@@ -70,9 +60,8 @@ model = Resnet18(input_features= (32, 32, 3),
                  output_features= 10,
                  lr=config['training_params']['learning_rate'],
                  decay_steps=int(config['training_params']['decay_period'] * data_size / config['training_params']['batch_size']))
-                #  decay_steps=int(60 * data_size / config['training_params']['batch_size']))
-                #  decay_steps=int(config['training_params']['epoch'] * data_size / config['training_params']['batch_size']))
-                #  decay_steps=int(Config.EPOCH * data_size / Config.BATCH_SIZE))
+
+
 # Define framework
 tensorflow_framework = TensorflowFramework(model=model, 
                                            data_size= data_size, 
@@ -82,7 +71,6 @@ tensorflow_framework = TensorflowFramework(model=model,
 
 
 tf_client = ClientAsyncFl(model=tensorflow_framework, config=config)
-# tf_client = ClientAsyncFl(model=tensorflow_framework,config=config, save_log=False)
 tf_client.start()
 scheduler.start()
 pause.days(1) # or it can anything as per your need

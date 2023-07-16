@@ -1,5 +1,5 @@
 {
-    "client_id": "local-client",
+    "client_id": "235-cpu",
     "role": "train",
     "gpu_index": 0,
     "save_log": true,
@@ -17,7 +17,7 @@
         "routing_key": "server.#"
     },
     "dataset": {
-        "chunk_index": 2,
+        "chunk_index": 4,
         "qod": 0.45
     },
     "training_params": {

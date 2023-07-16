@@ -1,20 +1,20 @@
 {
     "server_id": "",
     "update_period": 40,
-    "ping_time": 300,
+    "ping_period": 300,
     "save_log": true,
     "stop_conditions": {
-        "max_version": 300,
+        "max_version": 400,
         "max_performance": 0.95,
         "min_loss": 0.02
     },
     "model_exchange_at": {
-        "performance": 0.1,
-        "epoch": 1
+        "performance": 0.85,
+        "epoch": 100
     },
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "test-refactor-code-2",
+        "bucket_name": "test-refactor-code",
         "region_name": "ap-southeast-2",
         "aws_s3": {
             "access_key": "",
@@ -24,11 +24,10 @@
             "access_key": "",
             "secret_key": "",
             "client_access_key": "",
-            "client_secret_key": "",
-            "endpoint_url": "http://localhost:9000"
+            "client_secret_key": ""
         },
         "cleaning_config": {
-            "clean_cloud_storage_period": 300,
+            "clean_cloud_storage_period": 600,
             "global_keep_version_num": 5,
             "local_keep_version_num": 3
         }

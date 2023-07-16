@@ -1,9 +1,9 @@
 {
-    "client_id": "local-client",
+    "client_id": "234-gpu-2",
     "role": "train",
-    "gpu_index": 0,
+    "gpu_index": 1,
     "save_log": true,
-    "tracking_point": 2000,
+    "tracking_point": 4000,
     "queue_consumer": {
         "exchange_name": "asynfl_exchange",
         "exchange_type": "topic",
@@ -17,7 +17,7 @@
         "routing_key": "server.#"
     },
     "dataset": {
-        "chunk_index": 2,
+        "chunk_index": 5,
         "qod": 0.45
     },
     "training_params": {
@@ -27,6 +27,6 @@
         "lambda_value": 0.0005,
         "learning_rate": 0.1,
         "beta": 0.6,
-        "decay_period": 50
+        "decay_period": 200
     }
 }

@@ -1,9 +1,8 @@
 {
-    "client_id": "local-client",
-    "role": "train",
-    "gpu_index": 0,
+    "client_id": "tester",
+    "role": "test",
     "save_log": true,
-    "tracking_point": 2000,
+    "gpu_index": 0,
     "queue_consumer": {
         "exchange_name": "asynfl_exchange",
         "exchange_type": "topic",
@@ -16,17 +15,12 @@
         "queue_name": "server_consumer",
         "routing_key": "server.#"
     },
-    "dataset": {
-        "chunk_index": 2,
-        "qod": 0.45
+    "testing_params": {
+        "gpu_index": 0,
+        "batch_size": 128
     },
-    "training_params": {
-        "epoch": 10000,
-        "batch_size": 128,
-        "regularization": "l2",
-        "lambda_value": 0.0005,
-        "learning_rate": 0.1,
-        "beta": 0.6,
-        "decay_period": 50
+    "stop_conditions": {
+        "expected_performance": 0.95,
+        "expected_loss": 0.02
     }
 }
