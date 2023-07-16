@@ -7,7 +7,7 @@ from time import sleep
 from abc import abstractmethod
 
 
-from asynfed.commons.messages import MessageV2
+from asynfed.commons.messages import Message
 from asynfed.commons.conf import Config, init_config as _logging_config
 from asynfed.commons.utils import AmqpConsumer, AmqpProducer
 import asynfed.commons.utils.time_ultils as time_utils
@@ -120,7 +120,7 @@ class Client(object):
 
     # consumer queue callback
     def on_message_received(self, ch, method, props, body):
-        msg_received = MessageV2.deserialize(body.decode('utf-8'))
+        msg_received = Message.deserialize(body.decode('utf-8'))
 
         if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE and not self._is_connected:
             self._handle_server_init_response(msg_received)
@@ -129,7 +129,7 @@ class Client(object):
             self._handle_server_notify_message(msg_received)
 
         elif msg_received['headers']['message_type'] == Config.SERVER_STOP_TRAINING: 
-            MessageV2.print_message(msg_received)
+            Message.print_message(msg_received)
             self._is_stop_condition = True
             sys.exit(0)
 
@@ -164,7 +164,7 @@ class Client(object):
             'data_size': self._local_data_size,
             'qod': self._local_qod,
         }
-        message = MessageV2(
+        message = Message(
             headers={'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
             content=InitConnection(
                 role=self._role,
@@ -179,7 +179,7 @@ class Client(object):
 
 
     def _handle_server_init_response(self, msg_received):
-        # MessageV2.print_message(msg_received)
+        # Message.print_message(msg_received)
         LOGGER.info(msg_received)
 
         content = msg_received['content']
@@ -282,7 +282,7 @@ class Client(object):
             LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
             self._new_model_flag = True
             # print the content only when succesfully download new model
-            MessageV2.print_message(msg_received)
+            Message.print_message(msg_received)
             
 
         # test everytime receive new global model notify from server
@@ -292,8 +292,8 @@ class Client(object):
     # queue handling functions
     def _handle_server_ping_to_client(self, msg_received):
         if msg_received['content']['client_id'] == self._client_id:
-            MessageV2.print_message(msg_received)
-            message = MessageV2(
+            Message.print_message(msg_received)
+            message = Message(
                     headers={"timestamp": time_utils.time_now(), "message_type": Config.CLIENT_PING_MESSAGE, "session_id": self._session_id, "client_id": self._client_id},
                     content=Ping()).to_json()
             self._queue_producer.send_data(message)

@@ -1,6 +1,4 @@
 from asynfed.commons.conf import Config
-# from asynfed.commons.messages.client_init_connect_to_server import SysInfo
-from asynfed.commons.messages import SysInfo
 from asynfed.commons.utils.time_ultils import time_now
 
 

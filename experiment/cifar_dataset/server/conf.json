@@ -9,8 +9,8 @@
         "min_loss": 0.02
     },
     "model_exchange_at": {
-        "performance": 0.8,
-        "epoch": 100
+        "performance": 0.1,
+        "epoch": 1
     },
     "cloud_storage": {
         "type": "minio",
@@ -25,7 +25,7 @@
             "secret_key": "",
             "client_access_key": "",
             "client_secret_key": "",
-            "endpoint_url": "http://128.214.254.126:9000",
+            "endpoint_url": "http://localhost:9000",
             "region_name": "ap-southeast-2"
         },
         "cleaning_config": {

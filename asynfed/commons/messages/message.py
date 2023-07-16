@@ -1,72 +1,74 @@
 import json
-from typing import Dict, Union
+import logging
 
 
 class Message:
-    """
-    - This is a Message Object class that can convert dictionary object to its own pre-defined states
-    easy for coding.
-    - It can also convert its own states to a string that make easy for transferring the message.
+    '''
+    Message class is used to create a message object that can be sent to the server.
+    params:
+        content: dict
+        headers: dict
 
-    Follow the Single Responsibility principal that make the code easy to adapt with the changes later.
+    Sample params:
+        headers: {
+            "timestamp": "2021-01-01 00:00:00"
+            "message_type": "init_connection",
+            "session_id": "session_1", 
+            "client_id": "client_1"
+        }
+        content: {
 
-    To use this, you can create a class that extend (inherit) this class.
-    inside the __init__ function should have a message that has dictionary type:
-    class Example(Message):
-        def __init__(self, message: dict):
-            # define your attributes here.
+        }
+    '''
+    def __init__(self, content=None, headers=None):
+        self.headers = headers or {}
+        self.content = content.__dict__ or {}
 
+    def to_json(self):
+        to_dict = {
+            "headers": self.headers,
+            "content": self.content,
+        }
+        return json.dumps(to_dict)
 
-            # in the end of this function, call the deserialize function that take the message ass input.
-            # this will set all attribute of the Example class with the corresponding field in the message
-            self.deserialize(message):
+    @classmethod
+    def deserialize(cls, dict_str):
+        if ': false' in dict_str:
+            dict_str = dict_str.replace(': false', ': False')
+        if ': true' in dict_str:
+            dict_str = dict_str.replace(': true', ': True')
+        if ': null' in dict_str:
+            dict_str = dict_str.replace(': null', ': None')
+        return eval(dict_str)
 
-
-    """
-
-    def deserialize(self, message: Union[str, Dict]) -> object:
-        """
-        @param message: is a string message taken from rabbitmq
-        @return: return object itself
-        """
-        if message is not None:
-            if type(message) is str:
-                message = json.loads(message)
-
-            # Iterate through keys in the input dictionary
-            for key in message:
-                # If the value associated with the key is not a dictionary,
-                # set the attribute with the key and value
-                if type(message[key]) != dict:
-                    setattr(self, key, message[key])
-                # If the value is a dictionary,
-                # recursively call construct_msg on the dictionary
-                # and set the attribute with the resulting object
-                elif type(message[key]) == dict:
-                    setattr(self, key, self.__dict__[key].deserialize(message[key]))
-
-        # Return the deserialized object
-        return self
-
-    def __str__(self):
-        return self.serialize()
-
-    def serialize(self) -> str:
-        # Create an empty dictionary to store the serialized object
-        result: dict = {}
-        # Iterate through the object's attributes
-        for key in self.__dict__:
-            # If the attribute is a basic data type (str, list, dict, int, tuple, set),
-            # add it to the dictionary with its key
-            if type(self.__dict__[key]) in [str, list, dict, int, tuple, set, float]:
-                result[key] = self.__dict__[key]
-            # If the attribute is an object, add its dictionary representation to the dictionary
+    @classmethod
+    def print_message(cls, dict_to_print):
+        def check_value(value):
+            if type(value) is bool:
+                v = 'True' if value else 'False'
+                return v
+            if value is None:
+                return 'None'
+            return value or ''
+        MAX_LENGTH = 80
+        OFFSET = 3
+        logging.info('|' + '-'*MAX_LENGTH + '|')
+        for k, v in dict_to_print.items():
+            if type(v) is dict:
+                logging.info(f'|{k:<20}' + ' '*(MAX_LENGTH-20) )
+                for k2, v2 in v.items():
+                    if type(v2) is dict:
+                        logging.info('|' + ' '*OFFSET + f'{k2:<20}' + ' '*(MAX_LENGTH-OFFSET-20))
+                        for k3, v3 in v2.items():
+                            logging.info('|'+  ' '*OFFSET*2 + f'{k3:<20}: {check_value(v3):<50}' )
+                    else:
+                        logging.info('|' + ' '*OFFSET + f'{k2:<20}: {check_value(v2):<50}' )
+            elif type(v) is bool:
+                v = 'True' if v else 'False'
+                logging.info('|' + ' '*OFFSET + f'{k:<20}: {check_value(v):<50}' )
             else:
-                try:
-                    result[key] = self.__dict__[key].__dict__
-                except Exception as e:
-                    print(e)
-                    print(self.__dict__[key])
+                if len(v) == 0:
+                    v = 'None'
+                logging.info('|' + ' '*OFFSET + f'{k:<20}: {check_value(v):<50}') 
+        logging.info('|' + '-'*MAX_LENGTH + '|')
 
-        # Return the dictionary as a JSON string
-        return json.dumps(result)

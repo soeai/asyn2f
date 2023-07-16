@@ -32,7 +32,7 @@ class DataDescription:
         self.qod = qod
 
 
-class InitConnection:
+class ClientInitConnection:
     """
     ClientInitConnection class is used to create a message object that can be sent to the server.
     """

@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 
-class ResponseConnection:
+class ResponseToInit:
     """
     Sample params:
         model_info: {

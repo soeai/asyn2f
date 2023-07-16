@@ -15,7 +15,7 @@ import concurrent.futures
 # sys.path.append(root)
 
 from asynfed.commons import Config
-from asynfed.commons.messages import MessageV2
+from asynfed.commons.messages import Message
 from asynfed.commons.utils import AmqpConsumer, AmqpProducer
 from asynfed.commons.conf import init_config as _logging_config
 import asynfed.commons.utils.time_ultils as time_utils
@@ -118,7 +118,7 @@ class Server(object):
     # function for queue consumer to call
     # handling when receiving message
     def on_message_received(self, ch, method, props, body):
-        msg_received = MessageV2.deserialize(body.decode('utf-8'))
+        msg_received = Message.deserialize(body.decode('utf-8'))
         msg_type = msg_received['headers']['message_type']
 
         if msg_type == Config.CLIENT_INIT_MESSAGE:
@@ -128,7 +128,7 @@ class Server(object):
         elif msg_type == Config.CLIENT_NOTIFY_EVALUATION:
             self._handle_client_notify_evaluation(msg_received)
         elif msg_type == Config.CLIENT_PING_MESSAGE:
-            MessageV2.print_message(msg_received)
+            Message.print_message(msg_received)
             self._worker_manager.update_worker_last_ping(msg_received['headers']['client_id'])
 
 
@@ -165,7 +165,7 @@ class Server(object):
 
         self._cloud_storage.upload(local_filename, remote_filename)
 
-        message = MessageV2(
+        message = Message(
             headers={"timestamp": time_utils.time_now(), "message_type": Config.SERVER_NOTIFY_MESSAGE, "server_id": self._server_id},
             content=NotifyNewModel(
                 chosen_id=[],
@@ -201,7 +201,7 @@ class Server(object):
             for client_id in self._worker_manager.list_connected_workers():
                 LOGGER.info(f'Ping to client {client_id}')
                 content = PingToClient(client_id)
-                message = MessageV2(
+                message = Message(
                         headers={'timestamp': time_utils.time_now(), 'message_type': Config.SERVER_PING_TO_CLIENT, 'server_id': self._server_id},
                         content=content
                 ).to_json()
@@ -252,7 +252,7 @@ class Server(object):
 
 
     def _response_connection(self, msg_received):
-        MessageV2.print_message(msg_received)
+        Message.print_message(msg_received)
         client_id = msg_received['headers']['client_id']
         session_id = str(uuid.uuid4())
         content = msg_received['content']
@@ -315,7 +315,7 @@ class Server(object):
         queue_info = {"training_exchange": "", 
                       "monitor_queue": ""}
 
-        message = MessageV2(
+        message = Message(
                 headers={'timestamp': time_utils.time_now(), 'message_type': Config.SERVER_INIT_RESPONSE, 'server_id': self._server_id}, 
                 content=ResponseConnection(session_id, model_info, storage_info, queue_info, self._model_exchange_at, reconnect=reconnect)
         ).to_json()
@@ -323,7 +323,7 @@ class Server(object):
 
 
     def _handle_client_notify_model(self, msg_received):
-        MessageV2.print_message(msg_received)
+        Message.print_message(msg_received)
         client_id = msg_received['headers']['client_id']
         # only update the remote local weight path, not download to the device
         self._worker_manager.add_local_update(client_id, msg_received['content'])
@@ -332,7 +332,7 @@ class Server(object):
 
 
     def _handle_client_notify_evaluation(self, msg_received):
-        MessageV2.print_message(msg_received)
+        Message.print_message(msg_received)
 
         info = msg_received['content']
 
@@ -344,7 +344,7 @@ class Server(object):
 
         if self._check_stop_conditions(info):
             content = StopTraining()
-            message = MessageV2(
+            message = Message(
                     headers={'timestamp': time_utils.time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id},
                     content=content
             ).to_json()
