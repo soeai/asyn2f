@@ -1,5 +1,6 @@
 import logging
 import json
+
 class Message:      
     '''
     Message class is used to create a message object that can be sent to the server.
@@ -16,18 +17,22 @@ class Message:
         content: {
         }
     '''
+
     def __init__(self, headers: dict = {}, content: dict = {}):
         self.headers = headers
         self.content = content
+
     def to_json(self):
         dict_object = {
             "headers": self.headers,
             "content": self.content,
         }
         return json.dumps(dict_object)
+    
     @classmethod
     def deserialize(cls, json_str):
         return json.loads(json_str)
+    
     @classmethod
     def print_message(cls, dict_to_print):
         def check_value(value):
@@ -37,13 +42,27 @@ class Message:
                 return 'None'
             elif isinstance(value, dict):
                 return json.dumps(value)
+            elif isinstance(value, list):
+                return ', '.join(map(str, value))
             else:
                 return value if value != '' else 'None'
+        
+        def print_list(lst, offset=0):
+            for i, v in enumerate(lst):
+                if isinstance(v, dict):
+                    logging.info('|' + ' '*(offset+OFFSET) + f'[{i}]')
+                    print_dict(v, offset=offset+OFFSET*2)
+                else:
+                    logging.info('|' + ' '*(offset+OFFSET) + f'[{i}]: {check_value(v):<50}')
+
         def print_dict(dict_to_print, offset=0):
             for k, v in dict_to_print.items():
                 if isinstance(v, dict):
                     logging.info('|' + ' '*offset + f'{k:<20}' + ' '*(MAX_LENGTH-offset-20))
                     print_dict(v, offset=offset+OFFSET)
+                elif isinstance(v, list):
+                    logging.info('|' + ' '*offset + f'{k:<20}' + ' '*(MAX_LENGTH-offset-20))
+                    print_list(v, offset=offset+OFFSET)
                 else:
                     logging.info('|' + ' '*offset + f'{k:<20}: {check_value(v):<50}')
 
@@ -52,3 +71,4 @@ class Message:
         logging.info('|' + '-'*MAX_LENGTH + '|')
         print_dict(dict_to_print)
         logging.info('|' + '-'*MAX_LENGTH + '|')
+
