@@ -11,8 +11,8 @@ import copy
 import concurrent.futures
 
 
-root = os.path.dirname(os.path.dirname(os.getcwd()))
-sys.path.append(root)
+# root = os.path.dirname(os.path.dirname(os.getcwd()))
+# sys.path.append(root)
 
 from asynfed.commons import Config
 from asynfed.commons.messages import MessageV2
@@ -209,9 +209,9 @@ class Server(object):
             sleep(self._ping_period)
 
     def _clean_cloud_storage(self):
+        get_model_version = lambda model_name:  int(model_name.split("_")[-1].split(".")[0].split("v")[-1])
         while True:
             sleep(self._clean_cloud_storage_period)
-
 
             LOGGER.info("CLEANING TIME")
             # clean global folder first
@@ -225,14 +225,14 @@ class Server(object):
             else:
                 best_model_version = None
 
-            versions = [int(file.split("_")[-1].split(".")[0].split("v")[-1]) for file in files]
+            versions = [get_model_version(file) for file in files]
             delete_list = [file for file, version in zip(files, versions) if version <= threshold and version != best_model_version]
 
             if delete_list:
                 LOGGER.info("=" * 20)
                 LOGGER.info("Delete files in global-models folder")
                 LOGGER.info(f"current global version: {current_version}, best model version: {best_model_version}, threshold: {threshold}, total deleted files: {len(delete_list)}")
-                LOGGER.info(versions)
+                LOGGER.info([get_model_version(file) for file in delete_list])
                 LOGGER.info("=" * 20)
                 self._cloud_storage.delete_files(delete_list)
 
@@ -240,14 +240,12 @@ class Server(object):
             workers = self._worker_manager.get_all_worker()
             for w_id, worker in workers.items():
                 files = self._cloud_storage.list_files(parent_folder= "clients", target_folder= w_id)
-
                 threshold = worker.update_local_version_used - self._local_keep_version_num
-
-                delete_list = [file for file in files if int(file.split("_")[-1].split(".")[0].split("v")[-1]) <= threshold]
+                delete_list = [file for file in files if get_model_version(file) <= threshold]
                 if delete_list:
                     LOGGER.info("=" * 20)
                     LOGGER.info(f"worker id: {w_id}, current local update version used: {worker.update_local_version_used}, threshold: {threshold}, total deleted files: {len(delete_list)}")
-                    LOGGER.info([int(file.split("_")[-1].split(".")[0].split("v")[-1]) for file in delete_list])
+                    LOGGER.info([get_model_version(file) for file in delete_list])
                     LOGGER.info("=" * 20)
                     self._cloud_storage.delete_files(delete_list)
 

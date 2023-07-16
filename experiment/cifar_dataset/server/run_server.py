@@ -27,6 +27,10 @@ config['influxdb']['token'] = os.getenv("INFLUXDB_TOKEN")
 config['influxdb']['org'] = os.getenv("INFLUXDB_ORG")
 config['influxdb']['bucket_name'] = os.getenv("INFLUXDB_BUCKET")
 
+# load queue config
+config['queue_consumer']['endpoint'] = os.getenv("queue_consumer_endpoint")
+config['queue_producer']['endpoint'] = os.getenv("queue_producer_endpoint")
+
 
 strategy = AsynFL()
 fedasync_server = Server(strategy, config)

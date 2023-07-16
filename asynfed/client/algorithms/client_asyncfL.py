@@ -1,20 +1,19 @@
 import os
 import logging
-from datetime import datetime
 from time import sleep
 import numpy as np
 from tqdm import tqdm
 import pickle
 
-from asynfed.client.messages import NotifyEvaluation
-from asynfed.client.messages import NotifyModel
-from asynfed.client.messages.require_stop import RequireStop
-from asynfed.commons import Config
-from asynfed.client import Client
 
+from asynfed.commons.conf import Config
 from asynfed.commons.messages import MessageV2
 import asynfed.commons.utils.time_ultils as time_utils
-from asynfed.commons import Config
+
+from messages import NotifyEvaluation, NotifyModel, RequireStop
+from client import Client
+
+
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
@@ -23,8 +22,8 @@ LOGGER.setLevel(logging.INFO)
 # This is the proposed federated asynchronous training algorithm of our paper
 # More algorithms can be found at other files in this directory 
 class ClientAsyncFl(Client):
-    def __init__(self, model, config: dict, save_log=False):
-        super().__init__(model, config, save_log)
+    def __init__(self, model, config: dict):
+        super().__init__(model, config)
         '''
         - model must be an instance of an inheritant of class ModelWrapper
         - for train
@@ -41,17 +40,17 @@ class ClientAsyncFl(Client):
         '''
 
         if self._role == "train":
-            self._batch_size = config['training_params']['batch_size']
-            self._beta = config['training_params']['beta']
-            self._tracking_period = config.get('others', {}).get('tracking_point', None)
+            self._batch_size = self._config['training_params']['batch_size']
+            self._beta = self._config['training_params']['beta']
+            self._tracking_period = self._config.get('tracking_point') or None
 
         elif self._role == "test":
             # using config or set default value
-            self._expected_performance: float = config.get('stop_conditions', {}).get('expected_performance', 0.95)
-            self._expected_loss: float = config.get('stop_conditions', {}).get('expected_loss', 0.02)
+            self._expected_performance: float = self._config.get('stop_conditions', {}).get('expected_performance', 0.95)
+            self._expected_loss: float = self._config.get('stop_conditions', {}).get('expected_loss', 0.02)
 
 
-    def train(self):
+    def _train(self):
         # for notifying global version used to server purpose
         self._merged_global_version = self._current_global_version
 
@@ -61,13 +60,13 @@ class ClientAsyncFl(Client):
         # by training the model before loading the global weights
         current_global_weights = self._load_weights_from_file(self._global_model_name, Config.TMP_GLOBAL_MODEL_FOLDER)
         try:
-            self.model.set_weights(current_global_weights)
+            self._model.set_weights(current_global_weights)
         except Exception as e:
             LOGGER.info("=" * 20)
             LOGGER.info(e)
             LOGGER.info("=" * 20)
             self._get_model_dim_ready()
-            self.model.set_weights(current_global_weights)
+            self._model.set_weights(current_global_weights)
 
         # officially start the training process
         # quit after a number of epoch
@@ -75,7 +74,7 @@ class ClientAsyncFl(Client):
         LOGGER.info("ClientModel Start Training")
         LOGGER.info("=" * 40)
 
-        for _ in range(self.model.epoch):
+        for _ in range(self._model.epoch):
             # record some info of the training process
             self._local_epoch += 1
             batch_num = 0
@@ -83,10 +82,10 @@ class ClientAsyncFl(Client):
             LOGGER.info(f"Enter epoch {self._local_epoch}")
 
             # reset loss and per after each epoch
-            self.model.reset_train_loss()
-            self.model.reset_train_performance()
-            self.model.reset_test_loss()
-            self.model.reset_test_performance()
+            self._model.reset_train_loss()
+            self._model.reset_train_performance()
+            self._model.reset_test_loss()
+            self._model.reset_test_performance()
 
             # if user require
             # Tracking the training process every x samples 
@@ -96,12 +95,12 @@ class ClientAsyncFl(Client):
                 self._multiplier = 1
 
             # training in each batch
-            for images, labels in self.model.train_ds:
+            for images, labels in self._model.train_ds:
                 batch_num += 1
                 # get the previous weights before the new training process within each batch
-                self.model.previous_weights = self.model.get_weights()
+                self._model.previous_weights = self._model.get_weights()
                 # training normally
-                self._train_acc, self._train_loss = self.model.fit(images, labels)
+                self._train_acc, self._train_loss = self._model.fit(images, labels)
 
                 # Tracking the training process every x samples 
                 # x define by user as trakcing_period
@@ -116,23 +115,23 @@ class ClientAsyncFl(Client):
 
                     # before the merging process happens, need to retrieve current weights and global weights
                     # previous, current and global weights are used in the merged process
-                    self.model.current_weights = self.model.get_weights()
+                    self._model.current_weights = self._model.get_weights()
                     # load global weights from file
-                    self.model.global_weights = self._load_weights_from_file(self._global_model_name, Config.TMP_GLOBAL_MODEL_FOLDER)
+                    self._model.global_weights = self._load_weights_from_file(self._global_model_name, Config.TMP_GLOBAL_MODEL_FOLDER)
 
                     LOGGER.info(f"New model ? - {self._new_model_flag}")
                     LOGGER.info(
                         f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._merged_global_version}, current global version {self._previous_merged_global_version}")
                         
                     # merging
-                    self.__merge()
+                    self._merge()
                     # changing flag status
                     self._new_model_flag = False
 
 
-            if self.model.test_ds:
-                for test_images, test_labels in self.model.test_ds:
-                    self._test_acc, self._test_loss = self.model.evaluate(test_images, test_labels)
+            if self._model.test_ds:
+                for test_images, test_labels in self._model.test_ds:
+                    self._test_acc, self._test_loss = self._model.evaluate(test_images, test_labels)
             else:
                 self._test_acc, self._test_loss = 0.0, 0.0
 
@@ -148,39 +147,32 @@ class ClientAsyncFl(Client):
             LOGGER.info("*" * 20)
 
             if (self._min_acc <= self._train_acc) or (self._min_epoch <= self._local_epoch):
-                self.__notify_local_model_to_server()
+                self._notify_local_model_to_server()
             else:
                 LOGGER.info("*" * 20)
                 LOGGER.info(f"At epoch {self._local_epoch}, current train acc is {self._train_acc:.4f}, which does not meet either the min acc {self._min_acc} or min epoch {self._min_epoch} to notify model to server")
                 LOGGER.info("*" * 20)
 
-            # break before completing the intended number of epoch
-            # if the total training time excess some degree
-            # set by client
-            # if self.model.delta_time:
-            #     delta_time = datetime.now() - start_time
-            #     delta_time_in_minute = delta_time.total_seconds() / 60
-            #     if delta_time_in_minute >= self.model.delta_time:
-            #         break
+
             
-    def test(self):
+    def _test(self):
         current_global_weights = self._load_weights_from_file(self._global_model_name, Config.TMP_GLOBAL_MODEL_FOLDER)
         try:
-            self.model.set_weights(current_global_weights)
+            self._model.set_weights(current_global_weights)
         except Exception as e:
             LOGGER.info("=" * 20)
             LOGGER.info(e)
             LOGGER.info("=" * 20)
             self._get_model_dim_ready()
-            self.model.set_weights(current_global_weights)
+            self._model.set_weights(current_global_weights)
 
         # reset state after testing each global model
-        self.model.reset_test_loss()
-        self.model.reset_test_performance()
+        self._model.reset_test_loss()
+        self._model.reset_test_performance()
         
         LOGGER.info('Testing the model')
-        for test_images, test_labels in tqdm(self.model.test_ds):
-            performance, loss = self.model.evaluate(test_images, test_labels)
+        for test_images, test_labels in tqdm(self._model.test_ds):
+            performance, loss = self._model.evaluate(test_images, test_labels)
 
         content = NotifyEvaluation(self._global_model_name, performance, loss)
         LOGGER.info("*" * 20)
@@ -191,7 +183,7 @@ class ClientAsyncFl(Client):
             content=content
         ).to_json()
         
-        self.queue_producer.send_data(message)
+        self._queue_producer.send_data(message)
 
         # check the stop conditions
         if performance > self._expected_performance or loss < self._expected_loss:
@@ -201,12 +193,12 @@ class ClientAsyncFl(Client):
             )
         
 
-    def __notify_local_model_to_server(self):
+    def _notify_local_model_to_server(self):
      # Save weights locally after training
         filename = f'{self._client_id}_v{self._local_epoch}.pkl'
         save_location = Config.TMP_LOCAL_MODEL_FOLDER + filename
         with open(save_location, 'wb') as f:
-            pickle.dump(self.model.get_weights(), f)
+            pickle.dump(self._model.get_weights(), f)
         # Print the weight location
         LOGGER.info(f'Saved weights to {save_location}')
 
@@ -225,26 +217,26 @@ class ClientAsyncFl(Client):
                                             loss=self._train_loss,
                                             performance= self._train_acc)).to_json()
                 
-                self.queue_producer.send_data(message)
+                self._queue_producer.send_data(message)
                 self._update_profile()
                 LOGGER.info(message)
                 LOGGER.info('Notify new model to the server successfully')
                 LOGGER.info("*" * 20)
                 break
 
-    def __merge(self):
+    def _merge(self):
         LOGGER.info("MERGER weights.")
         # updating the value of each parameter of the local model
         # calculating the different to decide the formula of updating
         # calculation is performed on each corresponding layout
         # the different between the current weight and the previous weights
-        e_local = [layer_a - layer_b for layer_a, layer_b in zip(self.model.current_weights, self.model.previous_weights)]
+        e_local = [layer_a - layer_b for layer_a, layer_b in zip(self._model.current_weights, self._model.previous_weights)]
 
         # the different between the global weights and the current weights
-        e_global = [layer_a - layer_b for layer_a, layer_b in zip(self.model.global_weights, self.model.current_weights)]
+        e_global = [layer_a - layer_b for layer_a, layer_b in zip(self._model.global_weights, self._model.current_weights)]
 
         # get the direction list (matrix)
-        self.model.direction = [np.multiply(a, b) for a, b in zip(e_local, e_global)]
+        self._model.direction = [np.multiply(a, b) for a, b in zip(e_local, e_global)]
 
         # Calculate alpha variable to ready for the merging process
         # alpha depend on 
@@ -272,26 +264,26 @@ class ClientAsyncFl(Client):
         LOGGER.info("-" * 20)
 
         # create a blank array to store the result
-        self.model.merged_weights = [np.zeros(layer.shape, dtype=np.float32) for layer in self.model.current_weights]
+        self._model.merged_weights = [np.zeros(layer.shape, dtype=np.float32) for layer in self._model.current_weights]
         # base on the direction, global weights and current local weights
         # updating the value of each parameter to get the new local weights (from merging process)
-        for i, (local_layer, global_layer, direction_layer) in enumerate(zip(self.model.current_weights, self.model.global_weights, self.model.direction)):
+        for i, (local_layer, global_layer, direction_layer) in enumerate(zip(self._model.current_weights, self._model.global_weights, self._model.direction)):
             # access each element in each layer
             # np.where(condition, true, false)
-            self.model.merged_weights[i] = np.where(direction_layer >= 0, global_layer, (1 - alpha) * global_layer + alpha * local_layer)
+            self._model.merged_weights[i] = np.where(direction_layer >= 0, global_layer, (1 - alpha) * global_layer + alpha * local_layer)
 
 
         # set the merged_weights to be the current weights of the model
-        self.model.set_weights(self.model.merged_weights)
+        self._model.set_weights(self._model.merged_weights)
 
 
     def _get_model_dim_ready(self):
         if self._role == "train":
-            ds = self.model.train_ds
+            ds = self._model.train_ds
         else:
-            ds = self.model.test_ds
+            ds = self._model.test_ds
         for images, labels in ds:
-            self.model.fit(images, labels)
+            self._model.fit(images, labels)
             break
         
        

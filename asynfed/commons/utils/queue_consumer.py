@@ -14,10 +14,10 @@ class AmqpConsumer(object):
         self._setup_connection()
 
     def _setup_connection(self):
-        if "amqps://" in self.conf["end_point"]:
-            self.connection = pika.BlockingConnection(pika.URLParameters(self.conf["end_point"]))
+        if "amqps://" in self.conf["endpoint"]:
+            self.connection = pika.BlockingConnection(pika.URLParameters(self.conf["endpoint"]))
         else:
-            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=self.conf["end_point"]))
+            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=self.conf["endpoint"]))
         self.channel = self.connection.channel()
         self.channel.exchange_declare(exchange=self.exchange_name, exchange_type=self.exchange_type)
         self.queue = self.channel.queue_declare(queue=self.conf["queue_name"], exclusive=False)
