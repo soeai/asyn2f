@@ -14,19 +14,18 @@
     },
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "test-connection",
+        "bucket_name": "test-refactor-code-2",
+        "region_name": "ap-southeast-2",
         "aws_s3": {
             "access_key": "",
-            "secret_key": "",
-            "region_name": "ap-southeast-2"
+            "secret_key": ""
         },
         "minio": {
             "access_key": "",
             "secret_key": "",
             "client_access_key": "",
             "client_secret_key": "",
-            "endpoint_url": "http://localhost:9000",
-            "region_name": "ap-southeast-2"
+            "endpoint_url": "http://localhost:9000"
         },
         "cleaning_config": {
             "clean_cloud_storage_period": 300,
