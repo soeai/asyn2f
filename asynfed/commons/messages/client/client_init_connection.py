@@ -15,6 +15,9 @@ class SystemInfo:
         self.gpu = gpu
         self.disk = disk
 
+    def to_dict(self) -> dict:
+        return self.__dict__
+
 
 class DataDescription:
     """
@@ -31,16 +34,27 @@ class DataDescription:
         self.data_size = data_size
         self.qod = qod
 
+    def to_dict(self) -> dict:
+        return self.__dict__
 
 
 class ClientInitConnection:
     """
     ClientInitConnection class is used to create a message object that can be sent to the server.
     """
-    def __init__(self, role: str ="train", system_info: dict = SystemInfo().__dict__, data_description: dict = DataDescription().__dict__ ) -> None:
+    # def __init__(self, role: str ="train", system_info: dict = SystemInfo().__dict__, data_description: dict = DataDescription().__dict__ ) -> None:
+    def __init__(self, role: str ="train", system_info: dict = SystemInfo().to_dict(), data_description: dict = DataDescription().to_dict()) -> None:
         self.role = role
-        self.system_info = system_info
-        self.data_description = data_description
+        self.system_info: SystemInfo = SystemInfo(**system_info)
+        self.data_description: DataDescription = DataDescription(data_description)
+
+    def to_dict(self) -> dict:
+        dict_object = {
+            "role": self.role,
+            "system_info": self.system_info,
+            "data_description": self.data_description
+        }
+        return dict_object
 
 # class ClientInitConnection:
 #     """

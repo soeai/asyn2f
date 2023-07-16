@@ -20,16 +20,16 @@ class Message:
 
         }
     '''
-    def __init__(self, content=None, headers=None):
-        self.headers = headers or {}
-        self.content = content.__dict__ or {}
+    def __init__(self, headers: dict = {}, content: dict = {}):
+        self.headers = headers
+        self.content = content
 
     def to_json(self):
-        to_dict = {
+        dict_object = {
             "headers": self.headers,
             "content": self.content,
         }
-        return json.dumps(to_dict)
+        return json.dumps(dict_object)
 
     @classmethod
     def deserialize(cls, dict_str):

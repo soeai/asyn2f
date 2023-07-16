@@ -167,15 +167,14 @@ class Client(object):
             'data_size': self._local_data_size,
             'qod': self._local_qod,
         }
-        data_description = DataDescription(**data_description)
         
         message = Message(
             headers={'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
             content=ClientInitConnection(
                 role=self._role,
-                system_info= SystemInfo(),
-                data_description=data_description,
-            )
+                system_info= SystemInfo().to_dict(),
+                data_description=DataDescription(**data_description).to_dict(),
+            ).to_dict()
         ).to_json()
         self._queue_producer.send_data(message)
 
