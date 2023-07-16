@@ -13,10 +13,9 @@ from asynfed.commons.utils import AmqpConsumer, AmqpProducer
 import asynfed.commons.utils.time_ultils as time_utils
 
 
-# from .messages import Ping, InitConnection
 from asynfed.commons.messages.client import ClientInitConnection, DataDescription, SystemInfo, ResponseToPing
-# from asynfed.commons.messages.server import 
 from asynfed.commons.messages.server.server_response_to_init import ResponseToInit 
+import asynfed.commons.messages.utils as message_utils 
 
 
 from .client_storage_connector import ClientStorageAWS, ClientStorageMinio
@@ -125,7 +124,7 @@ class Client(object):
 
     # consumer queue callback
     def on_message_received(self, ch, method, props, body):
-        msg_received: dict = Message.deserialize(body.decode('utf-8'))
+        msg_received: dict = message_utils.deserialize(body.decode('utf-8'))
         message_type: str = msg_received['headers']['message_type']
 
         if message_type == Config.SERVER_INIT_RESPONSE and not self._is_connected:
@@ -135,7 +134,7 @@ class Client(object):
             self._handle_server_notify_message(msg_received)
 
         elif message_type == Config.SERVER_STOP_TRAINING: 
-            Message.print_message(msg_received)
+            message_utils.print_message(msg_received)
             self._is_stop_condition = True
             sys.exit(0)
 
@@ -190,7 +189,8 @@ class Client(object):
 
 
     def _handle_server_init_response(self, msg_received):
-        Message.print_message(msg_received)
+        # message_utils.print_message(msg_received)
+        message_utils.print_message(msg_received)
         # LOGGER.info(msg_received)
 
         content = msg_received['content']
@@ -297,7 +297,7 @@ class Client(object):
             LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
             self._new_model_flag = True
             # print the content only when succesfully download new model
-            Message.print_message(msg_received)
+            message_utils.print_message(msg_received)
             
 
         # test everytime receive new global model notify from server
@@ -309,7 +309,7 @@ class Client(object):
         if msg_received['content']['client_id'] == self._client_id:
             # headers = {"timestamp": time_utils.time_now(), "message_type": Config.CLIENT_PING_MESSAGE, "session_id": self._session_id, "client_id": self._client_id}
             headers = self._create_headers(message_type= Config.CLIENT_PING_MESSAGE)
-            Message.print_message(msg_received)
+            message_utils.print_message(msg_received)
             message = Message(headers= headers, content=ResponseToPing()).to_json()
             self._queue_producer.send_data(message)
 

@@ -2,6 +2,7 @@
 import logging
 import json
 
+
 def deserialize(json_str) -> dict:
     return json.loads(json_str)
 
@@ -42,4 +43,3 @@ def print_message(dict_to_print):
     logging.info('|' + '-'*MAX_LENGTH + '|')
     print_dict(dict_to_print)
     logging.info('|' + '-'*MAX_LENGTH + '|')
-

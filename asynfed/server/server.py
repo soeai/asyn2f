@@ -13,16 +13,16 @@ import concurrent.futures
 
 
 from asynfed.commons import Config
-from asynfed.commons.messages import Message
 from asynfed.commons.utils import AmqpConsumer, AmqpProducer
 from asynfed.commons.conf import init_config as _logging_config
 import asynfed.commons.utils.time_ultils as time_utils
 
 
+from asynfed.commons.messages import Message
 from asynfed.commons.messages.server import ServerModelUpdate, PingToClient, ServerRequestStop
 from asynfed.commons.messages.server.server_response_to_init import ResponseToInit, ExchangeAt, ModelInfo, StorageInfo, QueueInfo
 from asynfed.commons.messages.client import ClientInitConnection, ClientModelUpdate, NotifyEvaluation, TesterRequestStop
-
+import asynfed.commons.messages.utils as message_utils 
 
 from .server_aws_storage_connector import ServerStorageAWS
 from .server_minio_storage_connector import ServerStorageMinio
@@ -119,7 +119,8 @@ class Server(object):
     # function for queue consumer to call
     # handling when receiving message
     def on_message_received(self, ch, method, props, body):
-        msg_received = Message.deserialize(body.decode('utf-8'))
+        msg_received = message_utils.deserialize(body.decode('utf-8'))
+
         msg_type = msg_received['headers']['message_type']
 
         if msg_type == Config.CLIENT_INIT_MESSAGE:
@@ -129,7 +130,7 @@ class Server(object):
         elif msg_type == Config.CLIENT_NOTIFY_EVALUATION:
             self._handle_client_notify_evaluation(msg_received)
         elif msg_type == Config.CLIENT_PING_MESSAGE:
-            Message.print_message(msg_received)
+            message_utils.print_message(msg_received)
             self._worker_manager.update_worker_last_ping(msg_received['headers']['client_id'])
 
 
@@ -260,7 +261,7 @@ class Server(object):
 
 
     def _response_connection(self, msg_received: dict):
-        Message.print_message(msg_received)
+        message_utils.print_message(msg_received)
         content: dict = msg_received['content']
         client_init_message: ClientInitConnection = ClientInitConnection(**content)
 
@@ -330,7 +331,7 @@ class Server(object):
 
 
     def _handle_client_notify_model(self, msg_received):
-        Message.print_message(msg_received)
+        message_utils.print_message(msg_received)
         client_id: str = msg_received['headers']['client_id']
         timestamp = msg_received['headers']['timestamp']
         client_model_update: ClientModelUpdate = ClientModelUpdate(**msg_received['content'])
@@ -343,7 +344,7 @@ class Server(object):
 
 
     def _handle_client_notify_evaluation(self, msg_received):
-        Message.print_message(msg_received)
+        message_utils.print_message(msg_received)
         model_evaluation: NotifyEvaluation = NotifyEvaluation(**msg_received['content'])
 
 
