@@ -17,7 +17,7 @@ class TensorflowFramework(ModelWrapper):
     # Tensorflow Model must be an inheritant of class tensorflow.keras.Model
     # model, data_size, train_ds is required
     # test_ds is optional
-    def __init__(self, model: Model, data_size, train_ds, test_ds, config: dict, role: str = "train"):
+    def __init__(self, model: Model, data_size: int, train_ds = None, test_ds = None, config: dict = {}):
         super().__init__()
         '''
         - model must have an optimizer, a loss object, and trainining metric 
@@ -40,6 +40,8 @@ class TensorflowFramework(ModelWrapper):
         self.test_ds = test_ds
         self.data_size = data_size
 
+        role = config['role']
+
         if role == "train":
             self.qod = config['dataset']['qod']
             self.epoch = config['training_params']['epoch']
@@ -47,7 +49,6 @@ class TensorflowFramework(ModelWrapper):
             self.lambda_value = config['training_params']['lambda_value']
             # self.delta_time = config['others']['delta_time']
         
-            # self.data_size = data_size
         else:
             self.epoch = None
             self.qod = None
@@ -55,7 +56,6 @@ class TensorflowFramework(ModelWrapper):
             self.regularization = None
             self.lambda_value = None
 
-            # self.data_size = None
 
     def set_weights(self, weights):
         return self.model.set_weights(weights)
