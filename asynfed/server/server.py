@@ -167,10 +167,8 @@ class Server(object):
         remote_filename = f'global-models/{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
 
         self._cloud_storage.upload(local_filename, remote_filename)
-
-        message = Message(
-            headers={"timestamp": time_utils.time_now(), "message_type": Config.SERVER_NOTIFY_MESSAGE, "server_id": self._server_id},
-            content= ServerModelUpdate(
+        headers= {"timestamp": time_utils.time_now(), "message_type": Config.SERVER_NOTIFY_MESSAGE, "server_id": self._server_id}
+        model_update_message: dict = ServerModelUpdate(
                 chosen_id=[],
                 model_id=self._strategy.model_id,
                 global_model_version=self._strategy.current_version,
@@ -178,8 +176,9 @@ class Server(object):
                 global_model_update_data_size=self._strategy.global_model_update_data_size,
                 avg_loss=self._strategy.avg_loss,
                 avg_qod=self._strategy.avg_qod,
-            )
-        ).to_json()
+            ).to_dict()
+        message = Message(headers= headers, content= model_update_message).to_json()
+
         self._queue_producer.send_data(message)
 
 
@@ -203,11 +202,9 @@ class Server(object):
         while True:
             for client_id in self._worker_manager.list_connected_workers():
                 LOGGER.info(f'Ping to client {client_id}')
-                content = PingToClient(client_id)
-                message = Message(
-                        headers={'timestamp': time_utils.time_now(), 'message_type': Config.SERVER_PING_TO_CLIENT, 'server_id': self._server_id},
-                        content=content
-                ).to_json()
+                headers = {'timestamp': time_utils.time_now(), 'message_type': Config.SERVER_PING_TO_CLIENT, 'server_id': self._server_id}
+                content: dict = PingToClient.to_dict()
+                message = Message(headers= headers, content= content).to_json()
                 self._queue_producer.send_data(message)
             sleep(self._ping_period)
 
@@ -271,7 +268,7 @@ class Server(object):
             worker = Worker(
                     session_id=session_id,
                     worker_id=client_id,
-                    sys_info= client_init_message.system_info,
+                    sys_info= client_init_message.system_info.to_dict(),
                     data_size= client_init_message.data_description.data_size,
                     qod=client_init_message.data_description.qod
             )
@@ -296,7 +293,6 @@ class Server(object):
         # notify newest global model to worker
         model_url = self._cloud_storage.get_newest_global_model()
         global_model_name = model_url.split("/")[-1]
-        # model_version = int(re.search(r"v(\d+)", global_model_name.split("_")[1]).group(1))
         model_version = self._get_model_version(global_model_name)
         self._strategy.current_version = model_version
 
@@ -321,10 +317,10 @@ class Server(object):
         queue_info = {"training_exchange": "", 
                       "monitor_queue": ""}
 
-        message = Message(
-                headers={'timestamp': time_utils.time_now(), 'message_type': Config.SERVER_INIT_RESPONSE, 'server_id': self._server_id}, 
-                content=ResponseToInit(session_id, model_info, storage_info, queue_info, self._model_exchange_at, reconnect=reconnect)
-        ).to_json()
+        headers = {'timestamp': time_utils.time_now(), 'message_type': Config.SERVER_INIT_RESPONSE, 'server_id': self._server_id}
+        response_to_init_message: dict = ResponseToInit(session_id, model_info, storage_info, queue_info, 
+                                                        self._model_exchange_at, reconnect=reconnect).to_dict()
+        message= Message(headers= headers, content= response_to_init_message).to_json()
         self._queue_producer.send_data(message)
 
 
@@ -346,15 +342,12 @@ class Server(object):
             self._best_model.update(info)
             self._write_record()
 
-        # info['version'] = int(re.search(r"v(\d+)", info['weight_file'].split("_")[1]).group(1))
         info['version'] = self._get_model_version(info['weight_file'])
 
         if self._check_stop_conditions(info):
-            content = ServerRequestStop()
-            message = Message(
-                    headers={'timestamp': time_utils.time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id},
-                    content=content
-            ).to_json()
+            headers={'timestamp': time_utils.time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id}
+            content = ServerRequestStop().to_dict()
+            message = Message(headers= headers, content= content).to_json()
             self._queue_producer.send_data(message)
             LOGGER.info("=" * 50)
             LOGGER.info("Stop condition met. Log out best model")
@@ -383,7 +376,6 @@ class Server(object):
                 worker.is_completed = False
                 # keep track of the latest local version of worker used for cleaning task
                 model_filename = worker.get_remote_weight_file_path().split('/')[-1]
-                # worker.update_local_version_used = int(re.search(r"v(\d+)", model_filename.split("_")[1]).group(1))
                 worker.update_local_version_used = self._get_model_version(model_filename)
 
             # pass out a copy of completed worker to aggregating process
@@ -425,7 +417,6 @@ class Server(object):
 
             # keep track of the latest local version of worker used for cleaning task
             model_filename = remote_weight_file.split('/')[-1]
-            # worker.update_local_version_used = int(re.search(r"v(\d+)", model_filename.split("_")[1]).group(1))
             worker.update_local_version_used = self._get_model_version(model_filename)
 
 

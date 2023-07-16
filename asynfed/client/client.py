@@ -167,15 +167,16 @@ class Client(object):
             'data_size': self._local_data_size,
             'qod': self._local_qod,
         }
-        
-        message = Message(
-            headers={'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
-            content=ClientInitConnection(
+
+        client_init_message = ClientInitConnection(
                 role=self._role,
                 system_info= SystemInfo().to_dict(),
                 data_description=DataDescription(**data_description).to_dict(),
             ).to_dict()
-        ).to_json()
+        
+
+        headers = {'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id}
+        message = Message(headers= headers, content= client_init_message).to_json()
         self._queue_producer.send_data(message)
 
 
@@ -184,8 +185,8 @@ class Client(object):
 
 
     def _handle_server_init_response(self, msg_received):
-        # Message.print_message(msg_received)
-        LOGGER.info(msg_received)
+        Message.print_message(msg_received)
+        # LOGGER.info(msg_received)
 
         content = msg_received['content']
         if content['reconnect'] is True:
@@ -206,7 +207,6 @@ class Client(object):
             self._storage_connector = ClientStorageAWS(storage_info)
         else:
             self._storage_connector = ClientStorageMinio(storage_info, parent=None)
-            # self._storage_connector = ClientStorageMinio(storage_info, parent= self)
 
         self._is_connected = True
 

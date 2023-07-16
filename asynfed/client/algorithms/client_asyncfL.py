@@ -176,23 +176,20 @@ class ClientAsyncFl(Client):
         for test_images, test_labels in tqdm(self._model.test_ds):
             performance, loss = self._model.evaluate(test_images, test_labels)
 
-        content = NotifyEvaluation(self._global_model_name, performance, loss)
+        headers={'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_NOTIFY_EVALUATION, 'session_id': self._session_id, 'client_id': self._client_id}
+        notify_evaluation_message: dict = NotifyEvaluation(self._global_model_name, performance, loss).to_dict()
         LOGGER.info("*" * 20)
-        LOGGER.info(content.__dict__)
+        LOGGER.info(notify_evaluation_message)
         LOGGER.info("*" * 20)
-        message = Message(
-            headers={'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_NOTIFY_EVALUATION, 'session_id': self._session_id, 'client_id': self._client_id},
-            content=content
-        ).to_json()
-        
+        message = Message(headers= headers, content= notify_evaluation_message).to_json()
         self._queue_producer.send_data(message)
 
-        # check the stop conditions
-        if performance > self._expected_performance or loss < self._expected_loss:
-            message = Message(
-                headers={'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_NOTIFY_STOP, 'session_id': self._session_id, 'client_id': self._client_id},
-                content=TesterRequestStop(self._global_model_name, performance, loss)
-            )
+        # # check the stop conditions
+        # if performance > self._expected_performance or loss < self._expected_loss:
+        #     headers = {'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_NOTIFY_STOP, 'session_id': self._session_id, 'client_id': self._client_id}
+        #     content = content=TesterRequestStop(self._global_model_name, performance, loss).to_dict()
+        #     message = Message(headers= headers, content= content).to_json()
+        #     self._queue_producer.send_data(message)
         
 
     def _notify_local_model_to_server(self):
@@ -211,13 +208,13 @@ class ClientAsyncFl(Client):
                 # After training, notify new model to the server.
                 LOGGER.info("*" * 20)
                 LOGGER.info('Notify new model to the server')
-                message = Message(
-                        headers={"timestamp": time_utils.time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id},
-                        content= ClientModelUpdate(remote_worker_weight_path=remote_file_path, 
-                                            filename=filename,
-                                            global_version_used=self._merged_global_version, 
-                                            loss=self._train_loss,
-                                            performance= self._train_acc)).to_json()
+                headers={"timestamp": time_utils.time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id}
+                notify_local_model_message: dict = ClientModelUpdate(remote_worker_weight_path=remote_file_path, 
+                                                                    filename=filename,
+                                                                    global_version_used=self._merged_global_version, 
+                                                                    loss=self._train_loss,
+                                                                    performance= self._train_acc).to_dict()
+                message = Message(headers= headers, content= notify_local_model_message).to_json()
                 
                 self._queue_producer.send_data(message)
                 self._update_profile()
