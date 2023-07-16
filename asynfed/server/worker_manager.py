@@ -76,7 +76,7 @@ class WorkerManager:
         return [self.worker_pool[worker_id].session_id for worker_id in self.worker_pool.keys()]
 
 
-    def list_connected_workers(self) -> List:
+    def list_connected_workers(self) -> List[str]:
         """
         Return a list of connected worker_id
         """

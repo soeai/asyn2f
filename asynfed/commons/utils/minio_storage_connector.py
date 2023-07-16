@@ -9,17 +9,18 @@ from time import sleep
 
 logging.getLogger(__name__)
 
+from asynfed.commons.messages.server.server_response_to_init import StorageInfo
 
 class MinioConnector(ABC):
     """Class for connecting to AWS S3"""
     time_sleep = 10
-    def __init__(self, minio_config, parent=None) -> None:
+    def __init__(self, storage_info: StorageInfo, parent=None) -> None:
         self._parent_thread = parent
-        self._access_key: str = minio_config['access_key']
-        self._secret_key: str = minio_config['secret_key']
-        self._bucket_name: str = minio_config['bucket_name']
-        self._endpoint_url: str = minio_config['endpoint_url']
-        
+        self._access_key = storage_info.access_key
+        self._secret_key = storage_info.secret_key
+        self._bucket_name = storage_info.bucket_name
+        self._endpoint_url = storage_info.endpoint_url
+
         self._s3 = boto3.client('s3',
                                 endpoint_url=self._endpoint_url,
                                 aws_access_key_id=self._access_key, 

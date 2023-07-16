@@ -12,13 +12,19 @@ class ModelInfo(MessageObject):
 
 class StorageInfo(MessageObject):
     def __init__(self, storage_type: str, access_key: str, secret_key: str, 
-                 bucket_name: str, region_name: str, endpoint_url: str = ""):
+                 bucket_name: str, region_name: str, endpoint_url: str = "",
+                 client_access_key: str = "", client_secret_key: str = ""):
         self.storage_type = storage_type
         self.access_key = access_key
         self.secret_key = secret_key
         self.bucket_name = bucket_name
         self.region_name = region_name
+
+        # properties of minio that aws s3 do not have
+        # set default value as empty string 
         self.endpoint_url = endpoint_url
+        self.client_access_key = client_access_key
+        self.client_secret_key = client_secret_key
 
 
 class QueueInfo(MessageObject):

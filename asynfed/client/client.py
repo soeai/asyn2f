@@ -14,7 +14,9 @@ import asynfed.commons.utils.time_ultils as time_utils
 
 
 from asynfed.commons.messages.client import ClientInitConnection, DataDescription, SystemInfo, ResponseToPing
-from asynfed.commons.messages.server.server_response_to_init import ResponseToInit 
+from asynfed.commons.messages.server import ServerModelUpdate
+
+from asynfed.commons.messages.server.server_response_to_init import ResponseToInit, StorageInfo
 import asynfed.commons.messages.utils as message_utils 
 
 
@@ -170,22 +172,31 @@ class Client(object):
             'qod': self._local_qod,
         }
 
-        client_init_message = ClientInitConnection(
-                role=self._role,
-                system_info= SystemInfo().to_dict(),
-                data_description=DataDescription(**data_description).to_dict(),
-            ).to_dict()
+        client_init_message: ClientInitConnection = ClientInitConnection(
+                                                    role=self._role,
+                                                    system_info= SystemInfo().to_dict(),
+                                                    data_description=DataDescription(**data_description).to_dict()
+                                                    )
         
 
         # headers = {'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id}
         headers = self._create_headers(message_type= Config.CLIENT_INIT_MESSAGE)
-        message = Message(headers= headers, content= client_init_message).to_json()
+        message = Message(headers= headers, content= client_init_message.to_dict()).to_json()
         self._queue_producer.send_data(message)
 
 
 
     def _start_consumer(self):
         self._queue_consumer.start()
+
+    def _start_training_thread(self):
+        LOGGER.info("Start training thread.")
+        training_thread = threading.Thread(
+            target=self._train,
+            name="client_training_thread")
+        training_thread.daemon = True
+        self._is_training = True
+        training_thread.start()
 
 
     def _handle_server_init_response(self, msg_received):
@@ -203,16 +214,18 @@ class Client(object):
         # self._session_id = content['session_id']
         self._session_id = server_init_response.session_id
 
-        self._global_model_name = content['model_info']['global_model_name']
-        self._received_global_version = content['model_info']['model_version']
+        self._global_model_name = server_init_response.model_info.global_model_name
+        self._received_global_version = server_init_response.model_info.model_version
 
+        # get the exchange condition from server
+        self._min_acc = server_init_response.exchange_at.performance
+        self._min_epoch = server_init_response.exchange_at.epoch
 
-        self._min_acc = content['exchange_at']['performance']
-        self._min_epoch = content['exchange_at']['epoch']
 
         # connect to cloud storage service provided by server
-        storage_info = content['storage_info']
-        self._cloud_storage_type = storage_info['storage_type']
+        storage_info: StorageInfo = server_init_response.storage_info
+        self._cloud_storage_type = storage_info.storage_type
+
         if self._cloud_storage_type == "s3":
             self._storage_connector = ClientStorageAWS(storage_info)
         else:
@@ -227,7 +240,7 @@ class Client(object):
             local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
 
             while True:
-                if self._storage_connector.download(remote_file_path=content['model_info']['model_url'], 
+                if self._storage_connector.download(remote_file_path=server_init_response.model_info.model_url, 
                                                 local_file_path=local_path):
                     break
                 LOGGER.info("Download model failed. Retry in 5 seconds.")
@@ -245,33 +258,28 @@ class Client(object):
             self._test()
 
 
-    def _start_training_thread(self):
-        LOGGER.info("Start training thread.")
-        training_thread = threading.Thread(
-            target=self._train,
-            name="client_training_thread")
-        training_thread.daemon = True
-        self._is_training = True
-        training_thread.start()
-
 
     def _handle_server_notify_message(self, msg_received):
+
         content = msg_received['content']
+        server_model_udpate: ServerModelUpdate = ServerModelUpdate(**msg_received['content'])
+
         with lock:
             # ----- receive and load global message ----
-            self._global_chosen_list = content['chosen_id']
+            self._global_chosen_list = server_model_udpate.chosen_id
 
             # update latest model info
-            self._global_model_name = content['global_model_name']
-            self._received_global_version = content['global_model_version']
+            self._global_model_name = server_model_udpate.global_model_name
+            self._received_global_version = server_model_udpate.global_model_version
 
             # global info for merging process
-            self._global_model_update_data_size = content['global_model_update_data_size']
-            self._global_avg_loss = content['avg_loss']
-            self._global_avg_qod = content['avg_qod']
+            self._global_model_update_data_size = server_model_udpate.global_model_update_data_size
+            self._global_avg_loss = server_model_udpate.avg_loss
+            self._global_avg_qod = server_model_udpate.avg_qod
+
             LOGGER.info("*" * 20)
             LOGGER.info(
-                f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
+                f"Global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
             LOGGER.info("*" * 20)
 
             # save the previous local version of the global model to log it to file
@@ -282,8 +290,6 @@ class Client(object):
             remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
             local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
 
-            # remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
-            # local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
 
             LOGGER.info("Downloading new global model............")
 
@@ -307,10 +313,9 @@ class Client(object):
     # queue handling functions
     def _handle_server_ping_to_client(self, msg_received):
         if msg_received['content']['client_id'] == self._client_id:
-            # headers = {"timestamp": time_utils.time_now(), "message_type": Config.CLIENT_PING_MESSAGE, "session_id": self._session_id, "client_id": self._client_id}
-            headers = self._create_headers(message_type= Config.CLIENT_PING_MESSAGE)
             message_utils.print_message(msg_received)
-            message = Message(headers= headers, content=ResponseToPing()).to_json()
+            headers = self._create_headers(message_type= Config.CLIENT_PING_MESSAGE)
+            message = Message(headers= headers, content=ResponseToPing().to_dict()).to_json()
             self._queue_producer.send_data(message)
 
 

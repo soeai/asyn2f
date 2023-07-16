@@ -5,13 +5,14 @@ from time import sleep
 
 LOGGER = logging.getLogger(__name__)
 
+from asynfed.commons.messages.server.server_response_to_init import StorageInfo
 
 class ServerStorageMinio(MinioConnector):
-    def __init__(self, minio_config):
-        super().__init__(minio_config)
+    def __init__(self, storage_info: StorageInfo):
+        super().__init__(storage_info)
         self.create_bucket()
-        self._client_access_key: str = minio_config['client_access_key']
-        self._client_secret_key: str = minio_config['client_secret_key']
+        self._client_access_key: str = storage_info.client_access_key
+        self._client_secret_key: str = storage_info.client_secret_key
 
     def create_bucket(self):
         try:

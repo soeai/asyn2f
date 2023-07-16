@@ -81,10 +81,12 @@ class Server(object):
         self._clean_cloud_storage_thread.daemon = True
 
         LOGGER.info("-" * 40)
-        LOGGER.info('Server config completed. Ready to listen!')
+        # LOGGER.info('Server config completed. Ready to listen!')
+        LOGGER.info(f'Server {self._server_id} ready for training process!')
         LOGGER.info(f'\n\nServer Info:\n\tQueue In : {self._config["queue_consumer"]}'
                     f'\n\tQueue Out : {self._config["queue_producer"]}'
                     f'\n\tS3 Bucket: {self._bucket_name}'
+                    f'\n\tModel ID: {self._strategy.model_id}'
                     f'\n\n')
         LOGGER.info("-" * 40)
 
@@ -193,13 +195,16 @@ class Server(object):
             LOGGER.info("There is no cloud storage")
             sys.exit(0)
 
+        cloud_config['storage_type'] = self._cloud_storage_type
         cloud_config['bucket_name'] = self._bucket_name
         cloud_config['region_name'] = self._config['cloud_storage']['region_name']
         
+        cloud_storage_info: StorageInfo = StorageInfo(**cloud_config)
+
         if self._aws_s3:
-            cloud_storage: ServerStorageAWS = ServerStorageAWS(cloud_config)
+            cloud_storage: ServerStorageAWS = ServerStorageAWS(cloud_storage_info)
         else:
-            cloud_storage: ServerStorageMinio = ServerStorageMinio(cloud_config)
+            cloud_storage: ServerStorageMinio = ServerStorageMinio(cloud_storage_info)
 
         return cloud_storage
 
@@ -210,13 +215,13 @@ class Server(object):
 
     def _ping(self):
         while True:
-            sleep(self._ping_period)
             for client_id in self._worker_manager.list_connected_workers():
                 LOGGER.info(f'Ping to client {client_id}')
                 headers: dict = self._create_headers(message_type= Config.SERVER_PING_TO_CLIENT)
-                pint_to_client: PingToClient = PingToClient()
+                pint_to_client: PingToClient = PingToClient(client_id= client_id)
                 message = Message(headers= headers, content= pint_to_client.to_dict()).to_json()
                 self._queue_producer.send_data(message)
+            sleep(self._ping_period)
 
 
     def _clean_cloud_storage(self):
