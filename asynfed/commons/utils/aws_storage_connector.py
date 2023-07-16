@@ -6,20 +6,23 @@ from time import sleep
 
 logging.getLogger(__name__)
 
+from asynfed.commons.messages.server.server_response_to_init import StorageInfo
+
 
 class AWSConnector(ABC):
     """Class for connecting to AWS S3"""
     time_sleep = 10
-    def __init__(self, aws_config, parent=None) -> None:
-        self.parent_thread = parent
-        self.access_key = aws_config['access_key']
-        self.secret_key = aws_config['secret_key']
-        self.bucket_name = aws_config['bucket_name']
-        self.region_name = aws_config['region_name']
+    def __init__(self, storage_info: StorageInfo, parent=None) -> None:
+        self._parent_thread = parent
+        self._access_key = storage_info.access_key
+        self._secret_key = storage_info.secret_key
+        self._bucket_name = storage_info.bucket_name
+        self._region_name = storage_info.region_name
 
-        self._s3 = boto3.client('s3', aws_access_key_id=self.access_key, 
-                                aws_secret_access_key=self.secret_key, 
-                                region_name=self.region_name)
+
+        self._s3 = boto3.client('s3', aws_access_key_id=self._access_key, 
+                                aws_secret_access_key=self._secret_key, 
+                                region_name=self._region_name)
         logging.info(f'Connected to AWS server')
 
     def upload(self, local_file_path: str, remote_file_path: str, try_time=5):
@@ -28,10 +31,10 @@ class AWSConnector(ABC):
         if not os.path.exists(local_file_path):
             os.makedirs(local_file_path.split('/')[:-1])
         # call synchronously
-        if self.parent_thread is None:
+        if self._parent_thread is None:
             try:
                 logging.info(f'Uploading {local_file_path} to {remote_file_path}...')
-                self._s3.upload_file(local_file_path, self.bucket_name, remote_file_path)
+                self._s3.upload_file(local_file_path, self._bucket_name, remote_file_path)
                 logging.info(f'Successfully uploaded {local_file_path} to {remote_file_path}')
                 return True
             except Exception as e:
@@ -42,23 +45,23 @@ class AWSConnector(ABC):
             while t < try_time:
                 try:
                     logging.info(f'Uploading {local_file_path} to {remote_file_path}...')
-                    self._s3.upload_file(local_file_path, self.bucket_name, remote_file_path)
+                    self._s3.upload_file(local_file_path, self._bucket_name, remote_file_path)
                     logging.info(f'Successfully uploaded {local_file_path} to {remote_file_path}')
-                    self.parent_thread.on_upload(True)
+                    self._parent_thread.on_upload(True)
                     break
                 except Exception as e:
                     logging.error(e)
                     sleep(AWSConnector.time_sleep)
                     t += 1
-            self.parent_thread.on_upload(False)
+            self._parent_thread.on_upload(False)
 
     def download(self, remote_file_path, local_file_path, try_time=5):
         """Downloads a file from AWS"""
         # call synchronously
-        if self.parent_thread is None:
+        if self._parent_thread is None:
             try:
                 logging.info(f'Saving {remote_file_path} to {local_file_path}...')
-                self._s3.download_file(self.bucket_name, remote_file_path, local_file_path)
+                self._s3.download_file(self._bucket_name, remote_file_path, local_file_path)
                 logging.info(f'Saved {remote_file_path} to {local_file_path}')
                 downloaded = True
                 return True
@@ -71,7 +74,7 @@ class AWSConnector(ABC):
             while t < try_time:
                 try:
                     logging.info(f'Saving {remote_file_path} to {local_file_path}...')
-                    self._s3.download_file(self.bucket_name, remote_file_path, local_file_path)
+                    self._s3.download_file(self._bucket_name, remote_file_path, local_file_path)
                     logging.info(f'Saved {remote_file_path} to {local_file_path}')
                     result = True
                     break
@@ -80,4 +83,4 @@ class AWSConnector(ABC):
                     sleep(self.time_sleep)
                     t += 1
                     raise e
-            self.parent_thread.on_download(result)
+            self._parent_thread.on_download(result)

@@ -17,10 +17,10 @@ class AmqpProducer(object):
 
     def _setup_connection(self):
         # Connect to RabbitMQ host
-        if "amqps://" in self.conf["end_point"]:
-            self.connection = pika.BlockingConnection(pika.URLParameters(self.conf["end_point"]))
+        if "amqps://" in self.conf["endpoint"]:
+            self.connection = pika.BlockingConnection(pika.URLParameters(self.conf["endpoint"]))
         else:
-            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=self.conf["end_point"]))
+            self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=self.conf["endpoint"]))
         
         # Create a channel
         self.channel = self.connection.channel()

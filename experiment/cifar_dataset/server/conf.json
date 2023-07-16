@@ -1,35 +1,33 @@
 {
     "server_id": "",
     "update_period": 40,
-    "ping_time": 300,
+    "ping_period": 300,
     "save_log": true,
     "stop_conditions": {
-        "max_version": 300,
+        "max_version": 400,
         "max_performance": 0.95,
         "min_loss": 0.02
     },
     "model_exchange_at": {
-        "performance": 0.8,
+        "performance": 0.85,
         "epoch": 100
     },
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "test-connection",
+        "bucket_name": "test-refactor-code",
+        "region_name": "ap-southeast-2",
         "aws_s3": {
             "access_key": "",
-            "secret_key": "",
-            "region_name": "ap-southeast-2"
+            "secret_key": ""
         },
         "minio": {
             "access_key": "",
             "secret_key": "",
             "client_access_key": "",
-            "client_secret_key": "",
-            "endpoint_url": "http://128.214.254.126:9000",
-            "region_name": "ap-southeast-2"
+            "client_secret_key": ""
         },
         "cleaning_config": {
-            "clean_cloud_storage_period": 300,
+            "clean_cloud_storage_period": 600,
             "global_keep_version_num": 5,
             "local_keep_version_num": 3
         }
@@ -38,15 +36,13 @@
         "exchange_name": "asynfl_exchange",
         "exchange_type": "topic",
         "queue_name": "server_consumer",
-        "routing_key": "server.#",
-        "end_point": "amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj"
+        "routing_key": "server.#"
     },
     "queue_producer": {
         "exchange_name": "asynfl_exchange",
         "exchange_type": "topic",
         "queue_name": "server_queue",
-        "routing_key": "client.#",
-        "end_point": "amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj"
+        "routing_key": "client.#"
     },
 
     "influxdb": {

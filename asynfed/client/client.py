@@ -1,28 +1,29 @@
 import os, sys
-from asynfed.client.messages.ping import Ping
-import asynfed.commons.utils.time_ultils as time_utils
-
-root = os.path.dirname(os.path.dirname(os.getcwd()))
-sys.path.append(root)
-
 import json
 import logging
-import os
 import threading
 import uuid
 from time import sleep
-
 from abc import abstractmethod
-from asynfed.client.client_storage_connector import ClientStorageAWS, ClientStorageMinio
 
-from asynfed.client.messages import InitConnection
-from asynfed.commons.conf import Config, init_config
 
-from asynfed.commons.messages import MessageV2
-from asynfed.commons.utils import AmqpConsumer
-from asynfed.commons.utils import AmqpProducer
+from asynfed.commons.messages import Message
+from asynfed.commons.conf import Config, init_config as _logging_config
+from asynfed.commons.utils import AmqpConsumer, AmqpProducer
+import asynfed.commons.utils.time_ultils as time_utils
 
+
+from asynfed.commons.messages.client import ClientInitConnection, DataDescription, SystemInfo, ResponseToPing
+from asynfed.commons.messages.server import ServerModelUpdate
+
+from asynfed.commons.messages.server.server_response_to_init import ResponseToInit, StorageInfo
+import asynfed.commons.messages.utils as message_utils 
+
+
+from .client_storage_connector import ClientStorageAWS, ClientStorageMinio
 from .ModelWrapper import ModelWrapper
+
+
 import concurrent.futures
 thread_pool_ref = concurrent.futures.ThreadPoolExecutor
 
@@ -35,16 +36,18 @@ lock = threading.Lock()
 
 
 class Client(object):
-    def __init__(self, model: ModelWrapper, config: dict, save_log: bool = True):
-        init_config("client", save_log)
+    # def __init__(self, model: ModelWrapper, config: dict, save_log: bool = True):
+    def __init__(self, model: ModelWrapper, config: dict):
+        _logging_config("client", config['save_log'])
 
-        self.config = config
-        self._role = config.get("role") or "train"
+        self._config = config
+        self._role = self._config.get("role") or "train"
 
         # fixed property
-        self.model = model
-        self._local_data_size = self.model.data_size
-        self._local_qod = self.model.qod
+        self._model = model
+
+        self._local_data_size = self._model.data_size
+        self._local_qod = self._model.qod
 
         # dynamic - training process
         self._local_epoch = 0
@@ -61,7 +64,6 @@ class Client(object):
         self._global_model_name = None
 
         # stop condition received from server
-        self._model_exchange_at = None
         self._min_acc: float
         self._min_epoch: int
         self._is_stop_condition = False
@@ -71,10 +73,11 @@ class Client(object):
         self._global_avg_qod = None
         self._global_model_update_data_size = None
 
-        # --------- info get from server ------------
-
-        self._client_id = self.config.get('client_id') or str(uuid.uuid4())
         self._session_id = ""
+        # ---------------------
+
+        self._client_id = self._config.get('client_id') or str(uuid.uuid4())
+
         # some boolean variable to track the state of client
         self._is_connected = False
         self._is_training = False
@@ -86,8 +89,6 @@ class Client(object):
         self._save_global_model_update_data_size = None
         self._save_global_model_version = None
 
-        # set up a queue for each client
-        self.config['queue_consumer']['queue_name'] = "queue_" + self._client_id
 
         # Initialize profile for client
         if not os.path.exists("profile.json"):
@@ -95,66 +96,56 @@ class Client(object):
         else:
             self._load_profile()
 
+        # specify a queue for each client
+        self._config['queue_consumer']['queue_name'] = f"queue_{self._client_id}"
+
         # queue related
-        self.thread_consumer = threading.Thread(target=self._start_consumer)
-        self.queue_consumer = AmqpConsumer(self.config['queue_consumer'], self)
-        self.queue_producer = AmqpProducer(self.config['queue_producer'])
+        self._queue_consumer = AmqpConsumer(self._config['queue_consumer'], self)
+        self._thread_consumer = threading.Thread(target=self._start_consumer)
+        self._queue_producer = AmqpProducer(self._config['queue_producer'])
+
 
         LOGGER.info(f'\n\nClient Id: {self._client_id}'
-                    f'\n\tQueue In : {self.config["queue_consumer"]}'
-                    f'\n\tQueue Out : {self.config["queue_producer"]}'
+                    f'\n\tQueue In : {self._config["queue_consumer"]}'
+                    f'\n\tQueue Out : {self._config["queue_producer"]}'
                     f'\n\n')
 
         # send message to server for connection
         self._send_init_message()
 
-    @abstractmethod
-    def train(self):
-        pass
-
-    @abstractmethod
-    def test(self):
-        pass
 
 
     # Run the client
     def start(self):
-        self.thread_consumer.start()
+        self._thread_consumer.start()
         while not self._is_stop_condition:
-            sleep(30)
-
+            # check the stop condition every 300 seconds
+            sleep(300)
         sys.exit(0)
 
-    def start_training_thread(self):
-        LOGGER.info("Start training thread.")
-        training_thread = threading.Thread(
-            target=self.train,
-            name="client_training_thread")
-        training_thread.daemon = True
-        self._is_training = True
-        training_thread.start()
 
-
-    # queue handling
+    # consumer queue callback
     def on_message_received(self, ch, method, props, body):
-        msg_received = MessageV2.deserialize(body.decode('utf-8'))
+        msg_received: dict = message_utils.deserialize(body.decode('utf-8'))
+        message_type: str = msg_received['headers']['message_type']
 
-        if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE and not self._is_connected:
+        if message_type == Config.SERVER_INIT_RESPONSE and not self._is_connected:
             self._handle_server_init_response(msg_received)
 
-        elif msg_received['headers']['message_type'] == Config.SERVER_NOTIFY_MESSAGE and self._is_connected:
+        elif message_type == Config.SERVER_NOTIFY_MESSAGE and self._is_connected:
             self._handle_server_notify_message(msg_received)
 
-        elif msg_received['headers']['message_type'] == Config.SERVER_STOP_TRAINING: 
-            MessageV2.print_message(msg_received)
+        elif message_type == Config.SERVER_STOP_TRAINING: 
+            message_utils.print_message(msg_received)
             self._is_stop_condition = True
             sys.exit(0)
 
-        elif msg_received['headers']['message_type'] == Config.SERVER_PING_TO_CLIENT:
+        elif message_type == Config.SERVER_PING_TO_CLIENT:
             self._handle_server_ping_to_client(msg_received)
 
 
-    # cloud storage - report result on parent process
+    # cloud storage callback
+    # report result on parent process
     def on_download(self, result):
         if result:
             self._new_model_flag = True
@@ -166,55 +157,79 @@ class Client(object):
         pass
 
 
+    @abstractmethod
+    def _train(self):
+        pass
+
+    @abstractmethod
+    def _test(self):
+        pass
+
+
     def _send_init_message(self):
         data_description = {
             'data_size': self._local_data_size,
             'qod': self._local_qod,
         }
-        message = MessageV2(
-            headers={'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
-            content=InitConnection(
-                role=self._role,
-                data_description=data_description,
-            )
-        ).to_json()
-        self.queue_producer.send_data(message)
 
-    # queue handling functions
-    def _handle_server_ping_to_client(self, msg_received):
-        if msg_received['content']['client_id'] == self._client_id:
-            MessageV2.print_message(msg_received)
-            message = MessageV2(
-                    headers={"timestamp": time_utils.time_now(), "message_type": Config.CLIENT_PING_MESSAGE, "session_id": self._session_id, "client_id": self._client_id},
-                    content=Ping()).to_json()
-            self.queue_producer.send_data(message)
+        client_init_message: ClientInitConnection = ClientInitConnection(
+                                                    role=self._role,
+                                                    system_info= SystemInfo().to_dict(),
+                                                    data_description=DataDescription(**data_description).to_dict()
+                                                    )
+        
+
+        # headers = {'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id}
+        headers = self._create_headers(message_type= Config.CLIENT_INIT_MESSAGE)
+        message = Message(headers= headers, content= client_init_message.to_dict()).to_json()
+        self._queue_producer.send_data(message)
+
+
+
+    def _start_consumer(self):
+        self._queue_consumer.start()
+
+    def _start_training_thread(self):
+        LOGGER.info("Start training thread.")
+        training_thread = threading.Thread(
+            target=self._train,
+            name="client_training_thread")
+        training_thread.daemon = True
+        self._is_training = True
+        training_thread.start()
 
 
     def _handle_server_init_response(self, msg_received):
-        # MessageV2.print_message(msg_received)
-        LOGGER.info(msg_received)
+        # message_utils.print_message(msg_received)
+        message_utils.print_message(msg_received)
+        # LOGGER.info(msg_received)
 
         content = msg_received['content']
-        if content['reconnect'] is True:
+        server_init_response: ResponseToInit = ResponseToInit(**content)
+
+        if server_init_response.reconnect:
+        # if content['reconnect'] is True:
             LOGGER.info("Reconnect to server.")
 
-        self._session_id = content['session_id']
-        self._global_model_name = content['model_info']['global_model_name']
-        self._received_global_version = content['model_info']['model_version']
+        # self._session_id = content['session_id']
+        self._session_id = server_init_response.session_id
 
+        self._global_model_name = server_init_response.model_info.global_model_name
+        self._received_global_version = server_init_response.model_info.model_version
 
-        self._model_exchange_at = content['exchange_at']
-        self._min_acc = self._model_exchange_at['performance']
-        self._min_epoch = self._model_exchange_at['epoch']
+        # get the exchange condition from server
+        self._min_acc = server_init_response.exchange_at.performance
+        self._min_epoch = server_init_response.exchange_at.epoch
+
 
         # connect to cloud storage service provided by server
-        storage_info = content['storage_info']
-        self._cloud_storage_type = storage_info['storage_type']
+        storage_info: StorageInfo = server_init_response.storage_info
+        self._cloud_storage_type = storage_info.storage_type
+
         if self._cloud_storage_type == "s3":
             self._storage_connector = ClientStorageAWS(storage_info)
         else:
             self._storage_connector = ClientStorageMinio(storage_info, parent=None)
-            # self._storage_connector = ClientStorageMinio(storage_info, parent= self)
 
         self._is_connected = True
 
@@ -225,7 +240,7 @@ class Client(object):
             local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
 
             while True:
-                if self._storage_connector.download(remote_file_path=content['model_info']['model_url'], 
+                if self._storage_connector.download(remote_file_path=server_init_response.model_info.model_url, 
                                                 local_file_path=local_path):
                     break
                 LOGGER.info("Download model failed. Retry in 5 seconds.")
@@ -235,32 +250,36 @@ class Client(object):
         self._update_profile()
 
         if self._role == "train":
-            self.start_training_thread()
+            self._start_training_thread()
 
         # for testing, do not need to start thread
         # because tester just test whenever it receive new model 
         elif self._role == "test":
-            self.test()
-        # elif self._role == "test":
-        #     self.start_testing_thread()
+            self._test()
+
+
 
     def _handle_server_notify_message(self, msg_received):
+
         content = msg_received['content']
+        server_model_udpate: ServerModelUpdate = ServerModelUpdate(**msg_received['content'])
+
         with lock:
             # ----- receive and load global message ----
-            self._global_chosen_list = content['chosen_id']
+            self._global_chosen_list = server_model_udpate.chosen_id
 
             # update latest model info
-            self._global_model_name = content['global_model_name']
-            self._received_global_version = content['global_model_version']
+            self._global_model_name = server_model_udpate.global_model_name
+            self._received_global_version = server_model_udpate.global_model_version
 
             # global info for merging process
-            self._global_model_update_data_size = content['global_model_update_data_size']
-            self._global_avg_loss = content['avg_loss']
-            self._global_avg_qod = content['avg_qod']
+            self._global_model_update_data_size = server_model_udpate.global_model_update_data_size
+            self._global_avg_loss = server_model_udpate.avg_loss
+            self._global_avg_qod = server_model_udpate.avg_qod
+
             LOGGER.info("*" * 20)
             LOGGER.info(
-                f"global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
+                f"Global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
             LOGGER.info("*" * 20)
 
             # save the previous local version of the global model to log it to file
@@ -270,6 +289,7 @@ class Client(object):
 
             remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
             local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
+
 
             LOGGER.info("Downloading new global model............")
 
@@ -283,17 +303,25 @@ class Client(object):
             LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
             self._new_model_flag = True
             # print the content only when succesfully download new model
-            MessageV2.print_message(msg_received)
+            message_utils.print_message(msg_received)
             
 
         # test everytime receive new global model notify from server
         if self._role == "test":
-            self.test()
+            self._test()
+
+    # queue handling functions
+    def _handle_server_ping_to_client(self, msg_received):
+        if msg_received['content']['client_id'] == self._client_id:
+            message_utils.print_message(msg_received)
+            headers = self._create_headers(message_type= Config.CLIENT_PING_MESSAGE)
+            message = Message(headers= headers, content=ResponseToPing().to_dict()).to_json()
+            self._queue_producer.send_data(message)
 
 
-    def _start_consumer(self):
-        self.queue_consumer.start()
-
+    def _create_headers(self, message_type: str) -> dict:
+        headers = {'timestamp': time_utils.time_now(), 'message_type': message_type, 'session_id': self._session_id, 'client_id': self._client_id}
+        return headers
 
     # profile related
     def _create_message(self):
@@ -339,5 +367,4 @@ class Client(object):
 
         except Exception as e:
             LOGGER.info(e)
-
 

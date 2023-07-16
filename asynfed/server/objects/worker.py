@@ -1,8 +1,7 @@
 from asynfed.commons.conf import Config
-# from asynfed.commons.messages.client_init_connect_to_server import SysInfo
-from asynfed.commons.messages import SysInfo
-from asynfed.commons.utils.time_ultils import time_now
 
+from asynfed.commons.utils.time_ultils import time_now
+from asynfed.commons.messages.client import SystemInfo
 
 class Worker:
     """
@@ -10,8 +9,9 @@ class Worker:
     - Add more properties to this class.
     """
 
-    def __init__(self, session_id: str, worker_id: str, sys_info: SysInfo = None, data_size: int = 10,
+    def __init__(self, session_id: str, worker_id: str, sys_info: dict = SystemInfo().__dict__, data_size: int = 10,
                  qod: float = 0.1) -> None:
+        
         # Properties
         self.is_completed: bool = False
         self.alpha = None

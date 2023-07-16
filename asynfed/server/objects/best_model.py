@@ -1,7 +1,5 @@
 from asynfed.commons.conf import Config
-# from asynfed.commons.messages.client_init_connect_to_server import SysInfo
-from asynfed.commons.messages import SysInfo
-from asynfed.commons.utils.time_ultils import time_now
+from asynfed.commons.messages.client import NotifyEvaluation
 
 
 class BestModel:
@@ -15,10 +13,12 @@ class BestModel:
         self.performance = performance
         self.loss = loss
 
-    def update(self, info: dict):
-        self.model_name = info['weight_file']
-        self.loss = info['loss']
-        self.performance =  info['performance']
+
+    def update(self, model_evaluation: NotifyEvaluation):
+        self.model_name = model_evaluation.weight_file
+        self.loss = model_evaluation.loss
+        self.performance =  model_evaluation.performance
+
 
     def __str__(self):
         """
