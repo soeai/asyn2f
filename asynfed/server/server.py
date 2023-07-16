@@ -6,6 +6,7 @@ import re
 import logging
 from threading import Thread, Lock
 from time import sleep
+from typing import Dict
 import uuid
 import copy
 import concurrent.futures
@@ -28,7 +29,9 @@ from .strategies import Strategy
 from .worker_manager import WorkerManager
 from .objects import Worker, BestModel
 
-from .messages import PingToClient, NotifyNewModel, ResponseConnection, StopTraining
+# from .messages import PingToClient, NotifyNewModel, ResponseConnection, StopTraining
+from asynfed.commons.messages.server import ResponseToInit, ServerModelUpdate, PingToClient, ServerRequestStop
+from asynfed.commons.messages.client import ClientInitConnection, ClientModelUpdate, NotifyEvaluation, TesterRequestStop
 
 
 thread_pool_ref = concurrent.futures.ThreadPoolExecutor
@@ -167,7 +170,7 @@ class Server(object):
 
         message = Message(
             headers={"timestamp": time_utils.time_now(), "message_type": Config.SERVER_NOTIFY_MESSAGE, "server_id": self._server_id},
-            content=NotifyNewModel(
+            content= ServerModelUpdate(
                 chosen_id=[],
                 model_id=self._strategy.model_id,
                 global_model_version=self._strategy.current_version,
@@ -209,30 +212,29 @@ class Server(object):
             sleep(self._ping_period)
 
     def _clean_cloud_storage(self):
-        get_model_version = lambda model_name:  int(model_name.split("_")[-1].split(".")[0].split("v")[-1])
         while True:
             sleep(self._clean_cloud_storage_period)
 
             LOGGER.info("CLEANING TIME")
             # clean global folder first
-            files = self._cloud_storage.list_files("global-models")
             current_version = self._strategy.current_version
             threshold = current_version - self._global_keep_version_num
 
             if self._best_model.model_name != "":
                 best_model_name = self._best_model.model_name
-                best_model_version = int(re.search(r"v(\d+)", best_model_name.split("_")[1]).group(1))
+                best_model_version = self._get_model_version(best_model_name)
             else:
                 best_model_version = None
 
-            versions = [get_model_version(file) for file in files]
+            files = self._cloud_storage.list_files("global-models")
+            versions = [self._get_model_version(file) for file in files]
             delete_list = [file for file, version in zip(files, versions) if version <= threshold and version != best_model_version]
 
             if delete_list:
                 LOGGER.info("=" * 20)
                 LOGGER.info("Delete files in global-models folder")
                 LOGGER.info(f"current global version: {current_version}, best model version: {best_model_version}, threshold: {threshold}, total deleted files: {len(delete_list)}")
-                LOGGER.info([get_model_version(file) for file in delete_list])
+                LOGGER.info([self._get_model_version(file) for file in delete_list])
                 LOGGER.info("=" * 20)
                 self._cloud_storage.delete_files(delete_list)
 
@@ -241,36 +243,39 @@ class Server(object):
             for w_id, worker in workers.items():
                 files = self._cloud_storage.list_files(parent_folder= "clients", target_folder= w_id)
                 threshold = worker.update_local_version_used - self._local_keep_version_num
-                delete_list = [file for file in files if get_model_version(file) <= threshold]
+                delete_list = [file for file in files if self._get_model_version(file) <= threshold]
                 if delete_list:
                     LOGGER.info("=" * 20)
                     LOGGER.info(f"worker id: {w_id}, current local update version used: {worker.update_local_version_used}, threshold: {threshold}, total deleted files: {len(delete_list)}")
-                    LOGGER.info([get_model_version(file) for file in delete_list])
+                    LOGGER.info([self._get_model_version(file) for file in delete_list])
                     LOGGER.info("=" * 20)
                     self._cloud_storage.delete_files(delete_list)
 
 
-
-    def _response_connection(self, msg_received):
+    def _response_connection(self, msg_received: dict):
         Message.print_message(msg_received)
-        client_id = msg_received['headers']['client_id']
-        session_id = str(uuid.uuid4())
-        content = msg_received['content']
+        content: dict = msg_received['content']
+        client_init_message: ClientInitConnection = ClientInitConnection(**content)
 
-        if msg_received['headers']['session_id'] in self._worker_manager.list_sessions():
+        client_id: str = msg_received['headers']['client_id']
+        session_id: str = msg_received['headers']['session_id']
+
+        if session_id in self._worker_manager.list_sessions():
             reconnect = True
             worker = self._worker_manager.get_worker_by_id(client_id)
             access_key, secret_key = worker.access_key_id, worker.secret_key_id
         else:
+            session_id = str(uuid.uuid4())
             # new entry
             reconnect = False
             worker = Worker(
                     session_id=session_id,
                     worker_id=client_id,
-                    sys_info=content['system_info'],
-                    data_size=content['data_description']['data_size'],
-                    qod=content['data_description']['qod'],
+                    sys_info= client_init_message.system_info,
+                    data_size= client_init_message.data_description.data_size,
+                    qod=client_init_message.data_description.qod
             )
+
             # create keys to cloud storage for worker
             access_key, secret_key = self._cloud_storage.get_client_key(client_id)
             worker.access_key_id = access_key
@@ -291,7 +296,8 @@ class Server(object):
         # notify newest global model to worker
         model_url = self._cloud_storage.get_newest_global_model()
         global_model_name = model_url.split("/")[-1]
-        model_version = int(re.search(r"v(\d+)", global_model_name.split("_")[1]).group(1))
+        # model_version = int(re.search(r"v(\d+)", global_model_name.split("_")[1]).group(1))
+        model_version = self._get_model_version(global_model_name)
         self._strategy.current_version = model_version
 
         model_info = {"model_url": model_url, 
@@ -317,7 +323,7 @@ class Server(object):
 
         message = Message(
                 headers={'timestamp': time_utils.time_now(), 'message_type': Config.SERVER_INIT_RESPONSE, 'server_id': self._server_id}, 
-                content=ResponseConnection(session_id, model_info, storage_info, queue_info, self._model_exchange_at, reconnect=reconnect)
+                content=ResponseToInit(session_id, model_info, storage_info, queue_info, self._model_exchange_at, reconnect=reconnect)
         ).to_json()
         self._queue_producer.send_data(message)
 
@@ -340,10 +346,11 @@ class Server(object):
             self._best_model.update(info)
             self._write_record()
 
-        info['version'] = int(re.search(r"v(\d+)", info['weight_file'].split("_")[1]).group(1))
+        # info['version'] = int(re.search(r"v(\d+)", info['weight_file'].split("_")[1]).group(1))
+        info['version'] = self._get_model_version(info['weight_file'])
 
         if self._check_stop_conditions(info):
-            content = StopTraining()
+            content = ServerRequestStop()
             message = Message(
                     headers={'timestamp': time_utils.time_now(), 'message_type': Config.SERVER_STOP_TRAINING, 'server_id': self._server_id},
                     content=content
@@ -376,7 +383,8 @@ class Server(object):
                 worker.is_completed = False
                 # keep track of the latest local version of worker used for cleaning task
                 model_filename = worker.get_remote_weight_file_path().split('/')[-1]
-                worker.update_local_version_used = int(re.search(r"v(\d+)", model_filename.split("_")[1]).group(1))
+                # worker.update_local_version_used = int(re.search(r"v(\d+)", model_filename.split("_")[1]).group(1))
+                worker.update_local_version_used = self._get_model_version(model_filename)
 
             # pass out a copy of completed worker to aggregating process
             worker_list = copy.deepcopy(completed_workers)
@@ -400,7 +408,8 @@ class Server(object):
                     return True
 
 
-    def _pass_one_local_model(self, completed_worker: dict [str, Worker]):
+    def _pass_one_local_model(self, completed_worker: Dict [str, Worker]):
+    # def _pass_one_local_model(self, completed_worker: dict [str, Worker]):
         for w_id, worker in completed_worker.items():
             LOGGER.info(w_id)
             self._strategy.avg_loss = worker.loss
@@ -416,7 +425,9 @@ class Server(object):
 
             # keep track of the latest local version of worker used for cleaning task
             model_filename = remote_weight_file.split('/')[-1]
-            worker.update_local_version_used = int(re.search(r"v(\d+)", model_filename.split("_")[1]).group(1))
+            # worker.update_local_version_used = int(re.search(r"v(\d+)", model_filename.split("_")[1]).group(1))
+            worker.update_local_version_used = self._get_model_version(model_filename)
+
 
 
         # copy the worker model weight to the global model folder
@@ -440,3 +451,5 @@ class Server(object):
             json.dump(data, file)
 
     
+    def _get_model_version(self, model_name):
+        return int(re.search(r"v(\d+)", model_name.split("_")[1]).group(1))

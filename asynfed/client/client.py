@@ -13,7 +13,10 @@ from asynfed.commons.utils import AmqpConsumer, AmqpProducer
 import asynfed.commons.utils.time_ultils as time_utils
 
 
-from .messages import Ping, InitConnection
+# from .messages import Ping, InitConnection
+from asynfed.commons.messages.client import ClientInitConnection, DataDescription, SystemInfo, ResponseToPing
+
+
 from .client_storage_connector import ClientStorageAWS, ClientStorageMinio
 from .ModelWrapper import ModelWrapper
 
@@ -164,10 +167,13 @@ class Client(object):
             'data_size': self._local_data_size,
             'qod': self._local_qod,
         }
+        data_description = DataDescription(**data_description)
+        
         message = Message(
             headers={'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id},
-            content=InitConnection(
+            content=ClientInitConnection(
                 role=self._role,
+                system_info= SystemInfo(),
                 data_description=data_description,
             )
         ).to_json()
@@ -295,7 +301,7 @@ class Client(object):
             Message.print_message(msg_received)
             message = Message(
                     headers={"timestamp": time_utils.time_now(), "message_type": Config.CLIENT_PING_MESSAGE, "session_id": self._session_id, "client_id": self._client_id},
-                    content=Ping()).to_json()
+                    content=ResponseToPing()).to_json()
             self._queue_producer.send_data(message)
 
 

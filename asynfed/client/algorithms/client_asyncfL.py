@@ -10,7 +10,9 @@ from asynfed.commons.conf import Config
 from asynfed.commons.messages import Message
 import asynfed.commons.utils.time_ultils as time_utils
 
-from asynfed.client.messages import NotifyEvaluation, NotifyModel, RequireStop
+# from asynfed.client.messages import NotifyEvaluation, NotifyModel, RequireStop
+from asynfed.commons.messages.client import ClientModelUpdate, NotifyEvaluation, TesterRequestStop
+
 from asynfed.client import Client
 
 
@@ -189,7 +191,7 @@ class ClientAsyncFl(Client):
         if performance > self._expected_performance or loss < self._expected_loss:
             message = Message(
                 headers={'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_NOTIFY_STOP, 'session_id': self._session_id, 'client_id': self._client_id},
-                content=RequireStop(self._global_model_name, performance, loss)
+                content=TesterRequestStop(self._global_model_name, performance, loss)
             )
         
 
@@ -211,7 +213,7 @@ class ClientAsyncFl(Client):
                 LOGGER.info('Notify new model to the server')
                 message = Message(
                         headers={"timestamp": time_utils.time_now(), "message_type": Config.CLIENT_NOTIFY_MESSAGE, "client_id": self._client_id, "session_id": self._session_id},
-                        content=NotifyModel(remote_worker_weight_path=remote_file_path, 
+                        content= ClientModelUpdate(remote_worker_weight_path=remote_file_path, 
                                             filename=filename,
                                             global_version_used=self._merged_global_version, 
                                             loss=self._train_loss,
