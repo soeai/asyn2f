@@ -15,6 +15,8 @@ import asynfed.commons.utils.time_ultils as time_utils
 
 # from .messages import Ping, InitConnection
 from asynfed.commons.messages.client import ClientInitConnection, DataDescription, SystemInfo, ResponseToPing
+# from asynfed.commons.messages.server import 
+from asynfed.commons.messages.server.server_response_to_init import ResponseToInit 
 
 
 from .client_storage_connector import ClientStorageAWS, ClientStorageMinio
@@ -123,20 +125,21 @@ class Client(object):
 
     # consumer queue callback
     def on_message_received(self, ch, method, props, body):
-        msg_received = Message.deserialize(body.decode('utf-8'))
+        msg_received: dict = Message.deserialize(body.decode('utf-8'))
+        message_type: str = msg_received['headers']['message_type']
 
-        if msg_received['headers']['message_type'] == Config.SERVER_INIT_RESPONSE and not self._is_connected:
+        if message_type == Config.SERVER_INIT_RESPONSE and not self._is_connected:
             self._handle_server_init_response(msg_received)
 
-        elif msg_received['headers']['message_type'] == Config.SERVER_NOTIFY_MESSAGE and self._is_connected:
+        elif message_type == Config.SERVER_NOTIFY_MESSAGE and self._is_connected:
             self._handle_server_notify_message(msg_received)
 
-        elif msg_received['headers']['message_type'] == Config.SERVER_STOP_TRAINING: 
+        elif message_type == Config.SERVER_STOP_TRAINING: 
             Message.print_message(msg_received)
             self._is_stop_condition = True
             sys.exit(0)
 
-        elif msg_received['headers']['message_type'] == Config.SERVER_PING_TO_CLIENT:
+        elif message_type == Config.SERVER_PING_TO_CLIENT:
             self._handle_server_ping_to_client(msg_received)
 
 
@@ -175,9 +178,11 @@ class Client(object):
             ).to_dict()
         
 
-        headers = {'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id}
+        # headers = {'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id}
+        headers = self._create_headers(message_type= Config.CLIENT_INIT_MESSAGE)
         message = Message(headers= headers, content= client_init_message).to_json()
         self._queue_producer.send_data(message)
+
 
 
     def _start_consumer(self):
@@ -189,10 +194,15 @@ class Client(object):
         # LOGGER.info(msg_received)
 
         content = msg_received['content']
-        if content['reconnect'] is True:
+        server_init_response: ResponseToInit = ResponseToInit(**content)
+
+        if server_init_response.reconnect:
+        # if content['reconnect'] is True:
             LOGGER.info("Reconnect to server.")
 
-        self._session_id = content['session_id']
+        # self._session_id = content['session_id']
+        self._session_id = server_init_response.session_id
+
         self._global_model_name = content['model_info']['global_model_name']
         self._received_global_version = content['model_info']['model_version']
 
@@ -297,12 +307,16 @@ class Client(object):
     # queue handling functions
     def _handle_server_ping_to_client(self, msg_received):
         if msg_received['content']['client_id'] == self._client_id:
+            # headers = {"timestamp": time_utils.time_now(), "message_type": Config.CLIENT_PING_MESSAGE, "session_id": self._session_id, "client_id": self._client_id}
+            headers = self._create_headers(message_type= Config.CLIENT_PING_MESSAGE)
             Message.print_message(msg_received)
-            message = Message(
-                    headers={"timestamp": time_utils.time_now(), "message_type": Config.CLIENT_PING_MESSAGE, "session_id": self._session_id, "client_id": self._client_id},
-                    content=ResponseToPing()).to_json()
+            message = Message(headers= headers, content=ResponseToPing()).to_json()
             self._queue_producer.send_data(message)
 
+
+    def _create_headers(self, message_type: str) -> dict:
+        headers = {'timestamp': time_utils.time_now(), 'message_type': message_type, 'session_id': self._session_id, 'client_id': self._client_id}
+        return headers
 
     # profile related
     def _create_message(self):
@@ -348,5 +362,4 @@ class Client(object):
 
         except Exception as e:
             LOGGER.info(e)
-
 

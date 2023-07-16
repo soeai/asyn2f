@@ -30,7 +30,7 @@ class Message:
         return json.dumps(dict_object)
     
     @classmethod
-    def deserialize(cls, json_str):
+    def deserialize(cls, json_str) -> dict:
         return json.loads(json_str)
     
     @classmethod

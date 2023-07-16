@@ -1,6 +1,5 @@
-class ServerRequestStop:
+from asynfed.commons.messages import MessageObject
+class ServerRequestStop(MessageObject):
     def __init__(self):
         pass
     
-    def to_dict(self) -> dict:
-        return self.__dict__

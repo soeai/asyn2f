@@ -1,8 +1,9 @@
 import logging
 from typing import Dict, List
 
-from asynfed.commons.utils.time_ultils import time_diff, time_now
 from asynfed.server.objects import Worker
+from asynfed.commons.messages.client import ClientModelUpdate
+from asynfed.commons.utils.time_ultils import time_diff, time_now
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ class WorkerManager:
 
         # save history state by version.
         self.history_state: Dict[int, Dict[str, Worker]] = {}
+
 
     def add_worker(self, worker: Worker) -> None:
         """Add a Worker to the worker_pools attribute.
@@ -46,18 +48,16 @@ class WorkerManager:
         """
         return self.worker_pool
 
-    def add_local_update(self, client_id, message_content: dict):
+
+    def add_local_update(self, client_id: str, client_model_update: ClientModelUpdate):
         # update worker states with information from local worker.
         worker: Worker = self.worker_pool[client_id]
-        worker.weight_file = message_content['remote_worker_weight_path']
-        worker.current_version = message_content['global_version_used']
-        worker.loss = message_content['loss']
+        worker.weight_file = client_model_update.remote_worker_weight_path
+        worker.current_version = client_model_update.global_version_used
+        worker.loss = client_model_update.loss
         worker.is_completed = True
 
 
-    # def update_worker_after_training(self):
-    #     for worker in self.worker_pool:
-    #         self.worker_pool[worker].is_completed = False
 
     def get_completed_workers(self) -> Dict:
         return {worker_id: self.worker_pool[worker_id] for worker_id in self.worker_pool if self.worker_pool[worker_id].is_completed == True}
@@ -68,17 +68,20 @@ class WorkerManager:
         """
         return self.worker_pool[worker_id]
 
+
     def list_sessions(self) -> List:
         """
         Return a list of session_id
         """
         return [self.worker_pool[worker_id].session_id for worker_id in self.worker_pool.keys()]
 
+
     def list_connected_workers(self) -> List:
         """
         Return a list of connected worker_id
         """
         return [worker_id for worker_id in self.worker_pool.keys() if self.worker_pool[worker_id].is_connected == True]
+
 
     def update_worker_connections(self) -> None:
         """
