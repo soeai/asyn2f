@@ -6,3 +6,6 @@ class ClientModelUpdate:
         self.global_version_used = global_version_used
         self.loss = loss
         self.performance = performance
+
+    def to_dict(self) -> dict:
+        return self.__dict__

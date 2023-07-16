@@ -7,3 +7,6 @@ class ServerModelUpdate:
         self.global_model_update_data_size = global_model_update_data_size
         self.avg_loss = avg_loss
         self.avg_qod = avg_qod
+
+    def to_dict(self) -> dict:
+        return self.__dict__

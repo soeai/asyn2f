@@ -32,3 +32,6 @@ class ResponseToInit:
         self.queue_info = queue_info
         self.exchange_at = exchange_at 
         self.reconnect = reconnect
+
+    def to_dict(self) -> dict:
+        return self.__dict__
