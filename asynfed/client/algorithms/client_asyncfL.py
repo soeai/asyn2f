@@ -10,8 +10,8 @@ from asynfed.commons.conf import Config
 from asynfed.commons.messages import MessageV2
 import asynfed.commons.utils.time_ultils as time_utils
 
-from messages import NotifyEvaluation, NotifyModel, RequireStop
-from client import Client
+from asynfed.client.messages import NotifyEvaluation, NotifyModel, RequireStop
+from asynfed.client import Client
 
 
 

@@ -14,8 +14,8 @@ import asynfed.commons.utils.time_ultils as time_utils
 
 
 from .messages import Ping, InitConnection
-from client_storage_connector import ClientStorageAWS, ClientStorageMinio
-from ModelWrapper import ModelWrapper
+from .client_storage_connector import ClientStorageAWS, ClientStorageMinio
+from .ModelWrapper import ModelWrapper
 
 
 import concurrent.futures
@@ -287,7 +287,7 @@ class Client(object):
 
         # test everytime receive new global model notify from server
         if self._role == "test":
-            self.test()
+            self._test()
 
     # queue handling functions
     def _handle_server_ping_to_client(self, msg_received):

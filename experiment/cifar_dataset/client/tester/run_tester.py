@@ -20,13 +20,15 @@ scheduler = BackgroundScheduler()
 config = {
     "client_id": "tester",
     "role": "test",
+    "save_log": True,
+
     "queue_consumer": {
         'exchange_name': 'asynfl_exchange',
         'exchange_type': 'topic',
         'queue_name': 'server_queue',
         'routing_key': 'client.#',
         # 'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
-        'end_point': 'amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj'
+        'endpoint': 'amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj'
     },
     "queue_producer": {
         'exchange_name': 'asynfl_exchange',
@@ -34,7 +36,7 @@ config = {
         'queue_name': 'server_consumer',
         'routing_key': 'server.#',
         # 'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
-        'end_point': 'amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj'
+        'endpoint': 'amqps://vxfoxzgj:RwGa4xE5h5PIVvUFTcOje1KZ_J_b0j9Y@armadillo.rmq.cloudamqp.com/vxfoxzgj'
     },
     "testing_params": {
         "gpu_index": 0,
@@ -82,7 +84,7 @@ tensorflow_framework = TensorflowFramework(model=model,
 
 
 # tf_client = ClientAsyncFl(model=tensorflow_framework,config=config)
-tf_client = ClientAsyncFl(model=tensorflow_framework, config=config, save_log=True)
+tf_client = ClientAsyncFl(model=tensorflow_framework, config=config)
 # tf_client = ClientAsyncFl(model=tensorflow_framework, config=config, save_log=False)
 
 tf_client.start()

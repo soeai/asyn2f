@@ -1,5 +1,4 @@
-import os
-import sys
+import os, sys
 from dotenv import load_dotenv
 import pause
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -11,8 +10,11 @@ sys.path.append(root)
 from asynfed.client.algorithms import ClientAsyncFl
 from asynfed.client.frameworks.tensorflow import TensorflowFramework
 
-from resnet18 import Resnet18
-from data_preprocessing import preprocess_dataset
+# from resnet18 import Resnet18
+
+from experiment.cifar_dataset.client.resnet18 import Resnet18
+from experiment.cifar_dataset.client.data_preprocessing import preprocess_dataset
+
 
 import json
 
@@ -42,7 +44,7 @@ print("*" * 20)
 # Preprocessing data
 # default_training_dataset_path = "../../../../data/cifar_data/5_chunks/chunk_2.pickle"
 default_testing_dataset_path = "../../../../data/cifar_data/test_set.pickle"
-training_dataset_path = f"../../../../data/cifar_data/5_chunks/chunk_{config['training_params']['chunk_index']}.pickle"
+training_dataset_path = f"../../../../data/cifar_data/5_chunks/chunk_{config['dataset']['chunk_index']}.pickle"
 # if os.getenv("cifar_train_dataset_path"):
 #     training_dataset_path = os.getenv("cifar_train_dataset_path")
 # else:
