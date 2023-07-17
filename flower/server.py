@@ -138,9 +138,9 @@ def start_server(args):
             super().__init__(*args, **kwargs)
             
             # Check if there's a pretrain weight to load from
-            weight_file = f'server_weights/round-{args.init_round}-weights.npz'
+            weight_file = f'server_weights/round-{init_round}-weights.npz'
             if os.path.isfile(weight_file):
-                logging.info(f"Loading weights from round {args.init_round}...")
+                logging.info(f"Loading weights from round {init_round}...")
                 pretrain_weights = np.load(weight_file)
                 model.set_weights([pretrain_weights[key] for key in pretrain_weights.files])
 
