@@ -43,6 +43,11 @@ class Client(object):
         self._config = config
         self._role = self._config.get("role") or "train"
 
+        # control the state of download process
+        self._download_attempt: int = self._config.get("download_attempt") or 15
+        self._download_success: bool = False
+        self._training_thread_is_running = False
+
         # fixed property
         self._model = model
 
@@ -89,6 +94,7 @@ class Client(object):
         self._save_global_model_update_data_size = None
         self._save_global_model_version = None
 
+        # 
 
         # Initialize profile for client
         if not os.path.exists("profile.json"):
@@ -238,25 +244,43 @@ class Client(object):
             self._current_global_version = self._received_global_version
             LOGGER.info("Detect new global version.")
             local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
+            remote_path = server_init_response.model_info.model_url
 
-            while True:
-                if self._storage_connector.download(remote_file_path=server_init_response.model_info.model_url, 
-                                                local_file_path=local_path):
-                    break
-                LOGGER.info("Download model failed. Retry in 5 seconds.")
-                sleep(5)
+            # to make sure the other process related to the new global model version start
+            # only when the downloading process success
+            self._download_success = False
+            self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
 
-        # update info in profile file
-        self._update_profile()
+            # for i in range(self._download_attempt):
+            #     if self._storage_connector.download(remote_file_path=server_init_response.model_info.model_url, 
+            #                                     local_file_path=local_path):
+            #         self._download_success
+            #         break
+            #     LOGGER.info(f"{i + 1} attempt: download model failed, retry in 5 seconds.")
+            #     i += 1
+            #     if i == self._download_attempt - 1:
+            #         LOGGER.info(f"Already try {self._download_attempt} time. Pass this global version: {server_init_response.model_info.model_url}")
+            #     sleep(5)
 
-        if self._role == "train":
-            self._start_training_thread()
+            # while True:
+            #     if self._storage_connector.download(remote_file_path=server_init_response.model_info.model_url, 
+            #                                     local_file_path=local_path):
+            #         break
+            #     LOGGER.info("Download model failed. Retry in 5 seconds.")
+            #     sleep(5)
 
-        # for testing, do not need to start thread
-        # because tester just test whenever it receive new model 
-        elif self._role == "test":
-            self._test()
+        if self._download_success:
+            # update info in profile file
+            self._update_profile()
 
+            if self._role == "train":
+                self._start_training_thread()
+
+            # for testing, do not need to start thread
+            # because tester just test whenever it receive new model 
+            elif self._role == "test":
+                self._test()
+            
 
 
     def _handle_server_notify_message(self, msg_received):
@@ -290,25 +314,37 @@ class Client(object):
             remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
             local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
 
+            # to make sure the other process related to the new global model version start
+            # only when the downloading process success
+            self._download_success = False
+            self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
 
-            LOGGER.info("Downloading new global model............")
+            # while True:
+            #     if self._storage_connector.download(remote_file_path=remote_path,
+            #                                         local_file_path=local_path):
+            #         break
+            #     LOGGER.info("Download model failed. Retry in 5 seconds.")
+            #     sleep(5)
 
-            while True:
-                if self._storage_connector.download(remote_file_path=remote_path,
-                                                    local_file_path=local_path):
-                    break
-                LOGGER.info("Download model failed. Retry in 5 seconds.")
-                sleep(5)
+            # LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
 
-            LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
-            self._new_model_flag = True
+        # if the training thread does not start yet 
+        # (fail to download the global model in the response to init message from server)
+        # start now
+        # else just update the state of the new model flag
+        if self._download_success:
+            if self._training_thread_is_running:
+                self._new_model_flag = True
+            else:
+                self._start_training_thread()
+
             # print the content only when succesfully download new model
             message_utils.print_message(msg_received)
-            
 
-        # test everytime receive new global model notify from server
-        if self._role == "test":
-            self._test()
+            # test everytime receive new global model notify from server
+            if self._role == "test":
+                self._test()
+
 
     # queue handling functions
     def _handle_server_ping_to_client(self, msg_received):
@@ -318,6 +354,23 @@ class Client(object):
             message = Message(headers= headers, content=ResponseToPing().to_dict()).to_json()
             self._queue_producer.send_data(message)
 
+
+    def _attempt_to_download(self, remote_file_path: str, local_file_path: str) -> bool:
+        LOGGER.info("Downloading new global model............")
+
+        for i in range(self._download_attempt):
+            if self._storage_connector.download(remote_file_path= remote_file_path, 
+                                            local_file_path= local_file_path):
+                return True
+            
+            LOGGER.info(f"{i + 1} attempt: download model failed, retry in 5 seconds.")
+            i += 1
+            if i == self._download_attempt - 1:
+                LOGGER.info(f"Already try {self._download_attempt} time. Pass this global version: {remote_file_path}")
+            sleep(5)
+
+        return False
+    
 
     def _create_headers(self, message_type: str) -> dict:
         headers = {'timestamp': time_utils.time_now(), 'message_type': message_type, 'session_id': self._session_id, 'client_id': self._client_id}

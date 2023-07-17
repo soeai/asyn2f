@@ -28,7 +28,7 @@
         },
         "cleaning_config": {
             "clean_cloud_storage_period": 600,
-            "global_keep_version_num": 5,
+            "global_keep_version_num": 10,
             "local_keep_version_num": 3
         }
     },
