@@ -271,7 +271,7 @@ class ClientAsyncFl(Client):
         for i, (local_layer, global_layer, direction_layer) in enumerate(zip(self._model.current_weights, self._model.global_weights, self._model.direction)):
             # access each element in each layer
             # np.where(condition, true, false)
-            self._model.merged_weights[i] = np.where(direction_layer >= 0, global_layer, (1 - alpha) * global_layer + alpha * local_layer)
+            self._model.merged_weights[i] = np.where(direction_layer > 0, global_layer, (1 - alpha) * global_layer + alpha * local_layer)
 
 
         # set the merged_weights to be the current weights of the model

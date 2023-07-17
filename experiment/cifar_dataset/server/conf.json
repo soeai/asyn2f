@@ -14,7 +14,7 @@
     },
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "test-refactor-code",
+        "bucket_name": "cifar10_5w_run1",
         "region_name": "ap-southeast-2",
         "aws_s3": {
             "access_key": "",

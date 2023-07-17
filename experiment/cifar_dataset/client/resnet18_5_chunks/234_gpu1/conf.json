@@ -18,7 +18,7 @@
     },
     "dataset": {
         "chunk_index": 1,
-        "qod": 0.45
+        "qod": 0.85
     },
     "training_params": {
         "epoch": 10000,
