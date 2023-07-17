@@ -1,4 +1,7 @@
 import logging
+import sys
+import re
+
 from typing import List
 from asynfed.commons.utils import MinioConnector
 from time import sleep 
@@ -15,24 +18,28 @@ class ServerStorageMinio(MinioConnector):
         self._client_secret_key: str = storage_info.client_secret_key
 
     def create_bucket(self):
-        try:
-            logging.info(f"Creating bucket {self._bucket_name}")
-            # print(f"Creating bucket {self._bucket_name}")
-            self._s3.create_bucket(
-                Bucket=self._bucket_name,
-                # CreateBucketConfiguration={'LocationConstraint': minio_config['region_name']}
-            )            
-            logging.info(f"Created bucket {self._bucket_name}")
-            # print(f"Created bucket {self._bucket_name}")
-            self._s3.put_object(Bucket=self._bucket_name, Key='global-models/')
+        # check whether the bucket name is in the valid format
+        valid_bucket_name = self._check_valid_bucket_name()
+        if valid_bucket_name:
+            try:
+                logging.info(f"Creating bucket {self._bucket_name}")
+                self._s3.create_bucket(
+                    Bucket=self._bucket_name,
+                )            
+                logging.info(f"Created bucket {self._bucket_name}")
+                self._s3.put_object(Bucket=self._bucket_name, Key='global-models/')
 
-        except Exception as e:
-            if 'BucketAlreadyOwnedByYou' in str(e):
-                logging.info(f"Bucket {self._bucket_name} already exists")
-                # print(f"Bucket {self._bucket_name} already exists")
-            else:
-                logging.error(e)
-                # print(e)
+            except Exception as e:
+                if 'BucketAlreadyOwnedByYou' in str(e):
+                    logging.info(f"Bucket {self._bucket_name} already exists")
+                else:
+                    logging.info("=" * 20)
+                    logging.error(e)
+                    logging.info("=" * 20)
+                    sys.exit(0)
+        else:
+            sys.exit(0)
+
 
     def get_client_key(self, worker_id):
         self.create_folder(worker_id)
@@ -72,7 +79,6 @@ class ServerStorageMinio(MinioConnector):
     def list_files(self, parent_folder: str = "clients", target_folder: str = ''):
         """Lists all files in the specified folder and its subfolders within the MinIO bucket"""
         try:
-            # logging.info(f'Listing files in folder: {parent_folder}...')
             response = self._s3.list_objects_v2(Bucket=self._bucket_name, Prefix=parent_folder, Delimiter='/')
             files = []
 
@@ -84,7 +90,6 @@ class ServerStorageMinio(MinioConnector):
                 for subfolder in subfolders:
                     files += self.list_files(subfolder, target_folder=target_folder)
 
-            # logging.info(f'Found {len(files)} files in folder: {parent_folder}')
 
             # remove the target folder path
             files = [file for file in files if len(file.split("/")[-1]) != 0]
@@ -106,3 +111,28 @@ class ServerStorageMinio(MinioConnector):
         except Exception as e:
             logging.error(e)
             return False
+
+
+    def _check_valid_bucket_name(self) -> bool:
+        # Bucket name length should be between 3 and 63
+        if len(self._bucket_name) < 3 or len(self._bucket_name) > 63:
+            logging.info("Bucket name length should be between 3 and 63 characters.")
+            return False
+
+        # Bucket name should start and end with a number or lowercase letter
+        if not re.match('^[a-z0-9]', self._bucket_name) or not re.match('.*[a-z0-9]$', self._bucket_name):
+            logging.info("Bucket name should start and end with a lowercase letter or number.")
+            return False
+
+        # Bucket name should not contain underscore, double dots, dash next to dots, 
+        # end with a dash, start with 'xn--', end with '-s3alias' or '--ol-s3'.
+        if re.search('_|\.\.|\-$|\-\.|\.\-|^xn--|\-s3alias$|--ol-s3$', self._bucket_name):
+            logging.info("Bucket name should not contain underscore, double dots, dash next to dots, end with a dash, start with 'xn--', end with '-s3alias' or '--ol-s3'.")
+            return False
+
+        # Bucket name should not be in IP format
+        if re.match('\d+\.\d+\.\d+\.\d+', self._bucket_name):
+            logging.info("Bucket name should not be in IP format.")
+            return False
+
+        return True
