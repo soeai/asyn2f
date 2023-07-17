@@ -12,15 +12,17 @@ venv/
 # IDE/Editor Specific
 .idea/*
 .vscode/*
-profile.json
+
 
 # Log Files
-logs
+profile.json
+*_logs
+*logs
 *.log
 nohup.out
 
 # Weights
-weights
+*weights
 
 # Data Files
 # *.pkl
@@ -37,3 +39,4 @@ dist
 
 # Test Profiles
 profile.json
+
