@@ -364,8 +364,9 @@ class Client(object):
                 return True
             
             LOGGER.info(f"{i + 1} attempt: download model failed, retry in 5 seconds.")
+
             i += 1
-            if i == self._download_attempt - 1:
+            if i == self._download_attempt:
                 LOGGER.info(f"Already try {self._download_attempt} time. Pass this global version: {remote_file_path}")
             sleep(5)
 

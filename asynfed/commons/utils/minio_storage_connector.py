@@ -26,8 +26,13 @@ class MinioConnector(ABC):
                                 aws_access_key_id=self._access_key, 
                                 aws_secret_access_key=self._secret_key, 
                                 config=Config(signature_version='s3v4'))
-        
-        logging.info(f'Connected to MinIO server')
+
+        try:
+            self._s3.list_buckets()
+            logging.info(f'Connected to MinIO server')
+        except Exception as e:
+            logging.error("Invalid AWS Access Key ID or Secret Access Key.")
+            raise e
 
 
     def upload(self, local_file_path: str, remote_file_path: str, try_time=5):

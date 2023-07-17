@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import pause
 from apscheduler.schedulers.background import BackgroundScheduler
 
-root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
+root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))))
 sys.path.append(root)
 
 
@@ -11,8 +11,8 @@ from asynfed.client.algorithms import ClientAsyncFl
 from asynfed.client.frameworks.tensorflow import TensorflowFramework
 
 
-from experiment.cifar_dataset.client.resnet18 import Resnet18
-from experiment.cifar_dataset.client.data_preprocessing import preprocess_dataset
+from experiment.cifar_dataset.clients.resnet18 import Resnet18
+from experiment.cifar_dataset.clients.data_preprocessing import preprocess_dataset
 
 
 import json
@@ -41,9 +41,13 @@ print("*" * 20)
 
 # ------------oOo--------------------
 # Preprocessing data
-default_testing_dataset_path = "../../../data/cifar_data/test_set.pickle"
-test_ds, data_size = preprocess_dataset(default_testing_dataset_path, training = False)
+default_testing_dataset_path = "../../../../data/cifar_data/test_set.pickle"
+training_dataset_path = f"../../../../data/cifar_data/5_chunks/chunk_{config['dataset']['chunk_index']}.pickle"
+
+train_ds, data_size = preprocess_dataset(training_dataset_path, batch_size = config['training_params']['batch_size'], training = True)
+test_ds, _ = preprocess_dataset(default_testing_dataset_path, batch_size= config['training_params']['batch_size'], training = False)
 # ------------oOo--------------------
+
 
 print("-" * 20)
 print("-" * 20)
@@ -53,12 +57,15 @@ print("-" * 20)
 
 # Define model
 model = Resnet18(input_features= (32, 32, 3), 
-                 output_features= 10)
+                 output_features= 10,
+                 lr=config['training_params']['learning_rate'],
+                 decay_steps=int(config['training_params']['decay_period'] * data_size / config['training_params']['batch_size']))
 
 
 # Define framework
 tensorflow_framework = TensorflowFramework(model=model, 
                                            data_size= data_size, 
+                                           train_ds= train_ds, 
                                            test_ds= test_ds, 
                                            config=config)
 

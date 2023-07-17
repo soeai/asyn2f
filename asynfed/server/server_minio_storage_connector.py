@@ -37,7 +37,9 @@ class ServerStorageMinio(MinioConnector):
                     logging.error(e)
                     logging.info("=" * 20)
                     sys.exit(0)
+                    
         else:
+            logging.info(f"Bucket name {self._bucket_name} is not valid. Exit the program")
             sys.exit(0)
 
 

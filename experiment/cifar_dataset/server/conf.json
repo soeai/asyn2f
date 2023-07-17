@@ -9,12 +9,12 @@
         "min_loss": 0.02
     },
     "model_exchange_at": {
-        "performance": 0.85,
-        "epoch": 100
+        "performance": 0.1,
+        "epoch": 1
     },
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "cifar10-5w-run1",
+        "bucket_name": "cifar10-5w-run",
         "region_name": "ap-southeast-2",
         "aws_s3": {
             "access_key": "",

@@ -11,8 +11,8 @@ from asynfed.client.algorithms import ClientAsyncFl
 from asynfed.client.frameworks.tensorflow import TensorflowFramework
 
 
-from experiment.cifar_dataset.client.resnet18 import Resnet18
-from experiment.cifar_dataset.client.data_preprocessing import preprocess_dataset
+from experiment.cifar_dataset.clients.resnet18 import Resnet18
+from experiment.cifar_dataset.clients.data_preprocessing import preprocess_dataset
 
 
 import json

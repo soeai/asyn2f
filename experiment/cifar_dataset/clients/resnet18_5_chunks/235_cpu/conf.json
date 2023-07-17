@@ -4,6 +4,8 @@
     "gpu_index": 0,
     "save_log": true,
     "tracking_point": 2000,
+    "donwload_attempt": 15,
+    
     "queue_consumer": {
         "exchange_name": "asynfl_exchange",
         "exchange_type": "topic",
