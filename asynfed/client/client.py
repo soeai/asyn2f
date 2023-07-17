@@ -97,7 +97,7 @@ class Client(object):
         # 
 
         # Initialize profile for client
-        if not os.path.exists("profile.json"):
+        if not os.path.exists(f"{self._client_id}-record/profile.json"):
             self._create_profile()
         else:
             self._load_profile()
@@ -394,18 +394,18 @@ class Client(object):
 
     def _create_profile(self):
         data = self._create_message()
-        with open("profile.json", "w") as outfile:
+        with open(f"{self._client_id}-record/profile.json", "w") as outfile:
             json.dump(data, outfile)
 
     def _update_profile(self):
         data = self._create_message()
-        with open("profile.json", "w") as outfile:
+        with open(f"{self._client_id}-record/profile.json", "w") as outfile:
             json.dump(data, outfile)
 
     # load client information from profile.json function
     def _load_profile(self):
         try:
-            with open("profile.json") as json_file:
+            with open(f"{self._client_id}-record/profile.json") as json_file:
                 data = json.load(json_file)
                 self._session_id = data["session_id"]
                 self._client_id = data["client_id"]

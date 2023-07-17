@@ -12,6 +12,7 @@ services:
     # these env variable can be defined in either .env file or as below
     environment:
       - queue_url=amqp://guest:guest@13.214.37.45:5672/%2F
+      # - queue_url=amqp://guest:guest@ 195.148.22.62:5672/%2F
       - training_exchange=test-client-tensorflow-mnist
       - local_model_folder=./weights/local_weights/
       - global_model_folder=./weights/global_weights/

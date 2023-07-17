@@ -1,0 +1,34 @@
+{
+    "client_id": "235-cpu",
+    "role": "train",
+    "gpu_index": 0,
+    "save_log": true,
+    "tracking_point": 2000,
+    "donwload_attempt": 15,
+    
+    "queue_consumer": {
+        "exchange_name": "asynfl_exchange",
+        "exchange_type": "topic",
+        "queue_name": "server_queue",
+        "routing_key": "client.#"
+    },
+    "queue_producer": {
+        "exchange_name": "asynfl_exchange",
+        "exchange_type": "topic",
+        "queue_name": "server_consumer",
+        "routing_key": "server.#"
+    },
+    "dataset": {
+        "chunk_index": 4,
+        "qod": 0.85
+    },
+    "training_params": {
+        "epoch": 10000,
+        "batch_size": 64,
+        "regularization": "l2",
+        "lambda_value": 0.0005,
+        "learning_rate": 0.1,
+        "beta": 0.6,
+        "decay_period": 100
+    }
+}
