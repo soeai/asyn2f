@@ -56,7 +56,7 @@ test_ds, data_size = preprocess_dataset(default_testing_dataset_path, training =
 
 print("-" * 20)
 print("-" * 20)
-print(f"Begin training proceess with data size of {data_size}")
+print(f"Begin testing global model performance with data size of {data_size}")
 print("-" * 20)
 print("-" * 20)
 

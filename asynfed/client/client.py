@@ -196,6 +196,7 @@ class Client(object):
 
     def _start_training_thread(self):
         LOGGER.info("Start training thread.")
+        self._training_thread_is_running = True
         training_thread = threading.Thread(
             target=self._train,
             name="client_training_thread")
