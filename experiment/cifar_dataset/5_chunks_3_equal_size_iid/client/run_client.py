@@ -62,7 +62,7 @@ print("*" * 20)
 # ------------oOo--------------------
 # Preprocessing data
 default_testing_dataset_path = "../../../data/cifar_data/test_set.pickle"
-training_dataset_path = f"../../../data/cifar_data/5_chunks_2/iid/chunk_{config['dataset']['chunk_index']}.pickle"
+training_dataset_path = f"../../../data/cifar_data/5_chunks_3_equal_size/iid/chunk_{config['dataset']['chunk_index']}.pickle"
 
 train_ds, data_size = preprocess_dataset(training_dataset_path, batch_size = config['training_params']['batch_size'], training = True)
 test_ds, _ = preprocess_dataset(default_testing_dataset_path, batch_size= config['training_params']['batch_size'], training = False)
