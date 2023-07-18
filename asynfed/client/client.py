@@ -36,7 +36,6 @@ lock = threading.Lock()
 
 
 class Client(object):
-    # def __init__(self, model: ModelWrapper, config: dict, save_log: bool = True):
     def __init__(self, model: ModelWrapper, config: dict):
         _logging_config("client", config['save_log'])
 
@@ -44,7 +43,7 @@ class Client(object):
         self._role = self._config.get("role") or "train"
 
         # control the state of download process
-        self._download_attempt: int = self._config.get("download_attempt") or 15
+        self._download_attempt: int = self._config.get("download_attempt") or 10
         self._download_success: bool = False
         self._training_thread_is_running = False
 
@@ -60,11 +59,11 @@ class Client(object):
         self._train_loss = 0.0
 
         # --------- info get from server ------------
-        self._global_chosen_list = None
+        self._global_chosen_list: list = []
         # for updating new global model
         self._previous_global_version = 0
         self._current_global_version = 0
-        self._received_global_version = 0
+
 
         self._global_model_name = None
 
@@ -206,22 +205,19 @@ class Client(object):
 
 
     def _handle_server_init_response(self, msg_received):
-        # message_utils.print_message(msg_received)
+        LOGGER.info("Server Response to Init Message")
         message_utils.print_message(msg_received)
-        # LOGGER.info(msg_received)
 
         content = msg_received['content']
         server_init_response: ResponseToInit = ResponseToInit(**content)
 
         if server_init_response.reconnect:
-        # if content['reconnect'] is True:
+            LOGGER.info("=" * 40)
             LOGGER.info("Reconnect to server.")
+            LOGGER.info("=" * 40)
 
-        # self._session_id = content['session_id']
         self._session_id = server_init_response.session_id
 
-        self._global_model_name = server_init_response.model_info.global_model_name
-        self._received_global_version = server_init_response.model_info.model_version
 
         # get the exchange condition from server
         self._min_acc = server_init_response.exchange_at.performance
@@ -239,9 +235,9 @@ class Client(object):
 
         self._is_connected = True
 
-        # Check for new global model version.
-        if self._current_global_version < self._received_global_version:
-            self._current_global_version = self._received_global_version
+
+        # Check whether it is a new global model to arrive
+        if self._current_global_version < server_init_response.model_info.model_version:
             LOGGER.info("Detect new global version.")
             local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
             remote_path = server_init_response.model_info.model_url
@@ -251,25 +247,13 @@ class Client(object):
             self._download_success = False
             self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
 
-            # for i in range(self._download_attempt):
-            #     if self._storage_connector.download(remote_file_path=server_init_response.model_info.model_url, 
-            #                                     local_file_path=local_path):
-            #         self._download_success
-            #         break
-            #     LOGGER.info(f"{i + 1} attempt: download model failed, retry in 5 seconds.")
-            #     i += 1
-            #     if i == self._download_attempt - 1:
-            #         LOGGER.info(f"Already try {self._download_attempt} time. Pass this global version: {server_init_response.model_info.model_url}")
-            #     sleep(5)
-
-            # while True:
-            #     if self._storage_connector.download(remote_file_path=server_init_response.model_info.model_url, 
-            #                                     local_file_path=local_path):
-            #         break
-            #     LOGGER.info("Download model failed. Retry in 5 seconds.")
-            #     sleep(5)
 
         if self._download_success:
+            # update only downloading process is success
+            self._global_model_name = server_init_response.model_info.global_model_name
+            self._current_global_version = server_init_response.model_info.model_version
+
+            LOGGER.info(f"Successfully downloaded global model {self._global_model_name}")
             # update info in profile file
             self._update_profile()
 
@@ -284,66 +268,61 @@ class Client(object):
 
 
     def _handle_server_notify_message(self, msg_received):
-
-        content = msg_received['content']
+        message_utils.print_message(msg_received)
         server_model_udpate: ServerModelUpdate = ServerModelUpdate(**msg_received['content'])
 
-        with lock:
-            # ----- receive and load global message ----
+        # check whether the client is chosen to engage in this training epoch
+        # default status for tester is true
+        is_chosen = True
+        if self._role == "train":
             self._global_chosen_list = server_model_udpate.chosen_id
+            is_chosen = self._client_id in self._global_chosen_list or not self._global_chosen_list
 
-            # update latest model info
-            self._global_model_name = server_model_udpate.global_model_name
-            self._received_global_version = server_model_udpate.global_model_version
+        if is_chosen:
+            with lock:
+                # attempt to download the global model
+                remote_path = f'global-models/{server_model_udpate.global_model_name}'
+                local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{server_model_udpate.global_model_name}'
 
-            # global info for merging process
-            self._global_model_update_data_size = server_model_udpate.global_model_update_data_size
-            self._global_avg_loss = server_model_udpate.avg_loss
-            self._global_avg_qod = server_model_udpate.avg_qod
+                # to make sure the other process related to the new global model version start
+                # only when the downloading process success
+                self._download_success = False
+                self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
 
-            LOGGER.info("*" * 20)
-            LOGGER.info(
-                f"Global data_size, global avg loss, global avg qod: {self._global_model_update_data_size}, {self._global_avg_loss}, {self._global_avg_qod}")
-            LOGGER.info("*" * 20)
 
-            # save the previous local version of the global model to log it to file
-            self._previous_global_version = self._current_global_version
-            # update local version (the latest global model that the client have)
-            self._current_global_version = self._received_global_version
+            if self._download_success:
+                # Only update info when download is success
+                # save the previous local version of the global model to log it to file
+                self._global_model_name = server_model_udpate.global_model_name
+                self._previous_global_version = self._current_global_version
 
-            remote_path = f'global-models/{content["model_id"]}_v{self._current_global_version}.pkl'
-            local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{content["model_id"]}_v{self._current_global_version}.pkl'
+                # update local version (the latest global model that the client have)
+                self._current_global_version = server_model_udpate.global_model_version
 
-            # to make sure the other process related to the new global model version start
-            # only when the downloading process success
-            self._download_success = False
-            self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
+                LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
+                # print the content only when succesfully download new model
+                message_utils.print_message(ServerModelUpdate.to_dict())
 
-            # while True:
-            #     if self._storage_connector.download(remote_file_path=remote_path,
-            #                                         local_file_path=local_path):
-            #         break
-            #     LOGGER.info("Download model failed. Retry in 5 seconds.")
-            #     sleep(5)
+                if self._role == "test":
+                    # test everytime receive new global model notify from server
+                    self._test()
 
-            # LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
+                elif self._role == "train":
+                    LOGGER.info(f"{self._client_id} is chosen to train for global model version {self._current_global_version}")
+                    # update global info for merging process
+                    self._global_model_update_data_size = server_model_udpate.global_model_update_data_size
+                    self._global_avg_loss = server_model_udpate.avg_loss
+                    self._global_avg_qod = server_model_udpate.avg_qod
 
-        # if the training thread does not start yet 
-        # (fail to download the global model in the response to init message from server)
-        # start now
-        # else just update the state of the new model flag
-        if self._download_success:
-            if self._training_thread_is_running:
-                self._new_model_flag = True
-            else:
-                self._start_training_thread()
+                    # if the training thread does not start yet 
+                    # (fail to download the global model in the response to init message from server)
+                    # start now
+                    # else just update the state of the new model flag
+                    if self._training_thread_is_running:
+                        self._new_model_flag = True
+                    else:
+                        self._start_training_thread()
 
-            # print the content only when succesfully download new model
-            message_utils.print_message(msg_received)
-
-            # test everytime receive new global model notify from server
-            if self._role == "test":
-                self._test()
 
 
     # queue handling functions

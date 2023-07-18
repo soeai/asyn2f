@@ -42,7 +42,8 @@ class ClientAsyncFl(Client):
         - user is freely decided to follow the sample
             or create their own model in their own platform (pytorch,...)
         '''
-        self._open_attempt: int = self._download_attempt + 5
+        self._open_attempt: int = 5
+        # self._open_attempt: int = self._download_attempt + 5
         if self._role == "train":
             self._batch_size = self._config['training_params']['batch_size']
             self._beta = self._config['training_params']['beta']
@@ -303,24 +304,14 @@ class ClientAsyncFl(Client):
        
     def _load_weights_from_file(self, file_name, folder):
         full_path = folder + file_name
-
         def _check_exist(full_path: str) -> bool:
-            for i in range(self._open_attempt):
-                if not os.path.isfile(full_path):
-                    LOGGER.info("*" * 20)
-                    LOGGER.info(f"{i + 1} attempt: Sleep 5 second when the the download process is not completed, then retry.")
-                    LOGGER.info(full_path)
-                    LOGGER.info("*" * 20)
-                    i += 1
-                    if i == self._open_attempt - 1:
-                        LOGGER.info(f"Already try {self._open_attempt} time. Pass this global version: {file_name}")
-                    sleep(5)
-                else:
-                    return True
-                
-            return False
+            if not os.path.isfile(full_path):
+                LOGGER.info("error in either downloading process or opening file in local. Please check again")
+                return False
+            else:
+                return True
+            
         file_exist = _check_exist(full_path= full_path)
-
 
         weights = []
         if file_exist:
