@@ -239,7 +239,7 @@ class Client(object):
         # Check whether it is a new global model to arrive
         if self._current_global_version < server_init_response.model_info.model_version:
             LOGGER.info("Detect new global version.")
-            local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{self._global_model_name}"
+            local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{server_init_response.model_info.global_model_name}"
             remote_path = server_init_response.model_info.model_url
 
             # to make sure the other process related to the new global model version start
