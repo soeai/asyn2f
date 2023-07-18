@@ -282,8 +282,8 @@ class Server(object):
 
         if delete_list:
             LOGGER.info("=" * 20)
-            LOGGER.info(f"Delete files in {directory} folder")
-            LOGGER.info(f"Threshold: {threshold}, best version: {best_version}, total deleted files: {len(delete_list)}")
+            LOGGER.info(f"Delete {len(delete_list)} files in {directory} folder")
+            LOGGER.info(f"Threshold: {threshold}, best version: {best_version}")
             LOGGER.info([self._get_model_version(file) for file in delete_list])
             LOGGER.info("=" * 20)
             self._cloud_storage.delete_files(delete_list)
@@ -295,8 +295,8 @@ class Server(object):
 
         if delete_list:
             LOGGER.info("=" * 20)
-            LOGGER.info(f"Delete files in local folder {directory}")
-            LOGGER.info(versions)
+            LOGGER.info(f"Delete {len(delete_list)} files in local folder {directory}")
+            LOGGER.info([self._get_model_version(file) for file in delete_list])
             LOGGER.info("=" * 20)
 
         for file in delete_list:

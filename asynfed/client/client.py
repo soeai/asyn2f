@@ -235,8 +235,8 @@ class Client(object):
         delete_list = [file for file, version in zip(files, versions) if version <= threshold]
         if delete_list:
             LOGGER.info("=" * 20)
-            LOGGER.info(f"Delete files in local folder {directory}")
-            LOGGER.info(versions)
+            LOGGER.info(f"Delete {len(delete_list)} files in local folder {directory}")
+            LOGGER.info([self._get_model_version(file) for file in delete_list])
             LOGGER.info("=" * 20)
 
         for file in delete_list:
