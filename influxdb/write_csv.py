@@ -33,7 +33,7 @@ def write(input_file, measurement):
             time_now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
             record = (
                 Point(measurement)
-                .field(headers[1], row[1])
+                .tag(headers[1], row[1])
                 .field(headers[2], float(row[2]))
                 .field(headers[3], float(row[3]))
                 .time(row[0], WritePrecision.NS))
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_file', type=str, default='output.csv')
-    parser.add_argument('--measurement', type=str, default='my_measurement')
+    parser.add_argument('--measurement', type=str, default='mea2')
 
     args = parser.parse_args()
     write(args.input_file, args.measurement)
