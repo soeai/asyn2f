@@ -106,6 +106,7 @@ class Client(object):
         else:
             self._load_profile()
 
+
         # specify a queue for each client
         self._config['queue_consumer']['queue_name'] = f"queue_{self._client_id}"
 
@@ -288,8 +289,14 @@ class Client(object):
         if self._current_global_version < server_init_response.model_info.model_version:
             LOGGER.info("Detect new global version.")
             # local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{server_init_response.model_info.global_model_name}"
-            local_path = os.path.join(Config.TMP_GLOBAL_MODEL_FOLDER, server_init_response.model_info.global_model_name)
             remote_path = server_init_response.model_info.model_url
+            local_path = os.path.join(Config.TMP_GLOBAL_MODEL_FOLDER, server_init_response.model_info.global_model_name)
+
+            # LOGGER.info("=" * 20)
+            # LOGGER.info(f"global folder: {Config.TMP_GLOBAL_MODEL_FOLDER}")
+            # LOGGER.info(f"remote path: {remote_path}")
+            # LOGGER.info(f"local path: {local_path}")
+            # LOGGER.info("=" * 20)
 
             # to make sure the other process related to the new global model version start
             # only when the downloading process success
@@ -424,7 +431,7 @@ class Client(object):
 
     def _create_profile(self):
         data = self._create_message()
-        with open(self._profile_file_name) as outfile:
+        with open(self._profile_file_name, 'w') as outfile:
             json.dump(data, outfile)
 
     def _update_profile(self):

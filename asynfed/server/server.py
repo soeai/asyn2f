@@ -10,6 +10,8 @@ from time import sleep
 from typing import Dict
 import uuid
 import copy
+import shutil
+
 import concurrent.futures
 
 
@@ -349,7 +351,7 @@ class Server(object):
             self._worker_manager.add_worker(worker)
 
             # create a local folder name to store weight file of worker
-            client_folder_name = os.path.join(Config.TMP_GLOBAL_MODEL_FOLDER, worker.worker_id)
+            client_folder_name = os.path.join(Config.TMP_LOCAL_MODEL_FOLDER, worker.worker_id)
             if not os.path.exists(client_folder_name):
                 os.makedirs(client_folder_name)
 
@@ -367,8 +369,8 @@ class Server(object):
         model_info: ModelInfo = ModelInfo(model_url= model_url, global_model_name= global_model_name, 
                                             model_version= model_version)
         # storage info
-        storage_info: StorageInfo = StorageInfo(storage_type= self._cloud_storage_type, access_key= access_key,
-                                                secret_key= secret_key, bucket_name= self._bucket_name,
+        storage_info: StorageInfo = StorageInfo(storage_type= self._cloud_storage_type, client_access_key= access_key,
+                                                client_secret_key= secret_key, bucket_name= self._bucket_name,
                                                 region_name= self._config['cloud_storage']['region_name'])
         if not self._aws_s3:
             storage_info.endpoint_url = self._config['cloud_storage']['minio']['endpoint_url']
@@ -443,7 +445,7 @@ class Server(object):
             for w_id, worker in completed_workers.items():
                 worker.is_completed = False
                 # keep track of the latest local version of worker used for cleaning task
-                model_filename = worker.get_remote_weight_file_path().split('/')[-1]
+                model_filename = worker.get_remote_weight_file_path().split(os.path.sep)[-1]
                 worker.update_local_version_used = self._get_model_version(model_filename)
 
             # pass out a copy of completed worker to aggregating process
@@ -484,12 +486,10 @@ class Server(object):
                                         local_file_path= local_weight_file)
 
             # keep track of the latest local version of worker used for cleaning task
-            model_filename = local_weight_file.split('/')[-1]
+            model_filename = local_weight_file.split(os.path.sep)[-1]
             worker.update_local_version_used = self._get_model_version(model_filename)
 
-
         # copy the worker model weight to the global model folder
-        import shutil
         save_location = os.path.join(Config.TMP_GLOBAL_MODEL_FOLDER, self._strategy.get_new_global_model_filename())
         shutil.copy(local_weight_file, save_location)
 

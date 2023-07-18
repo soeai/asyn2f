@@ -24,14 +24,3 @@ class ClientInitConnection(MessageObject):
         self.role = role
         self.system_info: SystemInfo = SystemInfo(**system_info)
         self.data_description: DataDescription = DataDescription(**data_description)
-
-    # def to_dict(self) -> dict:
-    #     dict_object = {
-    #         "role": self.role,
-    #         "system_info": self.system_info.to_dict(),
-    #         "data_description": self.data_description.to_dict()
-    #     }
-    #     return dict_object
-    # def to_dict(self):
-    #     return {key: value if not isinstance(value, MessageObject) else value.to_dict() for key, value in self.__dict__.items()}
-

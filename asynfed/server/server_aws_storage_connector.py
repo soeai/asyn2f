@@ -4,38 +4,39 @@ import json
 
 
 from asynfed.commons.utils import AWSConnector
+from .server_boto3_storage_connector import ServerStorageBoto3
 from asynfed.commons.messages.server.server_response_to_init import StorageInfo
 
 LOGGER = logging.getLogger(__name__)
 
-class ServerStorageAWS(AWSConnector):
-    def __init__(self, storage_info: StorageInfo):
-        super().__init__(storage_info)
+class ServerStorageAWS(AWSConnector, ServerStorageBoto3):
+    def __init__(self, storage_info: StorageInfo, parent= None):
+        super().__init__(storage_info, parent= parent)
+
+        self._client_keys = self._create_bucket_access_policy(storage_info= storage_info)
+        self._client_access_key_id = self._client_keys['AccessKeyId']
+        self._client_secret_key = self._client_keys['SecretAccessKey']
+
+
+    def get_client_key(self, worker_id):
+        # Generate an access key and secret key for the user
+        client_folder_full_path = f"clients/{worker_id}/"
+        self._s3.put_object(Bucket=self._bucket_name, Key= client_folder_full_path)
+        return self._client_access_key_id, self._client_secret_key
+
+
+    def _create_bucket_access_policy(self, storage_info: StorageInfo) -> dict:
+
         self.iam = boto3.client('iam', aws_access_key_id= storage_info.access_key,
                                 aws_secret_access_key= storage_info.secret_key)
-        self.client_keys = None
+
+        self._client_name = f'client-{self._bucket_name}'
 
         try:
-            logging.info(f"Creating bucket {self._bucket_name}")
-            self._s3.create_bucket(
-                Bucket=self._bucket_name,
-                CreateBucketConfiguration={'LocationConstraint': storage_info.region_name}
-            )
-            logging.info(f"Created bucket {self._bucket_name}")
-            self._s3.put_object(Bucket=self._bucket_name, Key='global-models/')
-        except Exception as e:
-            if 'BucketAlreadyOwnedByYou' in str(e):
-                logging.info(f"Bucket {self._bucket_name} already exists")
-            else:
-                logging.error(e)
-
-        self.client_name = f'client-{self._bucket_name}'
-
-        try:
-            self.iam.create_user(UserName=self.client_name)
+            self.iam.create_user(UserName=self._client_name)
         except Exception as e:
             if 'EntityAlreadyExists' in str(e):
-                logging.info(f"User {self.client_name} already exists")
+                logging.info(f"User {self._client_name} already exists")
             else:
                 logging.error(e)
 
@@ -78,13 +79,14 @@ class ServerStorageAWS(AWSConnector):
                 }
             ]
         }
+
         try:
             policy = self.iam.create_policy(
                 PolicyName=self._bucket_name,
                 PolicyDocument=json.dumps(policy_arn),
             )
             self.iam.attach_user_policy(
-                UserName=self.client_name,
+                UserName=self._client_name,
                 PolicyArn=policy['Policy']['Arn'],
             )
         except Exception as e:
@@ -93,49 +95,16 @@ class ServerStorageAWS(AWSConnector):
             else:
                 logging.error(e)
 
+        self._client_keys = {}
         try:
-            self.client_keys = self.iam.create_access_key(UserName=self.client_name)['AccessKey']
+            self._client_keys: dict = self.iam.create_access_key(UserName=self._client_name)['AccessKey']
         except:
-            for key in self.iam.list_access_keys(UserName=self.client_name)['AccessKeyMetadata']:
-                if key['UserName'] == self.client_name:
+            for key in self.iam.list_access_keys(UserName=self._client_name)['AccessKeyMetadata']:
+                if key['UserName'] == self._client_name:
                     self.iam.delete_access_key(
-                        UserName=self.client_name,
+                        UserName=self._client_name,
                         AccessKeyId=key['AccessKeyId']
                     )
-            self.client_keys = self.iam.create_access_key(UserName=self.client_name)['AccessKey']
-        self.client_access_key_id = self.client_keys['AccessKeyId']
-        self.client_secret_key = self.client_keys['SecretAccessKey']
+            self._client_keys: dict = self.iam.create_access_key(UserName=self._client_name)['AccessKey']
 
-    def get_client_key(self, worker_id):
-        # Generate an access key and secret key for the user
-        self.create_folder(worker_id)
-        return self.client_access_key_id, self.client_secret_key
-
-    def create_folder(self, folder_name):
-        self._s3.put_object(Bucket=self._bucket_name, Key=('clients/' + folder_name + '/'))
-
-    def get_newest_global_model(self) -> str:
-        # get the newest object in the global-models bucket
-        objects = self._s3.list_objects_v2(Bucket=self._bucket_name, Prefix='global-models/', Delimiter='/')['Contents']
-        # Sort the list of objects by LastModified in descending order
-        sorted_objects = sorted(objects, key=lambda x: x['LastModified'], reverse=True)
-
-        try:
-            if sorted_objects[0]['Key'] == 'global-models/':
-                return sorted_objects[1]['Key']
-            return sorted_objects[0]['Key']
-        except:
-            LOGGER.info("*" * 20)
-            LOGGER.info("NO MODEL EXIST YET")
-            LOGGER.info("Uploading initial model...")
-            self.upload('./testweight_v1.pkl', 'global-models/testweight_v1.pkl')
-            LOGGER.info("Upload initial model succesfully")
-            LOGGER.info("*" * 20)
-            return 'global-models/testweight_v1.pkl'
-
-    # def delete_bucket(self):
-    #     try:
-    #         self._s3.delete_bucket(Bucket=self._bucket_name)
-    #         logging.info(f'Success! Bucket {self._bucket_name} deleted.')
-    #     except Exception as e:
-    #         logging.error(f'Error! Bucket {self._bucket_name} was not deleted. {e}')
+        return self._client_keys

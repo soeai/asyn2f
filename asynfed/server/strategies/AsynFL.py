@@ -12,6 +12,7 @@ from asynfed.server.objects import Worker
 
 from .strategy import Strategy
 
+from asynfed.server.server_boto3_storage_connector import ServerStorageBoto3
 
 import logging
 LOGGER = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ class AsynFL(Strategy):
         alpha /= (self.update_version - worker.current_version)
         return alpha
 
-    def aggregate(self, completed_workers: Dict [str, Worker], cloud_storage):
+    def aggregate(self, completed_workers: Dict [str, Worker], cloud_storage: ServerStorageBoto3):
         LOGGER.info("-" * 20)
         LOGGER.info(f"Current global version before aggregating process: {self.current_version}")
         LOGGER.info("-" * 20)

@@ -49,5 +49,3 @@ class ResponseToInit(MessageObject):
         self.exchange_at: ExchangeAt = ExchangeAt(**exchange_at) 
         self.reconnect = reconnect
 
-    # def to_dict(self) -> dict:
-    #     return {key: value if not isinstance(value, MessageObject) else value.to_dict() for key, value in self.__dict__.items()}

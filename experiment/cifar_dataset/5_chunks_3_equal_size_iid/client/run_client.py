@@ -68,7 +68,7 @@ data_folder_path = os.path.join(root, "experiment", "data", "cifar_data")
 testset_filename = "test_set.pickle"
 default_testing_dataset_path = os.path.join(data_folder_path, testset_filename)
 
-chunk_folder = os.path.join("5_chunks_1", "iid")
+chunk_folder = os.path.join("5_chunks_3_equal_size", "iid")
 chunk_filename = f"chunk_{config['dataset']['chunk_index']}.pickle"
 training_dataset_path = os.path.join(data_folder_path, chunk_folder, chunk_filename)
 

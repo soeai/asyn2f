@@ -11,7 +11,7 @@ class Worker:
     - Add more properties to this class.
     """
 
-    def __init__(self, session_id: str, worker_id: str, sys_info: dict = SystemInfo().__dict__, data_size: int = 10,
+    def __init__(self, session_id: str, worker_id: str, sys_info: dict = SystemInfo().to_dict, data_size: int = 10,
                  qod: float = 0.1) -> None:
         
         # Properties
@@ -42,7 +42,7 @@ class Worker:
 
 
     def get_weight_file_path(self):
-        filename = self.weight_file.split('/')[-1]
+        filename = self.weight_file.split(os.path.sep)[-1]
         return os.path.join(Config.TMP_LOCAL_MODEL_FOLDER, self.worker_id, filename)
     
     def get_remote_weight_file_path(self):
