@@ -277,9 +277,11 @@ class Client(object):
         storage_info: StorageInfo = server_init_response.storage_info
         self._cloud_storage_type = storage_info.storage_type
 
+
         if self._cloud_storage_type == "s3":
             self._storage_connector = ClientStorageAWS(storage_info)
         else:
+
             self._storage_connector = ClientStorageMinio(storage_info, parent=None)
 
         self._is_connected = True

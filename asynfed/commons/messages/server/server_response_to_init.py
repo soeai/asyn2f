@@ -11,8 +11,8 @@ class ModelInfo(MessageObject):
 
 
 class StorageInfo(MessageObject):
-    def __init__(self, storage_type: str, access_key: str, secret_key: str, 
-                 bucket_name: str, region_name: str, endpoint_url: str = "",
+    def __init__(self, storage_type: str, bucket_name: str, region_name: str, endpoint_url: str = "",
+                 access_key: str = "", secret_key: str = "",
                  client_access_key: str = "", client_secret_key: str = ""):
         self.storage_type = storage_type
         self.access_key = access_key
