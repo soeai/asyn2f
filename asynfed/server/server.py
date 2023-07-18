@@ -1,4 +1,5 @@
 
+from datetime import datetime
 import os
 import sys
 import json
@@ -122,7 +123,10 @@ class Server(object):
     # handling when receiving message
     def on_message_received(self, ch, method, props, body):
         msg_received = message_utils.deserialize(body.decode('utf-8'))
-        msg_received['headers']['timestamp'] = time_utils.time_now()
+        now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        msg_received['headers']['timestamp'] = now
+
+    # Format the datetime object as a string and return it
 
         msg_type = msg_received['headers']['message_type']
 
