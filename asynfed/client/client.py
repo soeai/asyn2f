@@ -301,7 +301,7 @@ class Client(object):
 
                 LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
                 # print the content only when succesfully download new model
-                message_utils.print_message(ServerModelUpdate.to_dict())
+                message_utils.print_message(server_model_udpate.to_dict())
 
                 if self._role == "test":
                     # test everytime receive new global model notify from server
