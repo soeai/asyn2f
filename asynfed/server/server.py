@@ -63,7 +63,7 @@ class Server(object):
         self._strategy: Strategy = strategy
         self._cloud_storage = self._set_up_cloud_storage()
         self._worker_manager: WorkerManager = WorkerManager()
-        self._influxdb: InfluxDB = InfluxDB(self._config['influxdb'])
+        # self._influxdb: InfluxDB = InfluxDB(self._config['influxdb'])
 
         # queue
         self._queue_consumer: AmqpConsumer = AmqpConsumer(self._config['queue_consumer'], self)
@@ -122,6 +122,7 @@ class Server(object):
     # handling when receiving message
     def on_message_received(self, ch, method, props, body):
         msg_received = message_utils.deserialize(body.decode('utf-8'))
+        msg_received['headers']['timestamp'] = time_utils.time_now()
 
         msg_type = msg_received['headers']['message_type']
 
@@ -344,7 +345,7 @@ class Server(object):
         # only update the remote local weight path, not download to the device
         self._worker_manager.add_local_update(client_id, client_model_update)
         # write to influx db
-        self._influxdb.write_training_process_data(timestamp, client_id, client_model_update)
+        # self._influxdb.write_training_process_data(timestamp, client_id, client_model_update)
 
 
 
