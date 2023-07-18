@@ -1,3 +1,5 @@
+import os
+
 from asynfed.commons.conf import Config
 
 from asynfed.commons.utils.time_ultils import time_now
@@ -41,7 +43,7 @@ class Worker:
 
     def get_weight_file_path(self):
         filename = self.weight_file.split('/')[-1]
-        return f'{Config.TMP_LOCAL_MODEL_FOLDER}{self.worker_id}/{filename}'
+        return os.path.join(Config.TMP_LOCAL_MODEL_FOLDER, self.worker_id, filename)
     
     def get_remote_weight_file_path(self):
         return self.weight_file

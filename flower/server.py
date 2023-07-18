@@ -11,20 +11,28 @@ import logging
 import numpy as np
 import tensorflow as tf
 
-if not os.path.exists('server_logs'):
-    os.makedirs('server_logs')
-if not os.path.exists('server_weights'):
-    os.makedirs('server_weights')
+log_folder ="server_logs"
+if not os.path.exists(log_folder):
+    os.makedirs(log_folder)
+weights_folder = "server_weights"
+
+if not os.path.exists(weights_folder):
+    os.makedirs(weights_folder)
+
 LOG_FORMAT = '%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'
+file_name = f"{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log"
+file_path = os.path.join("server_log", file_name)
+
 logging.basicConfig(
     level=logging.INFO,
     format=LOG_FORMAT,
-    filename=f"server_logs/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log",
+    filename=file_path,
     filemode='a',
     datefmt='%H:%M:%S'
 )
 
-test_path = 'data/test_set.pickle'
+# test_path = 'data/test_set.pickle'
+test_path = os.path.join("data", "test_set.pickle")
 x_test, y_test, data_size = preprocess_dataset(test_path)
 
 epoch = 200
@@ -138,10 +146,12 @@ def start_server(args):
             super().__init__(*args, **kwargs)
             
             # Check if there's a pretrain weight to load from
-            weight_file = f'server_weights/round-{init_round}-weights.npz'
-            if os.path.isfile(weight_file):
+            weights_file_name = f'round-{init_round}-weights.npz'
+            weights_file_path = os.path.join(weights_folder, weights_file_name)
+
+            if os.path.isfile(weights_file_path):
                 logging.info(f"Loading weights from round {init_round}...")
-                pretrain_weights = np.load(weight_file)
+                pretrain_weights = np.load(weights_file_path)
                 model.set_weights([pretrain_weights[key] for key in pretrain_weights.files])
 
                 self.init_round = init_round
@@ -155,7 +165,9 @@ def start_server(args):
             if aggregated_parameters is not None:
                 aggregated_ndarrays: List[np.ndarray] = fl.common.parameters_to_ndarrays(aggregated_parameters)
                 logging.info(f"Saving round {self.init_round + rnd} aggregated_ndarrays...")
-                np.savez(f"server_weights/round-{self.init_round + rnd}-weights.npz", *aggregated_ndarrays)
+                file_name = f"round-{self.init_round + rnd}-weights.npz"
+                file_path = os.path.join(weights_folder, file_name)
+                np.savez(file_path, *aggregated_ndarrays)
 
             return aggregated_parameters, aggregated_metrics
 

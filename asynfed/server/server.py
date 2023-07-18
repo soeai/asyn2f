@@ -166,32 +166,35 @@ class Server(object):
         self._global_keep_version_num: int = self._config.get('cleaning_config', {}).get('global_keep_version_num', 10)
         self._local_keep_version_num: int = self._config.get('cleaning_config', {}).get('local_keep_version_num', 3)
 
-        # self._clean_storage_period: int = self._config.get('cloud_storage', {}).get('cleaning_config', {}).get('clean_cloud_storage_period', 600) 
-        # self._global_keep_version_num: int = self._config.get('cloud_storage', {}).get('cleaning_config', {}).get('global_keep_version_num', 10)
-        # self._local_keep_version_num: int = self._config.get('cloud_storage', {}).get('cleaning_config', {}).get('local_keep_version_num', 3)
-
     
     def _publish_global_model(self):
         # increment the current version to 1
         self._strategy.current_version += 1
 
-        local_filename = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
-        remote_filename = f'global-models/{self._strategy.model_id}_v{self._strategy.current_version}.pkl'
+        current_global_model_filename = self._strategy.get_current_global_model_filename()
+        local_filename = os.path.join(Config.TMP_GLOBAL_MODEL_FOLDER, current_global_model_filename)
+        remote_filename = os.path.join("global-models", current_global_model_filename)
 
-        self._cloud_storage.upload(local_filename, remote_filename)
-        headers: dict = self._create_headers(message_type= Config.SERVER_NOTIFY_MESSAGE)
-        server_model_update: ServerModelUpdate = ServerModelUpdate(
-                            chosen_id=[],
-                            model_id=self._strategy.model_id,
-                            global_model_version=self._strategy.current_version,
-                            global_model_name=f'{self._strategy.model_id}_v{self._strategy.current_version}.pkl',
-                            global_model_update_data_size=self._strategy.global_model_update_data_size,
-                            avg_loss=self._strategy.avg_loss,
-                            avg_qod=self._strategy.avg_qod)
-        
-        message = Message(headers= headers, content= server_model_update.to_dict()).to_json()
+        upload_success = self._cloud_storage.upload(local_filename, remote_filename)
 
-        self._queue_producer.send_data(message)
+        if upload_success:
+            headers: dict = self._create_headers(message_type= Config.SERVER_NOTIFY_MESSAGE)
+            server_model_update: ServerModelUpdate = ServerModelUpdate(
+                                chosen_id=[],
+                                model_id=self._strategy.model_id,
+                                global_model_version=self._strategy.current_version,
+                                global_model_name=current_global_model_filename,
+                                global_model_update_data_size=self._strategy.global_model_update_data_size,
+                                avg_loss=self._strategy.avg_loss,
+                                avg_qod=self._strategy.avg_qod)
+            
+            message = Message(headers= headers, content= server_model_update.to_dict()).to_json()
+
+            self._queue_producer.send_data(message)
+        else:
+            LOGGER.info("-" * 40)
+            LOGGER.warning(f"Fail to upload model {current_global_model_filename} to the cloud storage. Not sending update new model message to clients")
+            LOGGER.info("-" * 40)
 
 
     def _set_up_cloud_storage(self):
@@ -288,6 +291,7 @@ class Server(object):
             LOGGER.info("=" * 20)
             self._cloud_storage.delete_files(delete_list)
 
+
     def _delete_local_files(self, directory: str, threshold: int, best_version: int = None):
         files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
         versions = [self._get_model_version(file) for file in files]
@@ -331,8 +335,8 @@ class Server(object):
             worker = Worker(
                     session_id=session_id,
                     worker_id=client_id,
-                    sys_info= client_init_message.system_info.to_dict(),
-                    data_size= client_init_message.data_description.data_size,
+                    sys_info=client_init_message.system_info.to_dict(),
+                    data_size=client_init_message.data_description.data_size,
                     qod=client_init_message.data_description.qod
             )
 
@@ -345,9 +349,9 @@ class Server(object):
             self._worker_manager.add_worker(worker)
 
             # create a local folder name to store weight file of worker
-            folder_name = f'{Config.TMP_LOCAL_MODEL_FOLDER}{worker.worker_id}'
-            if not os.path.exists(folder_name):
-                os.makedirs(folder_name)
+            client_folder_name = os.path.join(Config.TMP_GLOBAL_MODEL_FOLDER, worker.worker_id)
+            if not os.path.exists(client_folder_name):
+                os.makedirs(client_folder_name)
 
         LOGGER.info("*" * 20)
         LOGGER.info(worker)
@@ -480,14 +484,13 @@ class Server(object):
                                         local_file_path= local_weight_file)
 
             # keep track of the latest local version of worker used for cleaning task
-            model_filename = remote_weight_file.split('/')[-1]
+            model_filename = local_weight_file.split('/')[-1]
             worker.update_local_version_used = self._get_model_version(model_filename)
 
 
         # copy the worker model weight to the global model folder
         import shutil
-        save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self._strategy.get_new_global_model_filename()
-        # LOGGER.info(save_location)
+        save_location = os.path.join(Config.TMP_GLOBAL_MODEL_FOLDER, self._strategy.get_new_global_model_filename())
         shutil.copy(local_weight_file, save_location)
 
 

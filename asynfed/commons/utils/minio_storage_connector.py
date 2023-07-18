@@ -12,7 +12,6 @@ logging.getLogger(__name__)
 from asynfed.commons.messages.server.server_response_to_init import StorageInfo
 
 class MinioConnector(ABC):
-    """Class for connecting to AWS S3"""
     time_sleep = 10
     def __init__(self, storage_info: StorageInfo, parent=None) -> None:
         self._parent_thread = parent
@@ -36,7 +35,6 @@ class MinioConnector(ABC):
 
 
     def upload(self, local_file_path: str, remote_file_path: str, try_time=5):
-        """Uploads new global model to AWS"""
         # check if local_file_path is exist, if not create one
         if not os.path.exists(local_file_path):
             os.makedirs(local_file_path.split('/')[:-1])
@@ -65,8 +63,8 @@ class MinioConnector(ABC):
                     t += 1
             self._parent_thread.on_upload(False)
 
+
     def download(self, remote_file_path, local_file_path, try_time=5):
-        """Downloads a file from AWS"""
         # call synchronously
         if self._parent_thread is None:
             try:

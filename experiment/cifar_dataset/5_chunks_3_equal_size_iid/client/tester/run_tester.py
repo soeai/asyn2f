@@ -27,10 +27,10 @@ with open('conf.json', 'r') as json_file:
 
 prefix = f"{config['client_id']}-record"
 # add prefix for local client
-Config.TMP_GLOBAL_MODEL_FOLDER = f"./{prefix}/{Config.TMP_GLOBAL_MODEL_FOLDER}"
-Config.TMP_LOCAL_MODEL_FOLDER = f"./{prefix}/{Config.TMP_LOCAL_MODEL_FOLDER}"
-# Config.LOG_PATH = f"./{prefix}_{Config.LOG_PATH}"
-Config.LOG_PATH = f"./{prefix}/{Config.LOG_PATH}"
+current_folder = os.getcwd()
+Config.TMP_GLOBAL_MODEL_FOLDER = os.path.join(current_folder, prefix, Config.TMP_GLOBAL_MODEL_FOLDER)
+Config.TMP_LOCAL_MODEL_FOLDER = os.path.join(current_folder, prefix, Config.TMP_LOCAL_MODEL_FOLDER)
+Config.LOG_PATH = os.path.join(current_folder, prefix, Config.LOG_PATH)
 
 
 
@@ -50,8 +50,18 @@ print("*" * 20)
 
 # ------------oOo--------------------
 # Preprocessing data
-default_testing_dataset_path = "../../../../data/cifar_data/test_set.pickle"
+
+data_folder_path = os.path.join(root, "experiment", "data", "cifar_data")
+
+testset_filename = "test_set.pickle"
+default_testing_dataset_path = os.path.join(data_folder_path, testset_filename)
+
 test_ds, data_size = preprocess_dataset(default_testing_dataset_path, training = False)
+
+# default_testing_dataset_path = "../../../../data/cifar_data/test_set.pickle"
+# test_ds, data_size = preprocess_dataset(default_testing_dataset_path, training = False)
+
+
 # ------------oOo--------------------
 
 print("-" * 20)

@@ -26,12 +26,12 @@ class Config:
     SERVER_STOP_TRAINING = "server_stop_training"
     SERVER_PING_TO_CLIENT = "server_ping_to_client"
 
-    # this folder is used to save local models
-    TMP_LOCAL_MODEL_FOLDER = "weights/local_weights/"
-    TMP_GLOBAL_MODEL_FOLDER = "weights/global_weights/"
-    # TMP_LOCAL_MODEL_FOLDER = "./weights/local_weights/"
-    # TMP_GLOBAL_MODEL_FOLDER = "./weights/global_weights/"
-    LOG_PATH = "logs/"
+
+    # this folder is used to save weights
+    # user must define these location in run file
+    TMP_LOCAL_MODEL_FOLDER = os.path.join("weights", "local_weights")
+    TMP_GLOBAL_MODEL_FOLDER = os.path.join("weights", "global_weights")
+    LOG_PATH = "logs"
 
     # Cloud storage bucket information.
     STORAGE_ACCESS_KEY = ""
@@ -71,9 +71,8 @@ def prepare_folder():
         os.makedirs(Config.LOG_PATH)
 
 
-def init_config(side, save_log=False):
+def init_config(side, save_log=True):
     from datetime import datetime
-    # LOGGER.info(f'\n\n\n Config: {Config.__class__.__dict__} \n\n\n')
     # check_valid_config(side)
     prepare_folder()
     
@@ -81,14 +80,14 @@ def init_config(side, save_log=False):
         os.makedirs(Config.LOG_PATH)
 
     LOG_FORMAT = '%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'
-    # client_id: str = Config.LOG_PATH.split("_")[0]
 
     if save_log:
+        file_name = f"{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log"
+        file_path = os.path.join(Config.LOG_PATH, file_name)
         logging.basicConfig(
             level=logging.INFO,
             format=LOG_FORMAT,
-            filename=f"{Config.LOG_PATH}/{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log",
-            # filename=f"{Config.LOG_PATH}/{client_id}_{datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}.log",
+            filename=file_path,
             filemode='a',
             datefmt='%H:%M:%S'
         )

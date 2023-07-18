@@ -42,12 +42,14 @@ with open(args.config_file, 'r') as json_file:
 config['queue_consumer']['endpoint'] = os.getenv("queue_consumer_endpoint")
 config['queue_producer']['endpoint'] = os.getenv("queue_producer_endpoint")
 
+
 prefix = f"{config['client_id']}-record"
 # add prefix for local client
-Config.TMP_GLOBAL_MODEL_FOLDER = f"./{prefix}/{Config.TMP_GLOBAL_MODEL_FOLDER}"
-Config.TMP_LOCAL_MODEL_FOLDER = f"./{prefix}/{Config.TMP_LOCAL_MODEL_FOLDER}"
-# Config.LOG_PATH = f"./{prefix}_{Config.LOG_PATH}"
-Config.LOG_PATH = f"./{prefix}/{Config.LOG_PATH}"
+current_folder = os.getcwd()
+Config.TMP_GLOBAL_MODEL_FOLDER = os.path.join(current_folder, prefix, Config.TMP_GLOBAL_MODEL_FOLDER)
+Config.TMP_LOCAL_MODEL_FOLDER = os.path.join(current_folder, prefix, Config.TMP_LOCAL_MODEL_FOLDER)
+Config.LOG_PATH = os.path.join(current_folder, prefix, Config.LOG_PATH)
+
 
 
 import tensorflow as tf
@@ -61,8 +63,17 @@ print("*" * 20)
 
 # ------------oOo--------------------
 # Preprocessing data
-default_testing_dataset_path = "../../../data/cifar_data/test_set.pickle"
-training_dataset_path = f"../../../data/cifar_data/5_chunks_1/iid/chunk_{config['dataset']['chunk_index']}.pickle"
+data_folder_path = os.path.join(root, "experiment", "data", "cifar_data")
+
+testset_filename = "test_set.pickle"
+default_testing_dataset_path = os.path.join(data_folder_path, testset_filename)
+
+chunk_folder = os.path.join("5_chunks_1", "iid")
+chunk_filename = f"chunk_{config['dataset']['chunk_index']}.pickle"
+training_dataset_path = os.path.join(data_folder_path, chunk_folder, chunk_filename)
+
+# default_testing_dataset_path = "../../../data/cifar_data/test_set.pickle"
+# training_dataset_path = f"../../../data/cifar_data/5_chunks_1/iid/chunk_{config['dataset']['chunk_index']}.pickle"
 
 train_ds, data_size = preprocess_dataset(training_dataset_path, batch_size = config['training_params']['batch_size'], training = True)
 test_ds, _ = preprocess_dataset(default_testing_dataset_path, batch_size= config['training_params']['batch_size'], training = False)

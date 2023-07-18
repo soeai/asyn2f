@@ -35,9 +35,11 @@ config['queue_producer']['endpoint'] = os.getenv("queue_producer_endpoint")
 
 server_id = config.get("server_id") or "server-record"
 
-Config.LOG_PATH = f"./{server_id}/{Config.LOG_PATH}"
-Config.TMP_GLOBAL_MODEL_FOLDER = f"./{server_id}/{Config.TMP_GLOBAL_MODEL_FOLDER}"
-Config.TMP_LOCAL_MODEL_FOLDER = f"./{server_id}/{Config.TMP_LOCAL_MODEL_FOLDER}"
+current_folder = os.getcwd()
+Config.TMP_GLOBAL_MODEL_FOLDER = os.path.join(current_folder, server_id, Config.TMP_GLOBAL_MODEL_FOLDER)
+Config.TMP_LOCAL_MODEL_FOLDER = os.path.join(current_folder, server_id, Config.TMP_LOCAL_MODEL_FOLDER)
+Config.LOG_PATH = os.path.join(current_folder, server_id, Config.LOG_PATH)
+
 
 strategy = AsynFL()
 fedasync_server = Server(strategy, config)

@@ -1,6 +1,5 @@
 import os
 import logging
-from time import sleep
 from typing import List
 import numpy as np
 from tqdm import tqdm
@@ -9,7 +8,6 @@ import pickle
 
 from asynfed.commons.conf import Config
 from asynfed.commons.messages import Message
-# import asynfed.commons.utils.time_ultils as time_utils
 
 
 from asynfed.commons.messages.client import ClientModelUpdate, NotifyEvaluation, TesterRequestStop
@@ -63,7 +61,7 @@ class ClientAsyncFl(Client):
         # an initialized model and al already trained one
         # fixed this problem
         # by training the model before loading the global weights
-        file_exist, current_global_weights = self._load_weights_from_file(self._global_model_name, Config.TMP_GLOBAL_MODEL_FOLDER)
+        file_exist, current_global_weights = self._load_weights_from_file(Config.TMP_GLOBAL_MODEL_FOLDER, self._global_model_name)
 
         if file_exist:
             try:
@@ -124,7 +122,7 @@ class ClientAsyncFl(Client):
                         # previous, current and global weights are used in the merged process
                         self._model.current_weights = self._model.get_weights()
                         # load global weights from file
-                        file_exist, self._model.global_weights = self._load_weights_from_file(self._global_model_name, Config.TMP_GLOBAL_MODEL_FOLDER)
+                        file_exist, self._model.global_weights = self._load_weights_from_file(Config.TMP_GLOBAL_MODEL_FOLDER, self._global_model_name)
                         
                         
                         if file_exist:
@@ -168,7 +166,7 @@ class ClientAsyncFl(Client):
 
             
     def _test(self):
-        file_exist, current_global_weights = self._load_weights_from_file(self._global_model_name, Config.TMP_GLOBAL_MODEL_FOLDER)
+        file_exist, current_global_weights = self._load_weights_from_file(Config.TMP_GLOBAL_MODEL_FOLDER, self._global_model_name)
         if file_exist:
             try:
                 self._model.set_weights(current_global_weights)
@@ -206,16 +204,16 @@ class ClientAsyncFl(Client):
 
 
     def _notify_local_model_to_server(self):
-     # Save weights locally after training
+        # Save weights locally after training
         filename = f'{self._client_id}_v{self._local_epoch}.pkl'
-        save_location = Config.TMP_LOCAL_MODEL_FOLDER + filename
+        save_location = os.path.join(Config.TMP_LOCAL_MODEL_FOLDER, filename)
         with open(save_location, 'wb') as f:
             pickle.dump(self._model.get_weights(), f)
         # Print the weight location
         LOGGER.info(f'Saved weights to {save_location}')
 
         # Upload the weight to the storage (the remote server)
-        remote_file_path = 'clients/' + str(self._client_id) + '/' + filename
+        remote_file_path = os.path.join("clients", self._client_id, filename)
         while True:
             if self._storage_connector.upload(save_location, remote_file_path) is True:
                 # After training, notify new model to the server.
@@ -302,16 +300,12 @@ class ClientAsyncFl(Client):
             break
         
        
-    def _load_weights_from_file(self, file_name, folder):
-        full_path = folder + file_name
-        def _check_exist(full_path: str) -> bool:
-            if not os.path.isfile(full_path):
-                LOGGER.info("error in either downloading process or opening file in local. Please check again")
-                return False
-            else:
-                return True
-            
-        file_exist = _check_exist(full_path= full_path)
+    def _load_weights_from_file(self, folder: str, file_name: str):
+        full_path = os.path.join(folder, file_name)
+
+        file_exist = os.path.isfile(full_path)
+        if not file_exist:
+            LOGGER.info("error in either downloading process or opening file in local. Please check again")
 
         weights = []
         if file_exist:

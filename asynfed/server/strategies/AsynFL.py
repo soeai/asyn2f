@@ -97,7 +97,8 @@ class AsynFL(Strategy):
 
         # save weight file.
         # increment here to begin upload the model
-        save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self.get_new_global_model_filename()
+        # save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self.get_new_global_model_filename()
+        save_location = os.path.join(Config.TMP_GLOBAL_MODEL_FOLDER, self.get_new_global_model_filename())
         with open(save_location, "wb") as f:
             pickle.dump(merged_weights, f)
         LOGGER.info('=' * 20)
