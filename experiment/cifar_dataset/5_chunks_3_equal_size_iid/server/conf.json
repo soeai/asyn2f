@@ -14,7 +14,7 @@
     },
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "cifar10-ttu-server-5-chunks-2-iid",
+        "bucket_name": "cifar10-colab-5-chunks-3-equal-size-iid",
         "region_name": "ap-southeast-2",
         "aws_s3": {
             "access_key": "",
@@ -25,13 +25,15 @@
             "secret_key": "",
             "client_access_key": "",
             "client_secret_key": ""
-        },
-        "cleaning_config": {
-            "clean_cloud_storage_period": 600,
-            "global_keep_version_num": 10,
-            "local_keep_version_num": 3
         }
     },
+
+    "cleaning_config": {
+        "clean_storage_period": 600,
+        "global_keep_version_num": 10,
+        "local_keep_version_num": 3
+    },
+
     "queue_consumer": {
         "exchange_name": "asynfl_exchange",
         "exchange_type": "topic",

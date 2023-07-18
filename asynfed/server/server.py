@@ -70,16 +70,17 @@ class Server(object):
         self._queue_consumer: AmqpConsumer = AmqpConsumer(self._config['queue_consumer'], self)
         self._queue_producer: AmqpProducer = AmqpProducer(self._config['queue_producer'])
 
-        self._consumer_thread = Thread(target=self._start_consumer, name="fedasync_server_consuming_thread")
+        self._consumer_thread = Thread(target= self._start_consumer, name="server_consuming_thread")
         self._consumer_thread.daemon = True
 
         # ping thread
-        self._ping_thread = Thread(target=self._ping, name="fedasync_server_ping_thread")
+        self._ping_thread = Thread(target= self._ping, name= "server_ping_thread")
         self._ping_thread.daemon = True
 
-        # clean cloud storage thread
-        self._clean_cloud_storage_thread = Thread(target=self._clean_cloud_storage, name="fedasync_server_clean_cloud_storage_thread")
-        self._clean_cloud_storage_thread.daemon = True
+        # clean storage thread
+        self._clean_storage_thread = Thread(target= self._clean_storage, name="server_clean_storage_thread")
+        self._clean_storage_thread.daemon = True
+
 
         LOGGER.info("-" * 40)
         # LOGGER.info('Server config completed. Ready to listen!')
@@ -95,7 +96,7 @@ class Server(object):
     def start(self):
         self._consumer_thread.start()
         self._ping_thread.start()
-        self._clean_cloud_storage_thread.start()
+        self._clean_storage_thread.start()
     
         while True:
             if self._is_stop_condition:
@@ -161,9 +162,13 @@ class Server(object):
         self._cloud_storage_type: str = self._config['cloud_storage']['type']
         self._bucket_name: str = self._config['cloud_storage']['bucket_name']
 
-        self._clean_cloud_storage_period: int = self._config.get('cloud_storage', {}).get('cleaning_config', {}).get('clean_cloud_storage_period', 600) 
-        self._global_keep_version_num: int = self._config.get('cloud_storage', {}).get('cleaning_config', {}).get('global_keep_version_num', 10)
-        self._local_keep_version_num: int = self._config.get('cloud_storage', {}).get('cleaning_config', {}).get('local_keep_version_num', 3)
+        self._clean_storage_period: int = self._config.get('cleaning_config', {}).get('clean_storage_period', 600) 
+        self._global_keep_version_num: int = self._config.get('cleaning_config', {}).get('global_keep_version_num', 10)
+        self._local_keep_version_num: int = self._config.get('cleaning_config', {}).get('local_keep_version_num', 3)
+
+        # self._clean_storage_period: int = self._config.get('cloud_storage', {}).get('cleaning_config', {}).get('clean_cloud_storage_period', 600) 
+        # self._global_keep_version_num: int = self._config.get('cloud_storage', {}).get('cleaning_config', {}).get('global_keep_version_num', 10)
+        # self._local_keep_version_num: int = self._config.get('cloud_storage', {}).get('cleaning_config', {}).get('local_keep_version_num', 3)
 
     
     def _publish_global_model(self):
@@ -229,45 +234,82 @@ class Server(object):
             sleep(self._ping_period)
 
 
-    def _clean_cloud_storage(self):
-        while True:
-            sleep(self._clean_cloud_storage_period)
 
+    def _clean_storage(self):
+        while True:
+            sleep(self._clean_storage_period)
             LOGGER.info("CLEANING TIME")
-            # clean global folder first
-            current_version = self._strategy.current_version
-            threshold = current_version - self._global_keep_version_num
+
+            # -------- Global Weight File Cleaning ------------ 
+            current_global_version = self._strategy.current_version
+            global_threshold = current_global_version - self._global_keep_version_num
 
             if self._best_model.model_name != "":
                 best_model_name = self._best_model.model_name
-                best_model_version = self._get_model_version(best_model_name)
+                best_global_model_version = self._get_model_version(best_model_name)
             else:
-                best_model_version = None
+                best_global_model_version = None
+            
+            # delete remote files
+            self._delete_remote_files(global_folder= True, threshold= global_threshold, best_version= best_global_model_version)
+            # delete local files
+            self._delete_local_files(directory= Config.TMP_GLOBAL_MODEL_FOLDER, threshold= global_threshold, best_version= best_global_model_version)
+            # -------- Global Weight File Cleaning ------------ 
 
-            files = self._cloud_storage.list_files("global-models")
-            versions = [self._get_model_version(file) for file in files]
-            delete_list = [file for file, version in zip(files, versions) if version <= threshold and version != best_model_version]
-
-            if delete_list:
-                LOGGER.info("=" * 20)
-                LOGGER.info("Delete files in global-models folder")
-                LOGGER.info(f"current global version: {current_version}, best model version: {best_model_version}, threshold: {threshold}, total deleted files: {len(delete_list)}")
-                LOGGER.info([self._get_model_version(file) for file in delete_list])
-                LOGGER.info("=" * 20)
-                self._cloud_storage.delete_files(delete_list)
-
-            # clients folder
+            # -------- Client weight files cleaning -----------
             workers = self._worker_manager.get_all_worker()
             for w_id, worker in workers.items():
-                files = self._cloud_storage.list_files(parent_folder= "clients", target_folder= w_id)
-                threshold = worker.update_local_version_used - self._local_keep_version_num
-                delete_list = [file for file in files if self._get_model_version(file) <= threshold]
-                if delete_list:
-                    LOGGER.info("=" * 20)
-                    LOGGER.info(f"worker id: {w_id}, current local update version used: {worker.update_local_version_used}, threshold: {threshold}, total deleted files: {len(delete_list)}")
-                    LOGGER.info([self._get_model_version(file) for file in delete_list])
-                    LOGGER.info("=" * 20)
-                    self._cloud_storage.delete_files(delete_list)
+                client_threshold = worker.update_local_version_used - self._local_keep_version_num
+
+                # delete remote files
+                self._delete_remote_files(directory= w_id, threshold= client_threshold)
+
+                # delete local files
+                local_directory = os.path.join(Config.TMP_LOCAL_MODEL_FOLDER, w_id)
+                self._delete_local_files(directory= local_directory, threshold= client_threshold)
+            # -------- Client weight files cleaning -----------
+
+
+    def _delete_remote_files(self, global_folder: bool = False, directory: str = "", threshold: int = 0, best_version: int = None):
+        if global_folder:
+            directory = "global-models"
+            files = self._cloud_storage.list_files("global-model")
+        else:
+            files = self._cloud_storage.list_files(parent_folder= "clients", target_folder= directory)
+
+        versions = [self._get_model_version(file) for file in files]
+        delete_list = [file for file, version in zip(files, versions) if version <= threshold and version != best_version]
+
+        if delete_list:
+            LOGGER.info("=" * 20)
+            LOGGER.info(f"Delete files in {directory} folder")
+            LOGGER.info(f"Threshold: {threshold}, best version: {best_version}, total deleted files: {len(delete_list)}")
+            LOGGER.info([self._get_model_version(file) for file in delete_list])
+            LOGGER.info("=" * 20)
+            self._cloud_storage.delete_files(delete_list)
+
+    def _delete_local_files(self, directory: str, threshold: int, best_version: int = None):
+        files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+        versions = [self._get_model_version(file) for file in files]
+        delete_list = [file for file, version in zip(files, versions) if version <= threshold and version != best_version]
+
+        if delete_list:
+            LOGGER.info("=" * 20)
+            LOGGER.info(f"Delete files in local folder {directory}")
+            LOGGER.info(versions)
+            LOGGER.info("=" * 20)
+
+        for file in delete_list:
+            full_path = os.path.join(directory, file)
+            try:
+                os.remove(full_path)
+            except FileNotFoundError:
+                LOGGER.info(f"File {full_path} was not found")
+            except PermissionError:
+                LOGGER.info(f"Permission denied for deleting {full_path}")
+            except Exception as e:
+                LOGGER.info(f"Unable to delete {full_path} due to: {str(e)}")
+
 
 
     def _response_connection(self, msg_received: dict):

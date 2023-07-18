@@ -1,11 +1,11 @@
 import os, sys
 import json
 import logging
-import threading
+from threading import Thread, Lock
 import uuid
 from time import sleep
 from abc import abstractmethod
-
+import re
 
 from asynfed.commons.messages import Message
 from asynfed.commons.conf import Config, init_config as _logging_config
@@ -32,7 +32,7 @@ LOGGER = logging.getLogger(__name__)
 logging.getLogger('pika').setLevel(logging.WARNING)
 LOGGER.setLevel(logging.INFO)
 
-lock = threading.Lock()
+lock = Lock()
 
 
 class Client(object):
@@ -93,7 +93,11 @@ class Client(object):
         self._save_global_model_update_data_size = None
         self._save_global_model_version = None
 
-        # 
+        # cleaning config
+        self._clean_storage_period: int = self._config.get('cleaning_config', {}).get('clean_storage_period', 600) 
+        self._global_keep_version_num: int = self._config.get('cleaning_config', {}).get('global_keep_version_num', 3)
+        self._local_keep_version_num: int = self._config.get('cleaning_config', {}).get('local_keep_version_num', 10)
+
 
         # Initialize profile for client
         if not os.path.exists(f"{self._client_id}-record/profile.json"):
@@ -106,8 +110,13 @@ class Client(object):
 
         # queue related
         self._queue_consumer = AmqpConsumer(self._config['queue_consumer'], self)
-        self._thread_consumer = threading.Thread(target=self._start_consumer)
+        self._thread_consumer = Thread(target= self._start_consumer, name= "client_consumer_thread")
         self._queue_producer = AmqpProducer(self._config['queue_producer'])
+
+        # clean storage thread
+        self._clean_storage_thread = Thread(target= self._clean_storage, name= "client_clean_storage_thread")
+        self._clean_storage_thread.daemon = True
+
 
 
         LOGGER.info(f'\n\nClient Id: {self._client_id}'
@@ -123,6 +132,8 @@ class Client(object):
     # Run the client
     def start(self):
         self._thread_consumer.start()
+        self._clean_storage_thread.start()
+
         while not self._is_stop_condition:
             # check the stop condition every 300 seconds
             sleep(300)
@@ -197,12 +208,47 @@ class Client(object):
     def _start_training_thread(self):
         LOGGER.info("Start training thread.")
         self._training_thread_is_running = True
-        training_thread = threading.Thread(
-            target=self._train,
-            name="client_training_thread")
+        training_thread = Thread(target= self._train, name= "client_training_thread")
         training_thread.daemon = True
         self._is_training = True
         training_thread.start()
+
+
+    def _clean_storage(self):
+        while True:
+            sleep(self._clean_storage_period)
+            LOGGER.info("CLEANING TIME")
+
+            # -------- Global Weight File Cleaning ------------ 
+            global_threshold = self._current_global_version - self._global_keep_version_num
+            self._delete_local_files(directory= Config.TMP_GLOBAL_MODEL_FOLDER, threshold= global_threshold)
+
+            # -------- Local weight files cleaning -----------
+            if self._role == "train":
+                local_threshold = self._local_epoch - self._global_keep_version_num
+                self._delete_local_files(directory= Config.TMP_LOCAL_MODEL_FOLDER, threshold= local_threshold)
+
+
+    def _delete_local_files(self, directory: str, threshold: int):
+        files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+        versions = [self._get_model_version(file) for file in files]
+        delete_list = [file for file, version in zip(files, versions) if version <= threshold]
+        if delete_list:
+            LOGGER.info("=" * 20)
+            LOGGER.info(f"Delete files in local folder {directory}")
+            LOGGER.info(versions)
+            LOGGER.info("=" * 20)
+
+        for file in delete_list:
+            full_path = os.path.join(directory, file)
+            try:
+                os.remove(full_path)
+            except FileNotFoundError:
+                LOGGER.info(f"File {full_path} was not found")
+            except PermissionError:
+                LOGGER.info(f"Permission denied for deleting {full_path}")
+            except Exception as e:
+                LOGGER.info(f"Unable to delete {full_path} due to: {str(e)}")
 
 
     def _handle_server_init_response(self, msg_received):
@@ -402,3 +448,6 @@ class Client(object):
         except Exception as e:
             LOGGER.info(e)
 
+    def _get_model_version(self, model_name: str):
+        return int(re.search(r"v(\d+)", model_name.split("_")[1]).group(1))
+    
