@@ -1,0 +1,42 @@
+{
+    "client_id": "ttu-234-cpu-2",
+    "role": "train",
+    "save_log": true,
+    "tracking_point": 1000,
+    "download_attempt": 10,
+
+    "queue_consumer": {
+        "queue_name": "",
+        "queue_exchange": "",
+        "exchange_type": "topic",
+        "routing_key": "client.#"
+    },
+
+    "queue_producer": {
+        "queue_name": "",
+        "queue_exchange": "",
+        "exchange_type": "topic",
+        "routing_key": "server.#"
+    },
+
+    "dataset": {
+        "chunk_index": 9,
+        "qod": 0.85
+    },
+    
+    "training_params": {
+        "epoch": 10000,
+        "batch_size": 128,
+        "regularization": "l2",
+        "lambda_value": 0.0005,
+        "learning_rate": 0.1,
+        "beta": 0.6,
+        "decay_period": 200
+    },
+    
+    "cleaning_config": {
+        "clean_storage_period": 600,
+        "global_keep_version_num": 10,
+        "local_keep_version_num": 3
+    }
+}

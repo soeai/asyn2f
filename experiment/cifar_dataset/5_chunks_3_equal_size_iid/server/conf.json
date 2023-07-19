@@ -15,12 +15,12 @@
 
     "update_conditions":{
         "update_period": 40,
-        "min_workers": 1
+        "min_workers": 3
     },
 
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "run-colab-5-chunks-3-equal-size-iid",
+        "bucket_name": "run-colab-5-chunks-3-equal-size-iid-second-time",
         "region_name": "ap-southeast-2",
         "aws_s3": {
             "access_key": "",

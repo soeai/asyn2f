@@ -79,7 +79,7 @@ class AsynFL(Strategy):
         for w_id, worker in completed_workers.items():
             # download only when aggregating
             remote_weight_file = worker.get_remote_weight_file_path()
-            local_weight_file = worker.get_weight_file_path()
+            local_weight_file = worker.get_weight_file_path(local_storage_path.LOCAL_MODEL_ROOT_FOLDER)
 
             cloud_storage.download(remote_file_path= remote_weight_file, 
                                         local_file_path= local_weight_file)
