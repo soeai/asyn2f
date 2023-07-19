@@ -76,7 +76,7 @@ class ServerStorageBoto3(Boto3Connector):
             self.upload(local_file_path= local_weight_path, remote_file_path= remote_weight_path)
             LOGGER.info("Upload initial model succesfully")
             LOGGER.info("*" * 20)
-            return local_weight_path
+            return remote_weight_path
 
 
 
