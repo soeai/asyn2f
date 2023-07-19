@@ -6,8 +6,8 @@ from tqdm import tqdm
 import pickle
 
 
-from asynfed.commons.conf import Config
 from asynfed.commons.messages import Message
+from asynfed.commons.config import MessageType
 
 
 from asynfed.commons.messages.client import ClientModelUpdate, NotifyEvaluation, TesterRequestStop
@@ -40,20 +40,12 @@ class ClientAsyncFl(Client):
         - user is freely decided to follow the sample
             or create their own model in their own platform (pytorch,...)
         '''
-        self._open_attempt: int = 5
-        # self._open_attempt: int = self._download_attempt + 5
-        if self._role == "train":
-            self._batch_size = self._config['training_params']['batch_size']
-            self._beta = self._config['training_params']['beta']
-            self._tracking_period = self._config.get('tracking_point') or None
 
-        elif self._role == "test":
-            # using config or set default value
-            self._expected_performance: float = self._config.get('stop_conditions', {}).get('expected_performance', 0.95)
-            self._expected_loss: float = self._config.get('stop_conditions', {}).get('expected_loss', 0.02)
 
 
     def _train(self):
+        self._tracking_period = self._config.tracking_point
+        
         # for notifying global version used to server purpose
         self._merged_global_version = self._current_global_version
 
@@ -61,7 +53,7 @@ class ClientAsyncFl(Client):
         # an initialized model and al already trained one
         # fixed this problem
         # by training the model before loading the global weights
-        file_exist, current_global_weights = self._load_weights_from_file(Config.TMP_GLOBAL_MODEL_FOLDER, self._global_model_name)
+        file_exist, current_global_weights = self._load_weights_from_file(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self._global_model_name)
 
         if file_exist:
             try:
@@ -122,7 +114,7 @@ class ClientAsyncFl(Client):
                         # previous, current and global weights are used in the merged process
                         self._model.current_weights = self._model.get_weights()
                         # load global weights from file
-                        file_exist, self._model.global_weights = self._load_weights_from_file(Config.TMP_GLOBAL_MODEL_FOLDER, self._global_model_name)
+                        file_exist, self._model.global_weights = self._load_weights_from_file(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self._global_model_name)
                         
                         
                         if file_exist:
@@ -166,7 +158,7 @@ class ClientAsyncFl(Client):
 
             
     def _test(self):
-        file_exist, current_global_weights = self._load_weights_from_file(Config.TMP_GLOBAL_MODEL_FOLDER, self._global_model_name)
+        file_exist, current_global_weights = self._load_weights_from_file(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self._global_model_name)
         if file_exist:
             try:
                 self._model.set_weights(current_global_weights)
@@ -185,7 +177,7 @@ class ClientAsyncFl(Client):
             for test_images, test_labels in tqdm(self._model.test_ds):
                 performance, loss = self._model.evaluate(test_images, test_labels)
 
-            headers = self._create_headers(message_type= Config.CLIENT_NOTIFY_EVALUATION)
+            headers = self._create_headers(message_type= MessageType.CLIENT_NOTIFY_EVALUATION)
             notify_evaluation_message: NotifyEvaluation = NotifyEvaluation(self._global_model_name, performance, loss)
             LOGGER.info("*" * 20)
             LOGGER.info(notify_evaluation_message.to_dict())
@@ -195,8 +187,8 @@ class ClientAsyncFl(Client):
 
 
             # # check the stop conditions
-            # if performance > self._expected_performance or loss < self._expected_loss:
-            #     headers = self._create_headers(message_type= Config.CLIENT_NOTIFY_STOP)
+            # if performance > self._config.stop_conditions.expected_performance or loss < self._config.stop_conditions.expected_loss:
+            #     headers = self._create_headers(message_type= MessageType.CLIENT_NOTIFY_STOP)
             #     content = content=TesterRequestStop(self._global_model_name, performance, loss).to_dict()
             #     message = Message(headers= headers, content= content).to_json()
             #     self._queue_producer.send_data(message)
@@ -205,21 +197,21 @@ class ClientAsyncFl(Client):
 
     def _notify_local_model_to_server(self):
         # Save weights locally after training
-        filename = f'{self._client_id}_v{self._local_epoch}.pkl'
-        save_location = os.path.join(Config.TMP_LOCAL_MODEL_FOLDER, filename)
+        filename = f'{self._config.client_id}_v{self._local_epoch}.pkl'
+        save_location = os.path.join(self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, filename)
         with open(save_location, 'wb') as f:
             pickle.dump(self._model.get_weights(), f)
         # Print the weight location
         LOGGER.info(f'Saved weights to {save_location}')
 
         # Upload the weight to the storage (the remote server)
-        remote_file_path = os.path.join("clients", self._client_id, filename)
+        remote_file_path = os.path.join("clients", self._config.client_id, filename)
         while True:
             if self._storage_connector.upload(save_location, remote_file_path) is True:
                 # After training, notify new model to the server.
                 LOGGER.info("*" * 20)
                 LOGGER.info('Notify new model to the server')
-                headers= self._create_headers(message_type= Config.CLIENT_NOTIFY_MESSAGE)
+                headers= self._create_headers(message_type= MessageType.CLIENT_NOTIFY_MESSAGE)
 
                 notify_local_model_message: ClientModelUpdate = ClientModelUpdate(remote_worker_weight_path=remote_file_path, 
                                                                     filename=filename,
@@ -255,17 +247,18 @@ class ClientAsyncFl(Client):
         # alpha depend on 
         # qod, loss and data size from both the server and the local client
         # qod
-        local_qod = self._local_qod
+        # local_qod = self._local_qod
+        local_qod = self._config.dataset.qod
         global_qod = self._global_avg_qod
         # data size
-        local_size = self._local_data_size
+        local_size = self._config.dataset.data_size
         global_size = self._global_model_update_data_size
         # loss
         local_loss = self._train_loss
         global_loss = self._global_avg_loss
         # calculate alpha
-        data_depend = (1 - self._beta) * (local_qod * local_size) / (local_qod * local_size + global_qod * global_size)
-        loss_depend = self._beta * global_loss / (local_loss + global_loss)
+        data_depend = (1 - self._config.training_params.beta) * (local_qod * local_size) / (local_qod * local_size + global_qod * global_size)
+        loss_depend = self._config.training_params.beta * global_loss / (local_loss + global_loss)
         alpha = data_depend + loss_depend
 
         LOGGER.info("-" * 20)
@@ -291,7 +284,7 @@ class ClientAsyncFl(Client):
 
 
     def _get_model_dim_ready(self):
-        if self._role == "train":
+        if self._config.role == "train":
             ds = self._model.train_ds
         else:
             ds = self._model.test_ds
@@ -315,7 +308,7 @@ class ClientAsyncFl(Client):
         return file_exist, weights
     
     def _tracking_training_process(self, batch_num):
-        total_trained_sample = batch_num * self._batch_size
+        total_trained_sample = batch_num * self._config.training_params.batch_size
         if total_trained_sample > self._tracking_point:
             LOGGER.info(f"Training up to {total_trained_sample} samples")
             self._multiplier += 1

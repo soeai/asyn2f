@@ -47,7 +47,6 @@ class TensorflowFramework(ModelWrapper):
             self.epoch = config['training_params']['epoch']
             self.regularization = config['training_params']['regularization']
             self.lambda_value = config['training_params']['lambda_value']
-            # self.delta_time = config['others']['delta_time']
         
         else:
             self.epoch = None

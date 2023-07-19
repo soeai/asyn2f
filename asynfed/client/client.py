@@ -8,11 +8,11 @@ from abc import abstractmethod
 import re
 
 from asynfed.commons.messages import Message
-from asynfed.commons.conf import Config, init_config as _logging_config
+
 from asynfed.commons.utils import AmqpConsumer, AmqpProducer
 import asynfed.commons.utils.time_ultils as time_utils
 
-
+from asynfed.commons.config import LocalStoragePath, MessageType, QueueConfig
 from asynfed.commons.messages.client import ClientInitConnection, DataDescription, SystemInfo, ResponseToPing
 from asynfed.commons.messages.server import ServerModelUpdate
 
@@ -22,6 +22,7 @@ import asynfed.commons.messages.utils as message_utils
 
 from .client_storage_connector import ClientStorageAWS, ClientStorageMinio
 from .ModelWrapper import ModelWrapper
+from .client_config import ClientConfig
 
 
 import concurrent.futures
@@ -37,21 +38,29 @@ lock = Lock()
 
 class Client(object):
     def __init__(self, model: ModelWrapper, config: dict):
-        _logging_config("client", config['save_log'])
+        """
+        config structure can be found at client_config.py file
 
-        self._config = config
-        self._role = self._config.get("role") or "train"
+        """
+
+        self._config: ClientConfig = self._load_config_info(config= config)
+        self._local_storage_path: LocalStoragePath = self._get_local_storage_path()
+
+        self._config.session_id = ""
 
         # control the state of download process
-        self._download_attempt: int = self._config.get("download_attempt") or 10
         self._download_success: bool = False
         self._training_thread_is_running = False
 
         # fixed property
         self._model = model
+        self._config.dataset.data_size = self._config.dataset.data_size or self._model.data_size
+        self._config.dataset.qod = self._config.dataset.qod or self._model.qod
 
-        self._local_data_size = self._model.data_size
-        self._local_qod = self._model.qod
+
+        LOGGER.info("Client config for training process")
+        message_utils.print_message(self._config.to_dict())
+
 
         # dynamic - training process
         self._local_epoch = 0
@@ -77,14 +86,11 @@ class Client(object):
         self._global_avg_qod = None
         self._global_model_update_data_size = None
 
-        self._session_id = ""
         # ---------------------
 
-        self._client_id = self._config.get('client_id') or str(uuid.uuid4())
 
         # some boolean variable to track the state of client
         self._is_connected = False
-        self._is_training = False
         self._new_model_flag = False
 
         # properties saved in profile file
@@ -93,42 +99,69 @@ class Client(object):
         self._save_global_model_update_data_size = None
         self._save_global_model_version = None
 
-        # cleaning config
-        self._clean_storage_period: int = self._config.get('cleaning_config', {}).get('clean_storage_period', 600) 
-        self._global_keep_version_num: int = self._config.get('cleaning_config', {}).get('global_keep_version_num', 3)
-        self._local_keep_version_num: int = self._config.get('cleaning_config', {}).get('local_keep_version_num', 10)
-
-
-        # Initialize profile for client
-        self._profile_file_name = f"{self._client_id}-record/profile.json"
-        if not os.path.exists(self._profile_file_name):
-            self._create_profile()
-        else:
-            self._load_profile()
-
-
-        # specify a queue for each client
-        self._config['queue_consumer']['queue_name'] = f"queue_{self._client_id}"
 
         # queue related
-        self._queue_consumer = AmqpConsumer(self._config['queue_consumer'], self)
+        # self._queue_consumer = AmqpConsumer(self._config['queue_consumer'], self)
+        self._queue_consumer = AmqpConsumer(self._config.queue_consumer, self)
         self._thread_consumer = Thread(target= self._start_consumer, name= "client_consumer_thread")
-        self._queue_producer = AmqpProducer(self._config['queue_producer'])
+        self._queue_producer = AmqpProducer(self._config.queue_producer)
 
         # clean storage thread
         self._clean_storage_thread = Thread(target= self._clean_storage, name= "client_clean_storage_thread")
         self._clean_storage_thread.daemon = True
 
 
+        LOGGER.info("-" * 40)
+        LOGGER.info(f'Client Id: {self._config.client_id}')
+        LOGGER.info(f'Consumer Queue')
+        message_utils.print_message(self._config.queue_consumer.to_dict())
+        LOGGER.info(f'Producer Queue')
+        message_utils.print_message(self._config.queue_producer.to_dict()) 
+        LOGGER.info("-" * 40)
 
-        LOGGER.info(f'\n\nClient Id: {self._client_id}'
-                    f'\n\tQueue In : {self._config["queue_consumer"]}'
-                    f'\n\tQueue Out : {self._config["queue_producer"]}'
-                    f'\n\n')
 
         # send message to server for connection
         self._send_init_message()
 
+
+
+
+    def _load_config_info(self, config: dict) -> ClientConfig:
+        # for multiple user to run on the same queue, 
+        # set bucket name to be the queue name
+        # and also the queue exchange name
+        # user may already set in the run file, but just to make sure that it is set
+        queue_exchange = config['queue_exchange']
+
+        # client_consume_queue_name =  f"server-publish-queue-{queue_exchange}"
+        # config['queue_consumer']['queue_name'] = config['queue_consumer']['queue_name'] or client_consume_queue_name
+
+        client_id = config['client_id'] or str(uuid.uuid4())
+        config['queue_consumer']['queue_name'] = f"queue_{client_id}_{config['queue_exchange']}"
+
+        client_publish_queue_name = f"server-listen-queue-{queue_exchange}"
+        config['queue_producer']['queue_name'] = config['queue_producer']['queue_name'] or client_publish_queue_name
+
+        if not config['queue_consumer']['queue_exchange']:
+            config['queue_consumer']['queue_exchange'] = queue_exchange
+            config['queue_producer']['queue_exchange'] = queue_exchange
+
+        return ClientConfig(**config)
+
+    def _get_local_storage_path(self) -> LocalStoragePath:
+        # create local folder for storage
+        # get the current folder path, then save all local file within the current folder
+        client_storage_folder_name = f"{self._config.client_id}-record"
+        full_path = os.path.join(os.getcwd(), client_storage_folder_name)
+
+        # Initialize a profile file for client
+        self._profile_file_name = os.path.join(full_path, "profile.json")
+        # if not os.path.exists(self._profile_file_name):
+        #     self._create_profile()
+        # else:
+        #     self._load_profile()
+
+        return LocalStoragePath(root_folder= full_path, save_log= self._config.save_log)
 
 
     # Run the client
@@ -147,18 +180,18 @@ class Client(object):
         msg_received: dict = message_utils.deserialize(body.decode('utf-8'))
         message_type: str = msg_received['headers']['message_type']
 
-        if message_type == Config.SERVER_INIT_RESPONSE and not self._is_connected:
+        if message_type == MessageType.SERVER_INIT_RESPONSE and not self._is_connected:
             self._handle_server_init_response(msg_received)
 
-        elif message_type == Config.SERVER_NOTIFY_MESSAGE and self._is_connected:
+        elif message_type == MessageType.SERVER_NOTIFY_MESSAGE and self._is_connected:
             self._handle_server_notify_message(msg_received)
 
-        elif message_type == Config.SERVER_STOP_TRAINING: 
+        elif message_type == MessageType.SERVER_STOP_TRAINING: 
             message_utils.print_message(msg_received)
             self._is_stop_condition = True
             sys.exit(0)
 
-        elif message_type == Config.SERVER_PING_TO_CLIENT:
+        elif message_type == MessageType.SERVER_PING_TO_CLIENT:
             self._handle_server_ping_to_client(msg_received)
 
 
@@ -186,19 +219,18 @@ class Client(object):
 
     def _send_init_message(self):
         data_description = {
-            'data_size': self._local_data_size,
-            'qod': self._local_qod,
+            'data_size': self._config.dataset.data_size,
+            'qod': self._config.dataset.qod,
         }
 
         client_init_message: ClientInitConnection = ClientInitConnection(
-                                                    role=self._role,
+                                                    role=self._config.role,
                                                     system_info= SystemInfo().to_dict(),
                                                     data_description=DataDescription(**data_description).to_dict()
                                                     )
         
 
-        # headers = {'timestamp': time_utils.time_now(), 'message_type': Config.CLIENT_INIT_MESSAGE, 'session_id': self._session_id, 'client_id': self._client_id}
-        headers = self._create_headers(message_type= Config.CLIENT_INIT_MESSAGE)
+        headers = self._create_headers(message_type= MessageType.CLIENT_INIT_MESSAGE)
         message = Message(headers= headers, content= client_init_message.to_dict()).to_json()
         self._queue_producer.send_data(message)
 
@@ -212,23 +244,23 @@ class Client(object):
         self._training_thread_is_running = True
         training_thread = Thread(target= self._train, name= "client_training_thread")
         training_thread.daemon = True
-        self._is_training = True
+
         training_thread.start()
 
 
     def _clean_storage(self):
         while True:
-            sleep(self._clean_storage_period)
+            sleep(self._config.cleaning_config.clean_storage_period)
             LOGGER.info("CLEANING TIME")
 
             # -------- Global Weight File Cleaning ------------ 
-            global_threshold = self._current_global_version - self._global_keep_version_num
-            self._delete_local_files(directory= Config.TMP_GLOBAL_MODEL_FOLDER, threshold= global_threshold)
+            global_threshold = self._current_global_version - self._config.cleaning_config.global_keep_version_num
+            self._delete_local_files(directory= self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, threshold= global_threshold)
 
             # -------- Client weight files cleaning -----------
-            if self._role == "train":
-                local_threshold = self._local_epoch - self._global_keep_version_num
-                self._delete_local_files(directory= Config.TMP_LOCAL_MODEL_FOLDER, threshold= local_threshold)
+            if self._config.role == "train":
+                local_threshold = self._local_epoch - self._config.cleaning_config.local_keep_version_num
+                self._delete_local_files(directory= self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, threshold= local_threshold)
 
 
     def _delete_local_files(self, directory: str, threshold: int):
@@ -265,7 +297,7 @@ class Client(object):
             LOGGER.info("Reconnect to server.")
             LOGGER.info("=" * 40)
 
-        self._session_id = server_init_response.session_id
+        self._config.session_id = server_init_response.session_id
 
 
         # get the exchange condition from server
@@ -290,15 +322,8 @@ class Client(object):
         # Check whether it is a new global model to arrive
         if self._current_global_version < server_init_response.model_info.model_version:
             LOGGER.info("Detect new global version.")
-            # local_path = f"{Config.TMP_GLOBAL_MODEL_FOLDER}{server_init_response.model_info.global_model_name}"
             remote_path = server_init_response.model_info.model_url
-            local_path = os.path.join(Config.TMP_GLOBAL_MODEL_FOLDER, server_init_response.model_info.global_model_name)
-
-            # LOGGER.info("=" * 20)
-            # LOGGER.info(f"global folder: {Config.TMP_GLOBAL_MODEL_FOLDER}")
-            # LOGGER.info(f"remote path: {remote_path}")
-            # LOGGER.info(f"local path: {local_path}")
-            # LOGGER.info("=" * 20)
+            local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, server_init_response.model_info.global_model_name)
 
             # to make sure the other process related to the new global model version start
             # only when the downloading process success
@@ -315,13 +340,18 @@ class Client(object):
             # update info in profile file
             self._update_profile()
 
-            if self._role == "train":
+            if self._config.role == "train":
                 self._start_training_thread()
 
             # for testing, do not need to start thread
             # because tester just test whenever it receive new model 
-            elif self._role == "test":
+            elif self._config.role == "test":
                 self._test()
+
+            if not os.path.exists(self._profile_file_name):
+                self._create_profile()
+            else:
+                self._load_profile()
             
 
 
@@ -332,18 +362,24 @@ class Client(object):
         # check whether the client is chosen to engage in this training epoch
         # default status for tester is true
         is_chosen = True
-        if self._role == "train":
+        if self._config.role == "train":
             self._global_chosen_list = server_model_udpate.chosen_id
-            is_chosen = self._client_id in self._global_chosen_list or not self._global_chosen_list
+            is_chosen = self._config.client_id in self._global_chosen_list or not self._global_chosen_list
 
         if is_chosen:
             with lock:
                 # attempt to download the global model
-                # remote_path = f'global-models/{server_model_udpate.global_model_name}'
-                # local_path = f'{Config.TMP_GLOBAL_MODEL_FOLDER}{server_model_udpate.global_model_name}'
-                remote_path = os.path.join("global-models", server_model_udpate.global_model_name)
-                local_path = os.path.join(Config.TMP_GLOBAL_MODEL_FOLDER, server_model_udpate.global_model_name)
+                # for cloud storage, always use forward slash
+                # regardless of os
+                remote_path = f'global-models/{server_model_udpate.global_model_name}'
+                # remote_path = os.path.join("global-models", server_model_udpate.global_model_name)
+                local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, server_model_udpate.global_model_name)
 
+                LOGGER.info("*" * 20)
+                LOGGER.info(f"remote path: {remote_path}")
+                LOGGER.info(f"local path: {local_path}")
+                LOGGER.info("*" * 20)
+                
                 # to make sure the other process related to the new global model version start
                 # only when the downloading process success
                 self._download_success = False
@@ -363,12 +399,12 @@ class Client(object):
                 # print the content only when succesfully download new model
                 message_utils.print_message(server_model_udpate.to_dict())
 
-                if self._role == "test":
+                if self._config.role == "test":
                     # test everytime receive new global model notify from server
                     self._test()
 
-                elif self._role == "train":
-                    LOGGER.info(f"{self._client_id} is chosen to train for global model version {self._current_global_version}")
+                elif self._config.role == "train":
+                    LOGGER.info(f"{self._config.client_id} is chosen to train for global model version {self._current_global_version}")
                     # update global info for merging process
                     self._global_model_update_data_size = server_model_udpate.global_model_update_data_size
                     self._global_avg_loss = server_model_udpate.avg_loss
@@ -387,9 +423,9 @@ class Client(object):
 
     # queue handling functions
     def _handle_server_ping_to_client(self, msg_received):
-        if msg_received['content']['client_id'] == self._client_id:
+        if msg_received['content']['client_id'] == self._config.client_id:
             message_utils.print_message(msg_received)
-            headers = self._create_headers(message_type= Config.CLIENT_PING_MESSAGE)
+            headers = self._create_headers(message_type= MessageType.CLIENT_PING_MESSAGE)
             message = Message(headers= headers, content=ResponseToPing().to_dict()).to_json()
             self._queue_producer.send_data(message)
 
@@ -397,7 +433,7 @@ class Client(object):
     def _attempt_to_download(self, remote_file_path: str, local_file_path: str) -> bool:
         LOGGER.info("Downloading new global model............")
 
-        for i in range(self._download_attempt):
+        for i in range(self._config.download_attempt):
             if self._storage_connector.download(remote_file_path= remote_file_path, 
                                             local_file_path= local_file_path):
                 return True
@@ -405,25 +441,25 @@ class Client(object):
             LOGGER.info(f"{i + 1} attempt: download model failed, retry in 5 seconds.")
 
             i += 1
-            if i == self._download_attempt:
-                LOGGER.info(f"Already try {self._download_attempt} time. Pass this global version: {remote_file_path}")
+            if i == self._config.download_attempt:
+                LOGGER.info(f"Already try {self._config.download_attempt} time. Pass this global version: {remote_file_path}")
             sleep(5)
 
         return False
     
 
     def _create_headers(self, message_type: str) -> dict:
-        headers = {'timestamp': time_utils.time_now(), 'message_type': message_type, 'session_id': self._session_id, 'client_id': self._client_id}
+        headers = {'timestamp': time_utils.time_now(), 'message_type': message_type, 'session_id': self._config.session_id, 'client_id': self._config.client_id}
         return headers
 
     # profile related
     def _create_message(self):
         data = {
-            "session_id": self._session_id,
-            "client_id": self._client_id,
-            "global_model_name": self._global_model_name,
-            "local_epoch": self._local_epoch - 1,
-            "local_qod": self._local_qod,
+            "session_id": self._config.session_id,
+            "client_id": self._config.client_id,
+            "global_model_name": self._global_model_name or None,
+            "local_epoch": self._local_epoch,
+            "local_qod": self._config.dataset.qod,
             "save_global_model_version": self._current_global_version,
             "save_global_model_update_data_size": self._global_model_update_data_size,
             "save_global_avg_loss": self._global_avg_loss,
@@ -446,8 +482,8 @@ class Client(object):
         try:
             with open(self._profile_file_name) as json_file:
                 data = json.load(json_file)
-                self._session_id = data["session_id"]
-                self._client_id = data["client_id"]
+                self._config.session_id = data["session_id"]
+                self._config.client_id = data["client_id"]
                 self._global_model_name = data["global_model_name"]
                 self._local_epoch = data["local_epoch"]
                 self._local_qod = data["local_qod"]
