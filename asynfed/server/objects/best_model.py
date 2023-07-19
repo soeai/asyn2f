@@ -1,4 +1,3 @@
-from asynfed.commons.conf import Config
 from asynfed.commons.messages.client import NotifyEvaluation
 
 

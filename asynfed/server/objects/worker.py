@@ -1,9 +1,8 @@
 import os
 
-from asynfed.commons.conf import Config
-
 from asynfed.commons.utils.time_ultils import time_now
 from asynfed.commons.messages.client import SystemInfo
+
 
 class Worker:
     """
@@ -19,7 +18,7 @@ class Worker:
         self.alpha = None
         self.session_id = session_id
         self.worker_id = worker_id
-        self.sys_info = sys_info
+        self.sys_info = sys_info or SystemInfo().to_dict()
         self.current_version: int = 0
 
         self.update_local_version_used: int = 0
@@ -41,9 +40,9 @@ class Worker:
         self.is_connected = True
 
 
-    def get_weight_file_path(self):
+    def get_weight_file_path(self, local_model_root_folder: str):
         filename = self.weight_file.split(os.path.sep)[-1]
-        return os.path.join(Config.TMP_LOCAL_MODEL_FOLDER, self.worker_id, filename)
+        return os.path.join(local_model_root_folder, self.worker_id, filename)
     
     def get_remote_weight_file_path(self):
         return self.weight_file
@@ -58,6 +57,7 @@ class Worker:
         self.performance = 0.0
         self.loss = 0.0
         self.is_completed = False
+
 
     def __str__(self):
         """

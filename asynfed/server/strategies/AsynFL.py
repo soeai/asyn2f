@@ -2,17 +2,17 @@ from time import sleep
 from typing import Dict, List
 import os.path
 
-
 import numpy as np
 from numpy import ndarray
 import pickle
 
-from asynfed.commons.conf import Config
+
 from asynfed.server.objects import Worker
+from asynfed.server.server_boto3_storage_connector import ServerStorageBoto3
+from asynfed.commons.config import LocalStoragePath
 
 from .strategy import Strategy
 
-from asynfed.server.server_boto3_storage_connector import ServerStorageBoto3
 
 import logging
 LOGGER = logging.getLogger(__name__)
@@ -31,7 +31,8 @@ class AsynFL(Strategy):
         alpha /= (self.update_version - worker.current_version)
         return alpha
 
-    def aggregate(self, completed_workers: Dict [str, Worker], cloud_storage: ServerStorageBoto3):
+    def aggregate(self, completed_workers: Dict [str, Worker], cloud_storage: ServerStorageBoto3, 
+                  local_storage_path: LocalStoragePath):
         LOGGER.info("-" * 20)
         LOGGER.info(f"Current global version before aggregating process: {self.current_version}")
         LOGGER.info("-" * 20)
@@ -98,8 +99,8 @@ class AsynFL(Strategy):
 
         # save weight file.
         # increment here to begin upload the model
-        # save_location = Config.TMP_GLOBAL_MODEL_FOLDER + self.get_new_global_model_filename()
-        save_location = os.path.join(Config.TMP_GLOBAL_MODEL_FOLDER, self.get_new_global_model_filename())
+        save_location = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self.get_new_global_model_filename())
+
         with open(save_location, "wb") as f:
             pickle.dump(merged_weights, f)
         LOGGER.info('=' * 20)

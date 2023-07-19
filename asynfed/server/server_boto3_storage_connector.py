@@ -80,7 +80,8 @@ class ServerStorageBoto3(Boto3Connector):
 
 
 
-    def list_files(self, parent_folder: str = "clients", target_folder: str = ''):
+    # def list_files(self, parent_folder: str = "clients", target_folder: str = ''):
+    def list_files(self, parent_folder: str = 'client', target_folder: str = ''):
         """Lists all files in the specified folder and its subfolders within the MinIO bucket"""
         try:
             response = self._s3.list_objects_v2(Bucket=self._bucket_name, Prefix=parent_folder, Delimiter='/')

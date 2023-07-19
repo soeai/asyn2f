@@ -8,7 +8,6 @@ class Strategy(ABC):
     This here the Interface of strategy, follow the strategy design pattern.
     Any new strategy will follow this interface. 
     """
-
     def __init__(self):
         self.current_version: int = 1
         self.model_id = str(uuid.uuid4())
@@ -17,12 +16,14 @@ class Strategy(ABC):
         self.avg_loss = 0.0
         self.avg_qod = 0.0
 
+
     def get_current_global_model_filename(self):
         return f"{self.model_id}_v{self.current_version}.pkl"
     
     def get_new_global_model_filename(self):
         return f"{self.model_id}_v{self.current_version + 1}.pkl"
 
+    # def update_new_global_model_info(self, )
     @abstractmethod
     def select_client(self, all_clients) -> List[str]:
         """ Implement the client selection logic by
@@ -30,7 +31,7 @@ class Strategy(ABC):
         pass
 
     @abstractmethod
-    def aggregate(self, completed_workers, cloud_storage):
+    def aggregate(self, completed_workers, cloud_storage, local_storage_path):
         """Aggregate algorithm.
         """
         pass
