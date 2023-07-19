@@ -11,7 +11,6 @@ sys.path.append(root)
 
 from asynfed.client.algorithms import ClientAsyncFl
 from asynfed.client.frameworks.tensorflow import TensorflowFramework
-from asynfed.commons.conf import Config
 
 from experiment.cifar_dataset.resnet18 import Resnet18
 from experiment.cifar_dataset.data_preprocessing import preprocess_dataset
@@ -32,6 +31,8 @@ scheduler = BackgroundScheduler()
 parser = argparse.ArgumentParser()
 # Add arguments
 parser.add_argument('--config_file', dest='config_file', type=str, help='specify the config file for running')
+parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, help='specify the queue exchange')
+
 # Parse the arguments
 args = parser.parse_args()
 
@@ -42,13 +43,8 @@ with open(args.config_file, 'r') as json_file:
 config['queue_consumer']['endpoint'] = os.getenv("queue_consumer_endpoint")
 config['queue_producer']['endpoint'] = os.getenv("queue_producer_endpoint")
 
+config["queue_exchange"] = args.queue_exchange
 
-prefix = f"{config['client_id']}-record"
-# add prefix for local client
-current_folder = os.getcwd()
-Config.TMP_GLOBAL_MODEL_FOLDER = os.path.join(current_folder, prefix, Config.TMP_GLOBAL_MODEL_FOLDER)
-Config.TMP_LOCAL_MODEL_FOLDER = os.path.join(current_folder, prefix, Config.TMP_LOCAL_MODEL_FOLDER)
-Config.LOG_PATH = os.path.join(current_folder, prefix, Config.LOG_PATH)
 
 
 
@@ -79,6 +75,8 @@ training_dataset_path = os.path.join(data_folder_path, chunk_folder, chunk_filen
 train_ds, data_size = preprocess_dataset(training_dataset_path, batch_size = config['training_params']['batch_size'], training = True)
 test_ds, _ = preprocess_dataset(default_testing_dataset_path, batch_size= config['training_params']['batch_size'], training = False)
 # ------------oOo--------------------
+
+config['dataset']['data_size'] = data_size
 
 
 print("-" * 20)

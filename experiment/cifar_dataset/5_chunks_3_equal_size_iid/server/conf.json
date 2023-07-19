@@ -1,8 +1,8 @@
 {
     "server_id": "",
-    "update_period": 40,
     "ping_period": 300,
     "save_log": true,
+    
     "stop_conditions": {
         "max_version": 400,
         "max_performance": 0.95,
@@ -12,6 +12,12 @@
         "performance": 0.8,
         "epoch": 100
     },
+
+    "update_conditions":{
+        "update_period": 40,
+        "min_workers": 1
+    },
+
     "cloud_storage": {
         "type": "minio",
         "bucket_name": "run-colab-5-chunks-3-equal-size-iid",
@@ -35,15 +41,15 @@
     },
 
     "queue_consumer": {
-        "exchange_name": "asynfl_exchange",
+        "queue_exchange": "",
         "exchange_type": "topic",
-        "queue_name": "server_consumer",
+        "queue_name": "",
         "routing_key": "server.#"
     },
     "queue_producer": {
-        "exchange_name": "asynfl_exchange",
+        "queue_exchange": "",
         "exchange_type": "topic",
-        "queue_name": "server_queue",
+        "queue_name": "",
         "routing_key": "client.#"
     },
 

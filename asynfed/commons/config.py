@@ -72,5 +72,5 @@ class LocalStoragePath():
 class CloudStoragePath():
     def __init__(self, global_model_root_folder: str = "", 
                  client_model_root_folder: str = ""):
-        self.GLOBAL_MODEL_ROOT_FOLDER = global_model_root_folder or "global-model"
+        self.GLOBAL_MODEL_ROOT_FOLDER = global_model_root_folder or "global-models"
         self.CLIENT_MODEL_ROOT_FOLDER = client_model_root_folder or "clients"

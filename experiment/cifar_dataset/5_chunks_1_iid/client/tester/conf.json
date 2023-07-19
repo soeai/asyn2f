@@ -3,19 +3,19 @@
     "role": "test",
     "save_log": true,
     "gpu_index": 0,
-    "donwload_attempt": 15,
+    "download_attempt": 15,
 
     "queue_consumer": {
-        "exchange_name": "asynfl_exchange",
+        "queue_exchange": "",
         "exchange_type": "topic",
-        "queue_name": "server_queue",
+        "queue_name": "",
         "routing_key": "client.#"
     },
 
     "queue_producer": {
-        "exchange_name": "asynfl_exchange",
+        "queue_exchange": "",
         "exchange_type": "topic",
-        "queue_name": "server_consumer",
+        "queue_name": "",
         "routing_key": "server.#"
     },
 

@@ -1,14 +1,12 @@
-import os
 from abc import ABC, abstractmethod
+import os
 import logging
-
-
 from time import sleep
 
 logging.getLogger(__name__)
 
 from asynfed.commons.messages.server.server_response_to_init import StorageInfo
-from asynfed.commons.conf import Config
+
 
 class Boto3Connector(ABC):
     time_sleep = 10

@@ -4,26 +4,26 @@
     "gpu_index": 1,
     "save_log": true,
     "tracking_point": 4000,
-    "donwload_attempt": 15,
-
-    "queue_consumer": {
-        "exchange_name": "asynfl_exchange",
-        "exchange_type": "topic",
-        "queue_name": "server_queue",
-        "routing_key": "client.#"
-    },
-
-    "queue_producer": {
-        "exchange_name": "asynfl_exchange",
-        "exchange_type": "topic",
-        "queue_name": "server_consumer",
-        "routing_key": "server.#"
-    },
+    "download_attempt": 15,
 
     "dataset": {
         "chunk_index": 5,
         "qod": 0.85
     },
+
+    "queue_consumer": {
+        "queue_name": "",
+        "queue_exchange": "",
+        "exchange_type": "topic",
+        "routing_key": "client.#"
+    },
+
+    "queue_producer": {
+        "queue_name": "",
+        "queue_exchange": "",
+        "exchange_type": "topic",
+        "routing_key": "server.#"
+    },  
     
     "training_params": {
         "epoch": 10000,
@@ -33,5 +33,11 @@
         "learning_rate": 0.1,
         "beta": 0.6,
         "decay_period": 200
+    },
+
+    "cleaning_config": {
+        "clean_storage_period": 600,
+        "global_keep_version_num": 10,
+        "local_keep_version_num": 3
     }
 }

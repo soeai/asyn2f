@@ -2,6 +2,8 @@ import os, sys
 from dotenv import load_dotenv
 import pause
 from apscheduler.schedulers.background import BackgroundScheduler
+import argparse
+
 
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))))
 sys.path.append(root)
@@ -9,7 +11,6 @@ sys.path.append(root)
 
 from asynfed.client.algorithms import ClientAsyncFl
 from asynfed.client.frameworks.tensorflow import TensorflowFramework
-from asynfed.commons.conf import Config
 
 from experiment.cifar_dataset.resnet18 import Resnet18
 from experiment.cifar_dataset.data_preprocessing import preprocess_dataset
@@ -21,22 +22,24 @@ load_dotenv()
 
 scheduler = BackgroundScheduler()
 
+# Create an argument parser
+parser = argparse.ArgumentParser()
+# Add arguments
+parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, help='specify the queue exchange')
+
+# Parse the arguments
+args = parser.parse_args()
+
 
 with open('conf.json', 'r') as json_file:
     config = json.load(json_file)
-
-prefix = f"{config['client_id']}-record"
-# add prefix for local client
-current_folder = os.getcwd()
-Config.TMP_GLOBAL_MODEL_FOLDER = os.path.join(current_folder, prefix, Config.TMP_GLOBAL_MODEL_FOLDER)
-Config.TMP_LOCAL_MODEL_FOLDER = os.path.join(current_folder, prefix, Config.TMP_LOCAL_MODEL_FOLDER)
-Config.LOG_PATH = os.path.join(current_folder, prefix, Config.LOG_PATH)
-
 
 
 # load queue config
 config['queue_consumer']['endpoint'] = os.getenv("queue_consumer_endpoint")
 config['queue_producer']['endpoint'] = os.getenv("queue_producer_endpoint")
+
+config["queue_exchange"] = args.queue_exchange
 
 
 import tensorflow as tf
@@ -50,13 +53,12 @@ print("*" * 20)
 
 # ------------oOo--------------------
 # Preprocessing data
-
 data_folder_path = os.path.join(root, "experiment", "data", "cifar_data")
 
 testset_filename = "test_set.pickle"
 default_testing_dataset_path = os.path.join(data_folder_path, testset_filename)
-test_ds, data_size = preprocess_dataset(default_testing_dataset_path, training = False)
 
+test_ds, data_size = preprocess_dataset(default_testing_dataset_path, training = False)
 
 # default_testing_dataset_path = "../../../../data/cifar_data/test_set.pickle"
 # test_ds, data_size = preprocess_dataset(default_testing_dataset_path, training = False)
@@ -64,7 +66,7 @@ test_ds, data_size = preprocess_dataset(default_testing_dataset_path, training =
 
 print("-" * 20)
 print("-" * 20)
-print(f"Begin training proceess with data size of {data_size}")
+print(f"Begin testing global model performance with data size of {data_size}")
 print("-" * 20)
 print("-" * 20)
 

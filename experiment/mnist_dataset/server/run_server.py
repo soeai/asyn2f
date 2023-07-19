@@ -10,29 +10,27 @@ dotenv.load_dotenv()
 
 from asynfed.server.server import Server
 from asynfed.server.strategies import AsynFL
-from asynfed.commons.conf import Config
 
 
 conf = {
     "server_id": "test_server_id",
     "bucket_name": "hellothisisnewbucket2",
     "queue_consumer": {
-        'exchange_name': 'asynfl_exchange',
+        "queue_exchange": 'asynfl_exchange',
         'exchange_type': 'topic',
         'queue_name': 'server_consumer',
         'routing_key': 'server.#',
         'end_point': 'amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu'
     },
     "queue_producer": {
-        'exchange_name': 'asynfl_exchange',
+        "queue_exchange": 'asynfl_exchange',
         'exchange_type': 'topic',
         'queue_name': 'server_queue',
         'routing_key': 'client.#',
         'end_point': "amqps://gocktdwu:jYQBoATqKHRqXaV4O9TahpPcbd8xjcaw@armadillo.rmq.cloudamqp.com/gocktdwu"
     }
 }
-Config.STORAGE_ACCESS_KEY = os.getenv("access_key")
-Config.STORAGE_SECRET_KEY = os.getenv("secret_key")
+
 
 scheduler = BackgroundScheduler()
 strat = AsynFL()

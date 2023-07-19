@@ -22,7 +22,7 @@ import asynfed.commons.utils.time_ultils as time_utils
 
 from asynfed.commons.messages import Message
 from asynfed.commons.messages.server import ServerModelUpdate, PingToClient, ServerRequestStop
-from asynfed.commons.messages.server.server_response_to_init import ResponseToInit, ExchangeAt, ModelInfo, StorageInfo, QueueInfo
+from asynfed.commons.messages.server.server_response_to_init import ResponseToInit, ModelInfo, StorageInfo, QueueInfo
 from asynfed.commons.messages.client import ClientInitConnection, ClientModelUpdate, NotifyEvaluation, TesterRequestStop
 import asynfed.commons.messages.utils as message_utils 
 
@@ -104,9 +104,10 @@ class Server(object):
         LOGGER.info(f'S3 Bucket: {self._config.cloud_storage.bucket_name}')
         LOGGER.info(f'Model ID: {self._strategy.model_id}')
         LOGGER.info("=" * 40)
+        LOGGER.info(f'Consumer Queue')
         message_utils.print_message(self._config.queue_consumer.to_dict())
-        message_utils.print_message(self._config.queue_producer.to_dict())
-
+        LOGGER.info(f'Producer Queue')
+        message_utils.print_message(self._config.queue_producer.to_dict()) 
 
     def start(self):
         self._consumer_thread.start()
@@ -182,9 +183,9 @@ class Server(object):
     def _get_local_storage_path(self) -> LocalStoragePath:
         # create local folder for storage
         # get the current folder path, then save all local file within the current folder
-        server_folder_name = f"{self._config.server_id}-record"
-        current_folder = os.path.join(os.getcwd(), server_folder_name)
-        return LocalStoragePath(root_folder= current_folder, save_log= self._config.save_log)
+        server_storage_folder_name = f"{self._config.server_id}-record"
+        full_path = os.path.join(os.getcwd(), server_storage_folder_name)
+        return LocalStoragePath(root_folder= full_path, save_log= self._config.save_log)
 
 
     def _publish_global_model(self):
@@ -424,7 +425,7 @@ class Server(object):
         headers: dict = self._create_headers(message_type= MessageType.SERVER_INIT_RESPONSE)
         response_to_init: ResponseToInit = ResponseToInit(session_id= session_id, model_info= model_info.to_dict(),
                                             storage_info= storage_info.to_dict(), queue_info= queue_info.to_dict(),
-                                            exchange_at= self._model_exchange_at.to_dict(), reconnect= reconnect)
+                                            exchange_at= self._config.model_exchange_at.to_dict(), reconnect= reconnect)
         
         message_utils.print_message(response_to_init.to_dict())
         message= Message(headers= headers, content= response_to_init.to_dict()).to_json()
@@ -500,18 +501,18 @@ class Server(object):
 
     def _check_stop_conditions(self, info: dict):
         for k, v in info.items():
-            if k == "loss" and self._stop_conditions.get("min_loss") is not None:
-                if v <= self._stop_conditions.get("min_loss"):
-                    LOGGER.info(f"Stop condition: loss {v} <= {self._stop_conditions.get('min_loss')}")
+            if k == "loss" and self._config.stop_conditions.min_loss is not None:
+                if v <= self._config.stop_conditions.min_loss:
+                    LOGGER.info(f"Stop condition: loss {v} <= {self._config.stop_conditions.min_loss}")
                     return True
-            elif k == "performance" and self._stop_conditions.get("max_performance") is not None:
-                if v >= self._stop_conditions.get("max_performance"):
-                    LOGGER.info(f"Stop condition: performance {v} >= {self._stop_conditions.get('max_performance')}")
+            elif k == "performance" and self._config.stop_conditions.max_performance is not None:
+                if v >= self._config.stop_conditions.max_performance:
+                    LOGGER.info(f"Stop condition: performance {v} >= {self._config.stop_conditions.max_performance}")
                     return True
                 
-            elif k == "version" and self._stop_conditions.get("max_version") is not None:
-                if v >= self._stop_conditions.get("max_version"):
-                    LOGGER.info(f"Stop condition: version {v} >= {self._stop_conditions.get('max_version')}")
+            elif k == "version" and self._config.stop_conditions.max_version is not None:
+                if v >= self._config.stop_conditions.max_version:
+                    LOGGER.info(f"Stop condition: version {v} >= {self._config.stop_conditions.max_version}")
                     return True
 
 
@@ -548,7 +549,7 @@ class Server(object):
             "performance": self._best_model.performance,
             "loss": self._best_model.loss
         }
-        with open(f"{folder_name}/{self._server_id}.json", "w") as file:
+        with open(f"{folder_name}/{self._config.server_id}.json", "w") as file:
             json.dump(data, file)
 
     
@@ -557,7 +558,7 @@ class Server(object):
     
 
     def _create_headers(self, message_type: str) -> dict:
-        headers = {'timestamp': time_utils.time_now(), 'message_type': message_type, 'server_id': self._server_id}
+        headers = {'timestamp': time_utils.time_now(), 'message_type': message_type, 'server_id': self._config.server_id}
         return headers
 
 

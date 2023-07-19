@@ -3,10 +3,10 @@ import os, sys
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
 sys.path.append(root)
 
-# from asynfed.commons.conf import Config
+
 from asynfed.server import Server
 from asynfed.server.strategies import AsynFL
-from asynfed.commons.conf import Config
+
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -33,12 +33,7 @@ config['influxdb']['bucket_name'] = os.getenv("INFLUXDB_BUCKET")
 config['queue_consumer']['endpoint'] = os.getenv("queue_consumer_endpoint")
 config['queue_producer']['endpoint'] = os.getenv("queue_producer_endpoint")
 
-server_id = config.get("server_id") or "server-record"
 
-current_folder = os.getcwd()
-Config.TMP_GLOBAL_MODEL_FOLDER = os.path.join(current_folder, server_id, Config.TMP_GLOBAL_MODEL_FOLDER)
-Config.TMP_LOCAL_MODEL_FOLDER = os.path.join(current_folder, server_id, Config.TMP_LOCAL_MODEL_FOLDER)
-Config.LOG_PATH = os.path.join(current_folder, server_id, Config.LOG_PATH)
 
 strategy = AsynFL()
 fedasync_server = Server(strategy, config)

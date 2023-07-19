@@ -1,21 +1,27 @@
-{
+{    
     "server_id": "",
-    "update_period": 40,
-    "ping_period": 300,
     "save_log": true,
+    "ping_period": 300,
+    
     "stop_conditions": {
         "max_version": 400,
         "max_performance": 0.95,
         "min_loss": 0.02
     },
-    "model_exchange_at": {
-        "performance": 0.1,
-        "epoch": 1
+    "update_conditions":{
+        "update_period": 40,
+        "min_workers": 1
     },
+
+    "model_exchange_at": {
+            "performance": 0.15,
+            "epoch": 1
+        },
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "test-colab-connection",
+        "bucket_name": "server-multiple-connection-1",
         "region_name": "ap-southeast-2",
+        
         "aws_s3": {
             "access_key": "",
             "secret_key": ""
@@ -25,30 +31,33 @@
             "secret_key": "",
             "client_access_key": "",
             "client_secret_key": ""
-        },
-        "cleaning_config": {
-            "clean_cloud_storage_period": 600,
-            "global_keep_version_num": 10,
-            "local_keep_version_num": 3
         }
-    },
+        },
+
     "queue_consumer": {
-        "exchange_name": "asynfl_exchange",
+        "queue_name": "",
+        "queue_exchange": "",
         "exchange_type": "topic",
-        "queue_name": "server_consumer",
         "routing_key": "server.#"
-    },
+        },
+
     "queue_producer": {
-        "exchange_name": "asynfl_exchange",
+        "queue_name": "",
+        "queue_exchange": "",
         "exchange_type": "topic",
-        "queue_name": "server_queue",
         "routing_key": "client.#"
-    },
+        },
 
     "influxdb": {
         "url": "",
         "token": "",
         "org": "",
         "bucket_name": ""
+        },
+        
+    "cleaning_config": {
+        "clean_storage_period": 600,
+        "global_keep_version_num": 10,
+        "local_keep_version_num": 3
     }
 }

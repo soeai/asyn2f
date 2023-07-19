@@ -7,7 +7,6 @@ import argparse
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))
 sys.path.append(root)
 from asynfed.client.algorithms.client_asyncfL import ClientAsyncFl
-from asynfed.commons.conf import Config
 
 # tensorflow 
 from asynfed.client.frameworks.tensorflow.tensorflow_framework import TensorflowFramework
@@ -27,15 +26,6 @@ args = parser.parse_args()
 
 # load env variables
 load_dotenv()
-
-Config.QUEUE_URL = os.getenv("queue_url")
-if args.queue_url:
-    Config.QUEUE_URL = args.queue_url
-
-Config.TRAINING_EXCHANGE = os.getenv("training_exchange")
-if args.training_exchange:
-    Config.TRAINING_EXCHANGE = args.training_exchange
-
 
 
 print("*" * 20)
@@ -69,26 +59,6 @@ test_images_path = os.path.join(root, os.getenv("mnist_x_test_path"))
 test_labels_path = os.path.join(root, os.getenv("mnist_y_test_path"))
 
 
-if os.getenv("batch_size"):
-    Config.BATCH_SIZE = int(os.getenv("batch_size"))
-else:
-    Config.BATCH_SIZE = 128
-
-if os.getenv("data_size"):
-    Config.DATA_SIZE = int(os.getenv("data_size"))
-else:
-    Config.DATA_SIZE = 60000
-
-# for tracking process when training
-if os.getenv("tracking_point"):
-    Config.TRACKING_POINT = int(os.getenv("tracking_point"))
-else:
-    Config.TRACKING_POINT = 10000
-
-if os.getenv("sleeping_time"):
-    Config.SLEEPING_TIME= int(os.getenv("sleeping_time"))
-else:
-    Config.SLEEPING_TIME= 3
 
 # preprocessing data to be ready for low level tensorflow training process
 train_ds, data_size = preprocess_dataset(images_path= train_images_path, labels_path= train_labels_path, training= True)
