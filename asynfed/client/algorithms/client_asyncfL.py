@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 import pickle
 
+from time import sleep 
 
 from asynfed.commons.messages import Message
 from asynfed.commons.config import MessageType
@@ -149,7 +150,9 @@ class ClientAsyncFl(Client):
                 LOGGER.info("*" * 20)
 
                 if (self._min_acc <= self._train_acc) or (self._min_epoch <= self._local_epoch):
-                    self._notify_local_model_to_server()
+                    self._update_new_local_model_info(self)
+                    # self._notify_local_model_to_server()
+
                 else:
                     LOGGER.info("*" * 20)
                     LOGGER.info(f"At epoch {self._local_epoch}, current train acc is {self._train_acc:.4f}, which does not meet either the min acc {self._min_acc} or min epoch {self._min_epoch} to notify model to server")
@@ -195,7 +198,10 @@ class ClientAsyncFl(Client):
         
 
 
-    def _notify_local_model_to_server(self):
+    def _update_new_local_model_info(self):
+        if not self._publish_new_local_update_is_running:
+            self._start_publish_new_local_update_thread()
+            
         # Save weights locally after training
         filename = f'{self._config.client_id}_v{self._local_epoch}.pkl'
         save_location = os.path.join(self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, filename)
@@ -204,28 +210,13 @@ class ClientAsyncFl(Client):
         # Print the weight location
         LOGGER.info(f'Saved weights to {save_location}')
 
-        # Upload the weight to the storage (the remote server)
         remote_file_path = os.path.join("clients", self._config.client_id, filename)
         while True:
-            if self._storage_connector.upload(save_location, remote_file_path) is True:
-                # After training, notify new model to the server.
-                LOGGER.info("*" * 20)
-                LOGGER.info('Notify new model to the server')
-                headers= self._create_headers(message_type= MessageType.CLIENT_NOTIFY_MESSAGE)
-
-                notify_local_model_message: ClientModelUpdate = ClientModelUpdate(remote_worker_weight_path=remote_file_path, 
-                                                                    filename=filename,
-                                                                    global_version_used=self._merged_global_version, 
-                                                                    loss=self._train_loss,
-                                                                    performance= self._train_acc)
-                
-                message = Message(headers= headers, content= notify_local_model_message.to_dict()).to_json()
-                
-                self._queue_producer.send_data(message)
-                self._update_profile()
-                LOGGER.info(message)
-                LOGGER.info('Notify new model to the server successfully')
-                LOGGER.info("*" * 20)
+            if self._local_model_update_info.is_process:
+                sleep(5)
+            else:
+                self._local_model_update_info.update(local_weight_path= save_location, 
+                                                    remote_weight_path= remote_file_path, filename= filename)
                 break
 
 

@@ -1,5 +1,5 @@
 {
-    "client_id": "ec2-cpu-1",
+    "client_id": "ec2-cpu-2",
     "role": "train",
     "save_log": true,
     "tracking_point": 1000,

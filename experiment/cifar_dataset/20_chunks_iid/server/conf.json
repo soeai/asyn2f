@@ -10,13 +10,13 @@
     },
     
     "model_exchange_at": {
-        "performance": 0.6,
-        "epoch": 50
+        "performance": 0.3,
+        "epoch": 20
     },
 
     "update_conditions":{
         "update_period": 30,
-        "min_workers": 10
+        "min_workers": 3
     },
 
     "cloud_storage": {

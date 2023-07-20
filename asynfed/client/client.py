@@ -14,7 +14,9 @@ import asynfed.commons.utils.time_ultils as time_utils
 
 from asynfed.commons.config import LocalStoragePath, MessageType, QueueConfig
 from asynfed.commons.messages.client import ClientInitConnection, DataDescription, SystemInfo, ResponseToPing
+from asynfed.commons.messages.client import ClientModelUpdate
 from asynfed.commons.messages.server import ServerModelUpdate
+
 
 from asynfed.commons.messages.server.server_response_to_init import ResponseToInit, StorageInfo
 import asynfed.commons.messages.utils as message_utils 
@@ -23,7 +25,7 @@ import asynfed.commons.messages.utils as message_utils
 from .client_storage_connector import ClientStorageAWS, ClientStorageMinio
 from .ModelWrapper import ModelWrapper
 from .client_config import ClientConfig
-
+from .local_model_upload_info import LocalModelUpdateInfo
 
 import concurrent.futures
 thread_pool_ref = concurrent.futures.ThreadPoolExecutor
@@ -51,6 +53,7 @@ class Client(object):
         # control the state of download process
         self._download_success: bool = False
         self._training_thread_is_running = False
+        self._publish_new_local_update_is_running = False
 
         # fixed property
         self._model = model
@@ -62,10 +65,15 @@ class Client(object):
         message_utils.print_message(self._config.to_dict())
 
 
+
         # dynamic - training process
+        # local model update info object
+        self._local_model_update_info: LocalModelUpdateInfo = LocalModelUpdateInfo()
+        self._merged_global_version: int = 0
         self._local_epoch = 0
         self._train_acc = 0.0
         self._train_loss = 0.0
+
 
         # --------- info get from server ------------
         self._global_chosen_list: list = []
@@ -88,7 +96,6 @@ class Client(object):
 
         # ---------------------
 
-
         # some boolean variable to track the state of client
         self._is_connected = False
         self._new_model_flag = False
@@ -110,6 +117,8 @@ class Client(object):
         self._clean_storage_thread = Thread(target= self._clean_storage, name= "client_clean_storage_thread")
         self._clean_storage_thread.daemon = True
 
+        # # clean storage thread
+
 
         LOGGER.info("-" * 40)
         LOGGER.info(f'Client Id: {self._config.client_id}')
@@ -123,6 +132,48 @@ class Client(object):
         # send message to server for connection
         self._send_init_message()
 
+    def _start_publish_new_local_update_thread(self):
+        self._publish_new_local_update_is_running = True
+
+        publish_new_local_update_thread = Thread(target= self._publish_new_local_update, name= "client_publish_new_local_update_thread")
+        publish_new_local_update_thread.daemon = True
+
+        publish_new_local_update_thread.start()
+
+
+    def _publish_new_local_update(self):
+        while True:
+            # check every 10 second for whether there is a new model
+            sleep(10)
+            if self._local_model_update_info.new_update:
+                while True:
+                    if self._storage_connector.upload(local_file_path= self._local_model_update_info.local_weight_path, 
+                                                remote_file_path= self._local_model_update_info.remote_weight_path) is True:
+                        self._local_model_update_info.is_process = True
+                        self._local_model_update_info.new_update = False
+                
+                        # After training, notify new model to the server.
+                        LOGGER.info("*" * 20)
+                        LOGGER.info('Notify new model to the server')
+                        headers= self._create_headers(message_type= MessageType.CLIENT_NOTIFY_MESSAGE)
+
+                        notify_local_model_message: ClientModelUpdate = ClientModelUpdate(
+                                                    remote_worker_weight_path= self._local_model_update_info.remote_weight_path, 
+                                                    filename=self._local_model_update_info.filename,
+                                                    global_version_used=self._merged_global_version, 
+                                                    loss=self._train_loss,
+                                                    performance= self._train_acc)
+                        
+                        message = Message(headers= headers, content= notify_local_model_message.to_dict()).to_json()
+                        
+                        self._queue_producer.send_data(message)
+                        self._update_profile()
+                        LOGGER.info(message)
+                        LOGGER.info('Notify new model to the server successfully')
+                        LOGGER.info("*" * 20)
+
+                        self._local_model_update_info.is_process = False
+                        break
 
 
 
