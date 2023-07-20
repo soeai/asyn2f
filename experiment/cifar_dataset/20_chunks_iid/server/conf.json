@@ -16,12 +16,12 @@
 
     "update_conditions":{
         "update_period": 30,
-        "min_workers": 3
+        "min_workers": 9
     },
 
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "cifar10-20-chunks",
+        "bucket_name": "20-chunks-second-try",
         "region_name": "ap-southeast-2",
         "aws_s3": {
             "access_key": "",

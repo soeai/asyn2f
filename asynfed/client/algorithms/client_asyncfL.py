@@ -150,7 +150,7 @@ class ClientAsyncFl(Client):
                 LOGGER.info("*" * 20)
 
                 if (self._min_acc <= self._train_acc) or (self._min_epoch <= self._local_epoch):
-                    self._update_new_local_model_info(self)
+                    self._update_new_local_model_info()
                     # self._notify_local_model_to_server()
 
                 else:

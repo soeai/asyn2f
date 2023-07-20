@@ -133,6 +133,9 @@ class Client(object):
         self._send_init_message()
 
     def _start_publish_new_local_update_thread(self):
+        LOGGER.info("*" * 40)
+        LOGGER.info("Publish New Local Model Thread is Runnning!")
+        LOGGER.info("*" * 40)
         self._publish_new_local_update_is_running = True
 
         publish_new_local_update_thread = Thread(target= self._publish_new_local_update, name= "client_publish_new_local_update_thread")
