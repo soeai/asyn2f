@@ -375,12 +375,11 @@ class Client(object):
 
 
         # Check whether it is a new global model to arrive
-        file_exists = self._storage_connector.is_file_exists(bucket_name= self._storage_connector._bucket_name,
-                                                                   file_path= server_init_response.model_info.model_url)
+        file_exists = self._storage_connector.is_file_exists(file_path= server_init_response.model_info.model_url)
 
         if file_exists:
             LOGGER.info("*" * 20)
-            LOGGER.info(f"{server_init_response.model_info.model_url} exists in the cloud. Start updating process")
+            LOGGER.info(f"{server_init_response.model_info.model_url} exists in the cloud. Start updating new global model process")
             LOGGER.info("*" * 20)
             if self._current_global_version < server_init_response.model_info.model_version:
                 LOGGER.info("Detect new global version.")
@@ -445,6 +444,9 @@ class Client(object):
                 
 
                 if file_exists:
+                    LOGGER.info("*" * 20)
+                    LOGGER.info(f"{remote_path} exists in the cloud. Start updating new global model process")
+                    LOGGER.info("*" * 20)
                     # to make sure the other process related to the new global model version start
                     # only when the downloading process success
                     self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)

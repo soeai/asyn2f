@@ -398,12 +398,6 @@ class Server(object):
         self._strategy.current_version = model_version
 
 
-        LOGGER.info("*" * 20)
-        LOGGER.info(f"model url: {model_url}")
-        LOGGER.info(f"global model name: {global_model_name}")
-        LOGGER.info(f"model version: {model_version}")
-        LOGGER.info("*" * 20)
-
         # model info
         model_info: ModelInfo = ModelInfo(model_url= model_url, global_model_name= global_model_name, 
                                             model_version= model_version)

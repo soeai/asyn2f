@@ -4,7 +4,7 @@
     "save_log": true,
     
     "stop_conditions": {
-        "max_version": 200,
+        "max_version": 240,
         "max_performance": 0.85,
         "min_loss": 0.02
     },
@@ -36,7 +36,7 @@
     },
 
     "cleaning_config": {
-        "clean_storage_period": 200,
+        "clean_storage_period": 240,
         "global_keep_version_num": 10,
         "local_keep_version_num": 2
     },
