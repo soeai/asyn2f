@@ -28,7 +28,7 @@ scheduler = BackgroundScheduler()
 parser = argparse.ArgumentParser()
 # Add arguments
 parser.add_argument('--config_file', dest='config_file', type=str, help='specify the config file for running')
-parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="20-chunks-second-try", help='specify the queue exchange')
+parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-20-chunks-second-try", help='specify the queue exchange')
 # parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-20-chunks", help='specify the queue exchange')
 
 # Parse the arguments

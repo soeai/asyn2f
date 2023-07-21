@@ -151,7 +151,6 @@ class ClientAsyncFl(Client):
 
                 if (self._min_acc <= self._train_acc) or (self._min_epoch <= self._local_epoch):
                     self._update_new_local_model_info()
-                    # self._notify_local_model_to_server()
 
                 else:
                     LOGGER.info("*" * 20)
@@ -207,17 +206,15 @@ class ClientAsyncFl(Client):
         save_location = os.path.join(self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, filename)
         with open(save_location, 'wb') as f:
             pickle.dump(self._model.get_weights(), f)
+
         # Print the weight location
-        LOGGER.info(f'Saved weights to {save_location}')
+        LOGGER.info(f'Saved new local model version {self._local_epoch} to {save_location}')
 
         remote_file_path = os.path.join("clients", self._config.client_id, filename)
-        while True:
-            if self._local_model_update_info.is_process:
-                sleep(5)
-            else:
-                self._local_model_update_info.update(local_weight_path= save_location, 
-                                                    remote_weight_path= remote_file_path, filename= filename)
-                break
+        self._local_model_update_info.update(local_weight_path= save_location, global_version_used= self._merged_global_version,
+                                            remote_weight_path= remote_file_path, filename= filename,
+                                            train_acc= self._train_acc, train_loss= self._train_loss)
+
 
 
     def _merge(self):

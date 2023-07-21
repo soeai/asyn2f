@@ -1,8 +1,8 @@
 {
-    "client_id": "colab-client-2",
+    "client_id": "colab-gpu-2",
     "role": "train",
     "gpu_index": 0,
-    "save_log": true,
+    "save_log": false,
     "tracking_point": 1000,
     "download_attempt": 10,
 

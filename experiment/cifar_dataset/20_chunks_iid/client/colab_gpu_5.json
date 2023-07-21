@@ -1,7 +1,8 @@
 {
-    "client_id": "sit-cpu-1",
+    "client_id": "colab-gpu-5",
     "role": "train",
-    "save_log": true,
+    "gpu_index": 0,
+    "save_log": false,
     "tracking_point": 1000,
     "download_attempt": 10,
 
@@ -20,7 +21,7 @@
     },
 
     "dataset": {
-        "chunk_index": 12,
+        "chunk_index": 5,
         "qod": 0.85
     },
     

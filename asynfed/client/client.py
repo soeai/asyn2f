@@ -149,11 +149,13 @@ class Client(object):
             # check every 10 second for whether there is a new model
             sleep(10)
             if self._local_model_update_info.new_update:
+                self._local_model_update_info.new_update = False
                 while True:
-                    if self._storage_connector.upload(local_file_path= self._local_model_update_info.local_weight_path, 
-                                                remote_file_path= self._local_model_update_info.remote_weight_path) is True:
-                        self._local_model_update_info.is_process = True
-                        self._local_model_update_info.new_update = False
+                    # make a copy of the latest local model udpate and send it
+                    new_update_info: LocalModelUpdateInfo = LocalModelUpdateInfo(**self._local_model_update_info.to_dict())
+
+                    if self._storage_connector.upload(local_file_path= new_update_info.local_weight_path, 
+                                                remote_file_path= new_update_info.remote_weight_path) is True:
                 
                         # After training, notify new model to the server.
                         LOGGER.info("*" * 20)
@@ -161,11 +163,11 @@ class Client(object):
                         headers= self._create_headers(message_type= MessageType.CLIENT_NOTIFY_MESSAGE)
 
                         notify_local_model_message: ClientModelUpdate = ClientModelUpdate(
-                                                    remote_worker_weight_path= self._local_model_update_info.remote_weight_path, 
-                                                    filename=self._local_model_update_info.filename,
-                                                    global_version_used=self._merged_global_version, 
-                                                    loss=self._train_loss,
-                                                    performance= self._train_acc)
+                                                    remote_worker_weight_path=new_update_info.remote_weight_path, 
+                                                    filename=new_update_info.filename,
+                                                    global_version_used=new_update_info.global_version_used, 
+                                                    loss=new_update_info.train_loss,
+                                                    performance=new_update_info.train_acc)
                         
                         message = Message(headers= headers, content= notify_local_model_message.to_dict()).to_json()
                         
@@ -175,7 +177,6 @@ class Client(object):
                         LOGGER.info('Notify new model to the server successfully')
                         LOGGER.info("*" * 20)
 
-                        self._local_model_update_info.is_process = False
                         break
 
 
