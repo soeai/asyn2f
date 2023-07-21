@@ -25,7 +25,7 @@ scheduler = BackgroundScheduler()
 # Create an argument parser
 parser = argparse.ArgumentParser()
 # Add arguments
-parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-20-chunks-second-try", help='specify the queue exchange')
+parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-experiment-20-chunks", help='specify the queue exchange')
 
 # Parse the arguments
 args = parser.parse_args()

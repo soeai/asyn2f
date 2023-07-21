@@ -21,7 +21,7 @@
 
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "cifar10-20-chunks-second-try",
+        "bucket_name": "cifar10-experiment-20-chunks",
         "region_name": "ap-southeast-2",
         "aws_s3": {
             "access_key": "",

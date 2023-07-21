@@ -289,7 +289,11 @@ class Server(object):
             # -------- Global Weight File Cleaning ------------ 
 
             # -------- Client weight files cleaning -----------
-            workers = self._worker_manager.get_all_worker()
+            # workers = self._worker_manager.get_all_worker()
+
+            current_workers = self._worker_manager.get_all_worker()
+            workers = copy.deepcopy(current_workers)
+            
             for w_id, worker in workers.items():
                 client_threshold = worker.update_local_version_used - self._config.cleaning_config.local_keep_version_num
 
