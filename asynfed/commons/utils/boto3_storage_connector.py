@@ -82,3 +82,24 @@ class Boto3Connector(ABC):
                     t += 1
                     raise e
             self._parent_thread.on_download(result)
+
+    def is_file_exists(self, file_path: str) -> bool:
+        """
+        Check if a file with the given file_path exists in the bucket with the given bucket_name.
+        
+        Args:
+            bucket_name (str): The name of the S3 bucket.
+            file_path (str): The path of the file to check.
+
+        Returns:
+            bool: True if the file exists in the bucket, False otherwise.
+        """
+        try:
+            response = self._s3.list_objects_v2(Bucket=self._bucket_name, Prefix=file_path)
+            for obj in response.get('Contents', []):
+                if obj['Key'] == file_path:
+                    return True
+            return False
+        except Exception as e:
+            logging.error(f"Error occurred while checking if file {file_path} exists in bucket {self._bucket_name}. Error: {e}")
+            return False

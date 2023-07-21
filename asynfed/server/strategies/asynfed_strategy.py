@@ -35,18 +35,24 @@ class AsynFL(Strategy):
                   local_storage_path: LocalStoragePath):
         LOGGER.info("-" * 20)
         LOGGER.info(f"Current global version before aggregating process: {self.current_version}")
+        LOGGER.info(f"{len(completed_workers)} workers are expected to join this aggregating round")
         LOGGER.info("-" * 20)
+
+        LOGGER.info("Before aggregating takes place, check whether the file path that client provide actually exist in the cloud storage")
+        completed_workers = self._get_valid_completed_workers(completed_workers, cloud_storage)
+        LOGGER.info(f"After checking for validity of remote file, the number of workers joining the aggregating process is now {len(completed_workers)}")
+        LOGGER.info("*" * 20)
+        # log out worker info
+        for w_id, worker in completed_workers.items():
+            LOGGER.info(f"{worker.worker_id} qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
+        LOGGER.info("*" * 20)
+
 
         # increment the current version
         self.update_version = self.current_version + 1
         # self.current_version += 1
         total_completed_worker = len(completed_workers)
 
-        # log out worker info
-        LOGGER.info("*" * 20)
-        for w_id, worker in completed_workers.items():
-            LOGGER.info(f"{worker.worker_id} qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
-        LOGGER.info("*" * 20)
         
         # calculate average quality of data, average loss and total datasize to notify client
         self.avg_qod = sum([worker.qod for w_id, worker in completed_workers.items()]) / total_completed_worker
@@ -121,3 +127,18 @@ class AsynFL(Strategy):
             
         return weights
     
+
+    def _get_valid_completed_workers(self, workers: Dict[str, Worker], cloud_storage: ServerStorageBoto3) -> Dict[str, Worker]:
+        valid_completed_workers = {}
+
+        for w_id, worker in workers.items():
+            remote_path = worker.get_remote_weight_file_path()
+            file_exists = cloud_storage.is_file_exists(file_path= remote_path)
+            
+            if file_exists:
+                valid_completed_workers[w_id] = worker
+            else:
+                LOGGER.info(f"worker {w_id}: weight file {remote_path} does not exist in the cloud. Remove {w_id} from aggregating process")
+
+        return valid_completed_workers
+

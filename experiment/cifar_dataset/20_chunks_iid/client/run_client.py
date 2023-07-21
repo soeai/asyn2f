@@ -4,7 +4,6 @@ import pause
 from apscheduler.schedulers.background import BackgroundScheduler
 
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
-# root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))))
 sys.path.append(root)
 
 

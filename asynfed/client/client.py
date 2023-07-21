@@ -375,38 +375,49 @@ class Client(object):
 
 
         # Check whether it is a new global model to arrive
-        if self._current_global_version < server_init_response.model_info.model_version:
-            LOGGER.info("Detect new global version.")
-            remote_path = server_init_response.model_info.model_url
-            local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, server_init_response.model_info.global_model_name)
+        file_exists = self._storage_connector.is_file_exists(bucket_name= self._storage_connector._bucket_name,
+                                                                   file_path= server_init_response.model_info.model_url)
 
-            # to make sure the other process related to the new global model version start
-            # only when the downloading process success
-            self._download_success = False
-            self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
+        if file_exists:
+            LOGGER.info("*" * 20)
+            LOGGER.info(f"{server_init_response.model_info.model_url} exists in the cloud. Start updating process")
+            LOGGER.info("*" * 20)
+            if self._current_global_version < server_init_response.model_info.model_version:
+                LOGGER.info("Detect new global version.")
+                remote_path = server_init_response.model_info.model_url
+                local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, server_init_response.model_info.global_model_name)
+
+                # to make sure the other process related to the new global model version start
+                # only when the downloading process success
+                self._download_success = False
+                self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
 
 
-        if self._download_success:
-            # update only downloading process is success
-            self._global_model_name = server_init_response.model_info.global_model_name
-            self._current_global_version = server_init_response.model_info.model_version
+            if self._download_success:
+                # update only downloading process is success
+                self._global_model_name = server_init_response.model_info.global_model_name
+                self._current_global_version = server_init_response.model_info.model_version
 
-            LOGGER.info(f"Successfully downloaded global model {self._global_model_name}")
-            # update info in profile file
-            self._update_profile()
+                LOGGER.info(f"Successfully downloaded global model {self._global_model_name}")
+                # update info in profile file
+                self._update_profile()
 
-            if self._config.role == "train":
-                self._start_training_thread()
+                if self._config.role == "train":
+                    self._start_training_thread()
 
-            # for testing, do not need to start thread
-            # because tester just test whenever it receive new model 
-            elif self._config.role == "test":
-                self._test()
+                # for testing, do not need to start thread
+                # because tester just test whenever it receive new model 
+                elif self._config.role == "test":
+                    self._test()
 
-            if not os.path.exists(self._profile_file_name):
-                self._create_profile()
-            else:
-                self._load_profile()
+                if not os.path.exists(self._profile_file_name):
+                    self._create_profile()
+                else:
+                    self._load_profile()
+        else:
+            LOGGER.info("*" * 20)
+            LOGGER.info(f"{server_init_response.model_info.model_url} does not exist in the cloud. Start updating process")
+            LOGGER.info("*" * 20)
             
 
 
@@ -430,16 +441,18 @@ class Client(object):
                 # remote_path = os.path.join("global-models", server_model_udpate.global_model_name)
                 local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, server_model_udpate.global_model_name)
 
-                LOGGER.info("*" * 20)
-                LOGGER.info(f"remote path: {remote_path}")
-                LOGGER.info(f"local path: {local_path}")
-                LOGGER.info("*" * 20)
+                file_exists = self._storage_connector.is_file_exists(file_path= remote_path)
                 
-                # to make sure the other process related to the new global model version start
-                # only when the downloading process success
-                self._download_success = False
-                self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
 
+                if file_exists:
+                    # to make sure the other process related to the new global model version start
+                    # only when the downloading process success
+                    self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
+                else:
+                    self._download_success = False
+                    LOGGER.info("*" * 20)
+                    LOGGER.info(f"{remote_path} does not exist in the cloud. Ignore this server update message")
+                    LOGGER.info("*" * 20)
 
             if self._download_success:
                 # Only update info when download is success
