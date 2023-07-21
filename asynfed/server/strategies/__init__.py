@@ -1,2 +1,2 @@
-from .AsynFL import AsynFL
+from .asynfed_strategy import AsynFL
 from .strategy import Strategy

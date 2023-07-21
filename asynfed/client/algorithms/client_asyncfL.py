@@ -204,15 +204,12 @@ class ClientAsyncFl(Client):
         # Save weights locally after training
         filename = f'{self._config.client_id}_v{self._local_epoch}.pkl'
         save_location = os.path.join(self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, filename)
-        with open(save_location, 'wb') as f:
-            pickle.dump(self._model.get_weights(), f)
-
-        # Print the weight location
-        LOGGER.info(f'Saved new local model version {self._local_epoch} to {save_location}')
-
         remote_file_path = os.path.join("clients", self._config.client_id, filename)
-        self._local_model_update_info.update(local_weight_path= save_location, global_version_used= self._merged_global_version,
-                                            remote_weight_path= remote_file_path, filename= filename,
+
+        self._local_model_update_info.update(weight_array= self._model.get_weights(), 
+                                            filename= filename, local_weight_path= save_location, 
+                                            global_version_used= self._merged_global_version,
+                                            remote_weight_path= remote_file_path,
                                             train_acc= self._train_acc, train_loss= self._train_loss)
 
 

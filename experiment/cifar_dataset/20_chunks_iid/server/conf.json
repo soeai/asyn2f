@@ -36,9 +36,9 @@
     },
 
     "cleaning_config": {
-        "clean_storage_period": 600,
+        "clean_storage_period": 200,
         "global_keep_version_num": 10,
-        "local_keep_version_num": 3
+        "local_keep_version_num": 2
     },
 
     "queue_consumer": {

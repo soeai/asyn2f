@@ -6,6 +6,7 @@ import uuid
 from time import sleep
 from abc import abstractmethod
 import re
+import pickle
 
 from asynfed.commons.messages import Message
 
@@ -23,7 +24,7 @@ import asynfed.commons.messages.utils as message_utils
 
 
 from .client_storage_connector import ClientStorageAWS, ClientStorageMinio
-from .ModelWrapper import ModelWrapper
+from .model_wrapper import ModelWrapper
 from .client_config import ClientConfig
 from .local_model_upload_info import LocalModelUpdateInfo
 
@@ -153,7 +154,11 @@ class Client(object):
                 while True:
                     # make a copy of the latest local model udpate and send it
                     new_update_info: LocalModelUpdateInfo = LocalModelUpdateInfo(**self._local_model_update_info.to_dict())
+                    with open(new_update_info.local_weight_path, 'wb') as f:
+                        pickle.dump(new_update_info.weight_array, f)
 
+                    LOGGER.info(f'Saved new local model {new_update_info.filename} to {new_update_info.local_weight_path}')
+  
                     if self._storage_connector.upload(local_file_path= new_update_info.local_weight_path, 
                                                 remote_file_path= new_update_info.remote_weight_path) is True:
                 
@@ -188,8 +193,6 @@ class Client(object):
         # user may already set in the run file, but just to make sure that it is set
         queue_exchange = config['queue_exchange']
 
-        # client_consume_queue_name =  f"server-publish-queue-{queue_exchange}"
-        # config['queue_consumer']['queue_name'] = config['queue_consumer']['queue_name'] or client_consume_queue_name
 
         client_id = config['client_id'] or str(uuid.uuid4())
         config['queue_consumer']['queue_name'] = f"queue_{client_id}_{config['queue_exchange']}"
@@ -211,10 +214,7 @@ class Client(object):
 
         # Initialize a profile file for client
         self._profile_file_name = os.path.join(full_path, "profile.json")
-        # if not os.path.exists(self._profile_file_name):
-        #     self._create_profile()
-        # else:
-        #     self._load_profile()
+
 
         return LocalStoragePath(root_folder= full_path, save_log= self._config.save_log)
 
