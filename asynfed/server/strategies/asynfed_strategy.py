@@ -39,13 +39,16 @@ class AsynFL(Strategy):
         LOGGER.info("-" * 20)
 
         LOGGER.info("Before aggregating takes place, check whether the file path that client provide actually exist in the cloud storage")
-        completed_workers = self._get_valid_completed_workers(completed_workers, cloud_storage)
+        completed_workers = self._get_valid_completed_workers(workers= completed_workers, 
+                                                              cloud_storage= cloud_storage,
+                                                              local_model_root_folder= local_storage_path.LOCAL_MODEL_ROOT_FOLDER)
+
         LOGGER.info(f"After checking for validity of remote file, the number of workers joining the aggregating process is now {len(completed_workers)}")
         LOGGER.info("*" * 20)
-        # log out worker info
-        for w_id, worker in completed_workers.items():
-            LOGGER.info(f"{worker.worker_id} qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
-        LOGGER.info("*" * 20)
+        # # log out worker info
+        # for w_id, worker in completed_workers.items():
+        #     LOGGER.info(f"{worker.worker_id} qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
+        # LOGGER.info("*" * 20)
 
 
         # increment the current version
@@ -83,23 +86,23 @@ class AsynFL(Strategy):
         # aggregating to get the new global weights
         merged_weights = None
         for w_id, worker in completed_workers.items():
-            # download only when aggregating
-            remote_weight_file = worker.get_remote_weight_file_path()
-            local_weight_file = worker.get_weight_file_path(local_storage_path.LOCAL_MODEL_ROOT_FOLDER)
+            # # download only when aggregating
+            # remote_weight_file = worker.get_remote_weight_file_path()
+            # local_weight_file = worker.get_weight_file_path(local_storage_path.LOCAL_MODEL_ROOT_FOLDER)
 
-            cloud_storage.download(remote_file_path= remote_weight_file, 
-                                        local_file_path= local_weight_file)
+            # cloud_storage.download(remote_file_path= remote_weight_file, 
+            #                             local_file_path= local_weight_file)
             
-            # Load the weight from file
-            worker_weights = self._get_model_weights(local_weight_file)
+            # # Load the weight from file
+            # worker_weights = self._get_model_weights(local_weight_file)
 
             # initialized zero array if merged weight is None
             if merged_weights is None:
                 # choose dtype = float 32 to reduce the size of the weight file
-                merged_weights = [np.zeros(layer.shape, dtype=np.float32) for layer in worker_weights]
+                merged_weights = [np.zeros(layer.shape, dtype=np.float32) for layer in worker.weight_array]
 
             # merging
-            for merged_layer, worker_layer in zip(merged_weights, worker_weights):
+            for merged_layer, worker_layer in zip(merged_weights, worker.weight_array):
                 merged_layer += worker.alpha * worker_layer
 
 
@@ -128,17 +131,50 @@ class AsynFL(Strategy):
         return weights
     
 
-    def _get_valid_completed_workers(self, workers: Dict[str, Worker], cloud_storage: ServerStorageBoto3) -> Dict[str, Worker]:
+    def _get_valid_completed_workers(self, workers: Dict[str, Worker], cloud_storage: ServerStorageBoto3,
+                                     local_model_root_folder: str) -> Dict[str, Worker]:
         valid_completed_workers = {}
 
         for w_id, worker in workers.items():
             remote_path = worker.get_remote_weight_file_path()
+            LOGGER.info("*" * 20)
+            LOGGER.info(f"{worker.worker_id} qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}, weight file: {remote_path}")
             file_exists = cloud_storage.is_file_exists(file_path= remote_path)
             
             if file_exists:
-                valid_completed_workers[w_id] = worker
+                # valid_completed_workers[w_id] = worker
+                LOGGER.info(f"{remote_path} exists in the cloud. Begin to download shortly")
+                local_path = worker.get_weight_file_path(local_model_root_folder= local_model_root_folder)
+                download_success = self._attempt_to_download(cloud_storage= cloud_storage, 
+                                                             remote_file_path= remote_path, local_file_path= local_path)
+                
+                if download_success:
+                    worker.weight_array =  self._get_model_weights(local_path)
+                    valid_completed_workers[w_id] = worker
+
             else:
                 LOGGER.info(f"worker {w_id}: weight file {remote_path} does not exist in the cloud. Remove {w_id} from aggregating process")
 
+            LOGGER.info("*" * 20)
+
         return valid_completed_workers
 
+
+
+    def _attempt_to_download(self, cloud_storage: ServerStorageBoto3, remote_file_path: str, local_file_path: str) -> bool:
+        LOGGER.info("Downloading new client model............")
+        attemp = 3
+
+        for i in range(attemp):
+            if cloud_storage.download(remote_file_path= remote_file_path, 
+                                            local_file_path= local_file_path, try_time= attemp):
+                return True
+            
+            LOGGER.info(f"{i + 1} attempt: download model failed, retry in 5 seconds.")
+
+            i += 1
+            if i == attemp:
+                LOGGER.info(f"Already try 3 time. Pass this client model: {remote_file_path}")
+            sleep(5)
+
+        return False

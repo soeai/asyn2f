@@ -9,7 +9,7 @@ class Strategy(ABC):
     Any new strategy will follow this interface. 
     """
     def __init__(self):
-        self.current_version: int = 1
+        self.current_version: int = None
         self.model_id = str(uuid.uuid4())
         # change after each update time
         self.global_model_update_data_size = 0

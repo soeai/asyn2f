@@ -191,6 +191,9 @@ class Server(object):
     def _publish_global_model(self):
         # increment the current version to 1
         self._strategy.current_version += 1
+        LOGGER.info("*" * 20)
+        LOGGER.info(f"CURRENT GLOBAL MODEL VERSION TO BE PUBLISHED: {self._strategy.current_version}")
+        LOGGER.info("*" * 20)
 
         current_global_model_filename = self._strategy.get_current_global_model_filename()
 
@@ -399,7 +402,8 @@ class Server(object):
         # always use forward slash for the cloud storage regardless os
         global_model_name = model_url.split("/")[-1]
         model_version = self._get_model_version(global_model_name)
-        self._strategy.current_version = model_version
+        if self._strategy.current_version == None:
+            self._strategy.current_version = model_version
 
 
         # model info

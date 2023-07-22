@@ -39,6 +39,8 @@ class Worker:
         self.last_ping = time_now()
         self.is_connected = True
 
+        self.weight_array: list = None
+
 
     def get_weight_file_path(self, local_model_root_folder: str):
         filename = self.weight_file.split(os.path.sep)[-1]
