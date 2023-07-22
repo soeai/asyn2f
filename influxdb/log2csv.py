@@ -4,10 +4,10 @@ import csv
 
 def to_csv(input_file, output_file):
 # Define the regular expressions to extract the required information
-    client_id_pattern = r'print_message.*client_id\s*:\s*(.*)'
-    timestamp_pattern = r'print_message.*timestamp\s*:\s*([\d-]+\s[\d:]+)'
-    performance_pattern = r'print_message.*performance\s*:\s*([0-9.]+)'
-    loss_pattern = r'print_message.*loss\s*:\s*([0-9.]+)'
+    client_id_pattern = r'print_dict.*client_id\s*:\s*(.*)'
+    timestamp_pattern = r'print_dict.*timestamp\s*:\s*([\d-]+\s[\d:]+)'
+    performance_pattern = r'print_dict.*performance\s*:\s*([0-9.]+)'
+    loss_pattern = r'print_dict.*loss\s*:\s*([0-9.]+)'
     message_type_pattern = r'message_type\s*:\s*(client_notify|client\.notify\.evaluation)'
 
     with open(input_file, 'r') as file:
