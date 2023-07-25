@@ -5,11 +5,13 @@ import os.path
 import copy
 import re
 import pickle
+import numpy as np
 from asynfed.server.objects import Worker
 from asynfed.server.server_boto3_storage_connector import ServerStorageBoto3
 from asynfed.commons.config import LocalStoragePath
 from asynfed.server.worker_manager import WorkerManager
 from .strategy import Strategy
+
 
 import logging
 LOGGER = logging.getLogger(__name__)
@@ -58,32 +60,26 @@ class MStepFedAsync(Strategy):
         remote_path = cloud_storage.get_newest_global_model()
         filename = remote_path.split(os.path.sep)[-1]
         local_path = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, filename)
-        print("remote path: ", remote_path)
-        print('local path: ', local_path)
         if not os.path.exists(local_path):
             cloud_storage.download(remote_file_path=remote_path, local_file_path=local_path)
-        w_g = self._get_model_weights(local_path)
-
+        w_g = np.array(self._get_model_weights(local_path))
         # Execute global update 
         ## Calculate w_new(t)
         w_new = 0
         w_tmp = []
         for i in range(len(workers)):
-            w_tmp.append(self._get_model_weights(workers[i].get_weight_file_path(local_model_root_folder=local_storage_path.LOCAL_MODEL_ROOT_FOLDER)))
-            print("workers[i].data_size: ", workers[i].data_size)
-            print("shape of workers[i].weights: ", w_tmp[i].shape)
+            w_i = np.array(self._get_model_weights(workers[i].get_weight_file_path(local_model_root_folder=local_storage_path.LOCAL_MODEL_ROOT_FOLDER)))
+            w_tmp.append(w_i)
             w_new += (w_tmp[i]* workers[i].data_size)
-            print("shape of w_new: ", w_new.shape)
         total_num_samples = sum([workers[i].data_size for i in range(len(workers))])
         w_new /= total_num_samples
 
         ## Calculate w_g(t+1)
-        w_g_new = (1-self.agg_hyperparam) * w_g + self.agg_hyperparam * w_new
+        w_g_new = w_g * (1-self.agg_hyperparam) + w_new * self.agg_hyperparam
 
 
         # Save new global model
         save_location = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self.get_new_global_model_filename())
-        print("save location: ", save_location)
         with open(save_location, "wb") as f:
             pickle.dump(w_g_new, f)
 
@@ -139,3 +135,4 @@ class MStepFedAsync(Strategy):
 
     def _get_model_version(self, model_name: str):
         return int(re.search(r"v(\d+)", model_name.split("_")[1]).group(1))
+
