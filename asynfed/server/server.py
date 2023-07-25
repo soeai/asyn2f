@@ -122,19 +122,19 @@ class Server(object):
 
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
-            if n_local_updates < self._config.update_conditions.min_workers:
-                LOGGER.info(f'just {n_local_updates} update found. Do not reach the minimum number of workers required: {self._config.update_conditions.min_workers}. Sleep for {self._config.update_conditions.update_period} seconds...')
 
-                sleep(self._config.update_conditions.update_period)
-
-            else:
-                try:
-                    LOGGER.info(f'Start update global model with {n_local_updates} local updates')
-                    self._update(n_local_updates)
+            sleep(self._config.update_conditions.update_period)
+            # if n_local_updates < self._config.update_conditions.min_workers:
+            #     LOGGER.info(f'just {n_local_updates} update found. Do not reach the minimum number of workers required: {self._config.update_conditions.min_workers}. Sleep for {self._config.update_conditions.update_period} seconds...')
+            #
+            #     sleep(self._config.update_conditions.update_period)
+            #
+            # else:
+            try:
+                if self._update():
                     self._publish_global_model()
-
-                except Exception as e:
-                    raise e
+            except Exception as e:
+                raise e
 
 
     # function for queue consumer to call
@@ -479,26 +479,11 @@ class Server(object):
             LOGGER.info(self._best_model)
             
 
-    def _update(self, n_local_updates):
-        if n_local_updates == 1:
-            LOGGER.info("Only one update from client, passing the model to all other client in the network...")
-            completed_worker: dict[str, Worker] = self._worker_manager.get_completed_workers()
-            self._pass_one_local_model(completed_worker)
+    def _update(self):
+        if self._strategy.aggregate(self._worker_manager, self._cloud_storage, self._local_storage_path):
+            return True
 
-        else:
-            LOGGER.info("Aggregating process...")
-            completed_workers: dict[str, Worker] = self._worker_manager.get_completed_workers()
-            
-            # reset the state of worker in completed workers list
-            for w_id, worker in completed_workers.items():
-                worker.is_completed = False
-                # keep track of the latest local version of worker used for cleaning task
-                model_filename = worker.get_remote_weight_file_path().split(os.path.sep)[-1]
-                worker.update_local_version_used = self._get_model_version(model_filename)
-
-            # pass out a copy of completed worker to aggregating process
-            worker_list = copy.deepcopy(completed_workers)
-            self._strategy.aggregate(worker_list, self._cloud_storage, self._local_storage_path)
+        return False
 
 
     def _check_stop_conditions(self, info: dict):

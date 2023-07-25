@@ -26,7 +26,9 @@ class Boto3Connector(ABC):
 
     def upload(self, local_file_path: str, remote_file_path: str, try_time=5):
         # check if local_file_path is exist, if not create one
+        print(local_file_path)
         if not os.path.exists(local_file_path):
+            print(f'File {local_file_path} does not exist, creating one...')
             os.makedirs(local_file_path.split(os.path.sep)[:-1])
         # call synchronously
         if self._parent_thread is None:

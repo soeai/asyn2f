@@ -17,12 +17,12 @@
 
     "update_conditions":{
         "update_period": 30,
-        "min_workers": 3
+        "min_workers": 1
     },
 
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "cifar10-20-chunks-gpu",
+        "bucket_name": "test-mstepfedasync",
         "region_name": "ap-southeast-2",
         "aws_s3": {
             "access_key": "",
