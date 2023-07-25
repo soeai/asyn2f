@@ -56,8 +56,8 @@ class MStepFedAsync(Strategy):
         # Get current global weight
         # Check if global model is in local storage
         remote_path = cloud_storage.get_newest_global_model()
-        local_path = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, filename)
         filename = remote_path.split(os.path.sep)[-1]
+        local_path = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, filename)
         print("remote path: ", remote_path)
         print("filename: ", filename)
         if not os.path.exists(local_path):
