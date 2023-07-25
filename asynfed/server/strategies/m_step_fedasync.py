@@ -56,10 +56,12 @@ class MStepFedAsync(Strategy):
         # Get current global weight
         # Check if global model is in local storage
         remote_path = cloud_storage.get_newest_global_model()
-        filename = remote_path.split(os.path.sep)[-1]
-        if not os.path.exists(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER):
-            cloud_storage.download(remote_file_path=remote_path, local_file_path=local_storage_path.GLOBAL_MODEL_ROOT_FOLDER)
         local_path = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, filename)
+        filename = remote_path.split(os.path.sep)[-1]
+        print("remote path: ", remote_path)
+        print("filename: ", filename)
+        if not os.path.exists(local_path):
+            cloud_storage.download(remote_file_path=remote_path, local_file_path=local_path)
         w_g = self._get_model_weights(local_path)
 
         # Execute global update 
@@ -77,6 +79,7 @@ class MStepFedAsync(Strategy):
 
         # Save new global model
         save_location = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self.get_new_global_model_filename())
+        print("save location: ", save_location)
         with open(save_location, "wb") as f:
             pickle.dump(w_g_new, f)
 
