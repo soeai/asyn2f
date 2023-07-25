@@ -72,6 +72,31 @@ class MStepFedAsync(Client):
             LOGGER.info("=" * 40)
             LOGGER.info("ClientModel Start Training")
             LOGGER.info("=" * 40)
+            if self._new_model_flag:
+                # update some tracking info
+                self._previous_merged_global_version = self._previous_global_version
+                self._merged_global_version = self._current_global_version
+
+                # before the merging process happens, need to retrieve current weights and global weights
+                # previous, current and global weights are used in the merged process
+                self._model.current_weights = self._model.get_weights()
+                # load global weights from file
+                file_exist, self._model.global_weights = self._load_weights_from_file(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self._global_model_name)
+                
+                
+                if file_exist:
+                    LOGGER.info(f"New model ? - {self._new_model_flag}")
+                    LOGGER.info(
+                        f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._merged_global_version}, current global version {self._previous_merged_global_version}")
+                        
+                    # changing flag status
+                    self._new_model_flag = False
+                    # merging
+                    self._merge()
+
+                # if not file_exist, also changing the flag status
+                self._new_model_flag = False
+
 
             for _ in range(self._model.epoch):
                 # record some info of the training process
@@ -107,31 +132,6 @@ class MStepFedAsync(Client):
                         self._tracking_training_process(batch_num)
 
                     # merging when receiving a new global model
-                    if self._new_model_flag:
-                        # update some tracking info
-                        self._previous_merged_global_version = self._previous_global_version
-                        self._merged_global_version = self._current_global_version
-
-                        # before the merging process happens, need to retrieve current weights and global weights
-                        # previous, current and global weights are used in the merged process
-                        self._model.current_weights = self._model.get_weights()
-                        # load global weights from file
-                        file_exist, self._model.global_weights = self._load_weights_from_file(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self._global_model_name)
-                        
-                        
-                        if file_exist:
-                            LOGGER.info(f"New model ? - {self._new_model_flag}")
-                            LOGGER.info(
-                                f"Merging process happens at epoch {self._local_epoch}, batch {batch_num} when receiving the global version {self._merged_global_version}, current global version {self._previous_merged_global_version}")
-                                
-                            # changing flag status
-                            self._new_model_flag = False
-                            # merging
-                            self._merge()
-
-                        # if not file_exist, also changing the flag status
-                        self._new_model_flag = False
-
 
                 if self._model.test_ds:
                     for test_images, test_labels in self._model.test_ds:
