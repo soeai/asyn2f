@@ -20,8 +20,8 @@ class MStepFedAsync(Strategy):
 
     def __init__(self):
         super().__init__()
-        self.m = 2 # Number of workers to aggregate
-        self.agg_hyperparam = 0.5 # Aggregation hyperparameter
+        self.m = 3 # Number of workers to aggregate
+        self.agg_hyperparam = 0.8 # Aggregation hyperparameter
 
     def select_client(self, all_clients) -> List [str]:
         return all_clients
