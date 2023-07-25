@@ -68,8 +68,11 @@ class MStepFedAsync(Strategy):
         ## Calculate w_new(t)
         w_new = 0
         for i in range(len(w_tmp)):
+            print("w_tmp[i].data_size: ", w_tmp[i].data_size)
+            print("shape of w_tmp[i].weights: ", w_tmp[i].weights.shape)
             w_tmp[i].weights = self._get_model_weights(w_tmp[i].get_weight_file_path(local_model_root_folder=local_storage_path.LOCAL_MODEL_ROOT_FOLDER))
-            w_new += w_tmp[i].weights * w_tmp[i].data_size
+            w_new += (w_tmp[i].weights * w_tmp[i].data_size)
+            print("shape of w_new: ", w_new.shape)
         total_num_samples = sum([w_tmp[i].data_size for i in range(len(w_tmp))])
         w_new /= total_num_samples
 
