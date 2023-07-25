@@ -59,7 +59,7 @@ class MStepFedAsync(Strategy):
         filename = remote_path.split(os.path.sep)[-1]
         local_path = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, filename)
         print("remote path: ", remote_path)
-        print("filename: ", filename)
+        print('local path: ', local_path)
         if not os.path.exists(local_path):
             cloud_storage.download(remote_file_path=remote_path, local_file_path=local_path)
         w_g = self._get_model_weights(local_path)
@@ -68,7 +68,7 @@ class MStepFedAsync(Strategy):
         ## Calculate w_new(t)
         w_new = 0
         for i in range(len(w_tmp)):
-            w_tmp[i].weights = self._get_model_weights(local_storage_path)
+            w_tmp[i].weights = self._get_model_weights(w_tmp[i].get_weight_file_path(local_model_root_folder=local_storage_path.LOCAL_MODEL_ROOT_FOLDER))
             w_new += w_tmp[i].weights * w_tmp[i].data_size
         total_num_samples = sum([w_tmp[i].data_size for i in range(len(w_tmp))])
         w_new /= total_num_samples
