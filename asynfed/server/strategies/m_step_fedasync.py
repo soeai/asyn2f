@@ -47,11 +47,11 @@ class MStepFedAsync(Strategy):
         LOGGER.info(f"{len(completed_workers)} workers are expected to join this aggregating round")
         LOGGER.info("-" * 20)
         LOGGER.info("Before aggregating takes place, check whether the file path that client provide actually exist in the cloud storage")
-        w_tmp = self._get_valid_completed_workers(workers=completed_workers, 
+        workers = self._get_valid_completed_workers(workers=completed_workers, 
                                                     cloud_storage=cloud_storage,
                                                     local_model_root_folder=local_storage_path.LOCAL_MODEL_ROOT_FOLDER)
         # Store worker objects in a list
-        w_tmp = [w_obj for _, w_obj in w_tmp.items()]
+        workers = [w_obj for _, w_obj in workers.items()]
 
         # Get current global weight
         # Check if global model is in local storage
@@ -67,13 +67,14 @@ class MStepFedAsync(Strategy):
         # Execute global update 
         ## Calculate w_new(t)
         w_new = 0
-        for i in range(len(w_tmp)):
-            print("w_tmp[i].data_size: ", w_tmp[i].data_size)
-            print("shape of w_tmp[i].weights: ", w_tmp[i].weights.shape)
-            w_tmp[i].weights = self._get_model_weights(w_tmp[i].get_weight_file_path(local_model_root_folder=local_storage_path.LOCAL_MODEL_ROOT_FOLDER))
-            w_new += (w_tmp[i].weights * w_tmp[i].data_size)
+        w_tmp = []
+        for i in range(len(workers)):
+            print("workers[i].data_size: ", workers[i].data_size)
+            print("shape of workers[i].weights: ", w_tmp[i].shape)
+            w_tmp.append(self._get_model_weights(workers[i].get_weight_file_path(local_model_root_folder=local_storage_path.LOCAL_MODEL_ROOT_FOLDER)))
+            w_new += (w_tmp[i]* workers[i].data_size)
             print("shape of w_new: ", w_new.shape)
-        total_num_samples = sum([w_tmp[i].data_size for i in range(len(w_tmp))])
+        total_num_samples = sum([workers[i].data_size for i in range(len(workers))])
         w_new /= total_num_samples
 
         ## Calculate w_g(t+1)
