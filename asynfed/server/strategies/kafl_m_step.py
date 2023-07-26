@@ -1,9 +1,7 @@
 
-from time import sleep
 from typing import Dict, List
 import os.path
 import copy
-import re
 import pickle
 import numpy as np
 from asynfed.server.objects import Worker
@@ -16,12 +14,17 @@ from .strategy import Strategy
 import logging
 LOGGER = logging.getLogger(__name__)
 
-class MStepFedAsync(Strategy):
+class KAFLMStep(Strategy):
 
-    def __init__(self):
+    def __init__(self, m: int = 3, agg_hyperparam: float = 0.8):
+        """
+        Args:
+            m (int, optional): Number of workers to aggregate. Defaults to 3.
+            agg_hyperparam (float, optional): Aggregation hyperparameter. Defaults to 0.8.
+        """
         super().__init__()
-        self.m = 3 # Number of workers to aggregate
-        self.agg_hyperparam = 0.8 # Aggregation hyperparameter
+        self.m = m 
+        self.agg_hyperparam = agg_hyperparam 
 
     def select_client(self, all_clients) -> List [str]:
         return all_clients
@@ -86,53 +89,4 @@ class MStepFedAsync(Strategy):
 
         LOGGER.info(f"Aggregating process is completed. New global model is saved at {save_location}")
         return True
-
-    def _get_valid_completed_workers(self, workers: Dict[str, Worker], cloud_storage: ServerStorageBoto3,
-                                     local_model_root_folder: str) -> Dict[str, Worker]:
-        valid_completed_workers = {}
-
-        for w_id, worker in workers.items():
-            remote_path = worker.get_remote_weight_file_path()
-            LOGGER.info(f"{worker.worker_id} qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}, weight file: {remote_path}")
-            file_exists = cloud_storage.is_file_exists(file_path=remote_path)
-            
-            if file_exists:
-                # valid_completed_workers[w_id] = worker
-                LOGGER.info(f"{remote_path} exists in the cloud. Begin to download shortly")
-                local_path = worker.get_weight_file_path(local_model_root_folder= local_model_root_folder)
-                download_success = self._attempt_to_download(cloud_storage= cloud_storage, 
-                                                             remote_file_path= remote_path, local_file_path= local_path)
-                
-                if download_success:
-                    worker.weight_array =  self._get_model_weights(local_path)
-                    valid_completed_workers[w_id] = worker
-
-            else:
-                LOGGER.info(f"worker {w_id}: weight file {remote_path} does not exist in the cloud. Remove {w_id} from aggregating process")
-
-            LOGGER.info("*" * 20)
-
-        return valid_completed_workers
-
-    def _attempt_to_download(self, cloud_storage: ServerStorageBoto3, remote_file_path: str, local_file_path: str, n_attemps: int = 3) -> bool:
-        for i in range(n_attemps):
-            if cloud_storage.download(remote_file_path= remote_file_path, local_file_path= local_file_path, try_time=n_attemps):
-                return True
-            LOGGER.info(f"{i + 1} attempt: download model failed, retry in 5 seconds.")
-            i += 1
-            if i == n_attemps:
-                LOGGER.info(f"Already try {n_attemps} time. Pass this client model: {remote_file_path}")
-            sleep(5)
-
-        return False
-
-    def _get_model_weights(self, file_path):
-        while not os.path.isfile(file_path):
-            sleep(3)
-        with open(file_path, "rb") as f:
-            weights = pickle.load(f)
-        return weights
-
-    def _get_model_version(self, model_name: str):
-        return int(re.search(r"v(\d+)", model_name.split("_")[1]).group(1))
 

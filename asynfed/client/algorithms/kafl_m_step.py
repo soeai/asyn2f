@@ -25,7 +25,7 @@ LOGGER.setLevel(logging.INFO)
 
 # This is the proposed federated asynchronous training algorithm of our paper
 # More algorithms can be found at other files in this directory 
-class MStepFedAsync(Client):
+class KAFLMStep(Client):
     def __init__(self, model, config: dict):
         super().__init__(model, config)
         '''
