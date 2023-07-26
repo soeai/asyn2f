@@ -63,22 +63,7 @@ class Asyn2fServer(Server):
                     raise e
 
 
-    def _handle_when_receiving_message(self, message):
-        message_type = message['headers']['message_type']
-
-        if message_type == MessageType.CLIENT_INIT_MESSAGE:
-            self._response_connection(message)
-        elif message_type == MessageType.CLIENT_NOTIFY_MESSAGE:
-            self._handle_client_notify_model(message)
-        elif message_type == MessageType.CLIENT_NOTIFY_EVALUATION:
-            self._handle_client_notify_evaluation(message)
-        elif message_type == MessageType.CLIENT_PING_MESSAGE:
-            message_utils.print_message(message)
-            self._worker_manager.update_worker_last_ping(message['headers']['client_id'])
-
-
-
-    def _response_connection(self, msg_received: dict):
+    def _respond_connection(self, msg_received: dict):
         message_utils.print_message(msg_received)
 
         session_id, reconnect = self._check_client_identity_when_joining(msg_received= message)
@@ -98,7 +83,7 @@ class Asyn2fServer(Server):
 
 
         # model info
-        exchange_at= self._config.model_exchange_at.to_dict()
+        exchange_at= self._config.model_config.model_exchange_at.to_dict()
 
 
         model_info: ModelInfo = ModelInfo(folder= self._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
@@ -109,11 +94,12 @@ class Asyn2fServer(Server):
         message_utils.print_message(model_info.to_dict())
 
         # storage info
-        storage_info: StorageInfo = StorageInfo(access_key= access_key, secret_key= secret_key, 
+        storage_info: StorageInfo = StorageInfo(type= self._config.cloud_storage.type,
+                                                access_key= access_key, secret_key= secret_key, 
                                                 bucket_name= self._config.cloud_storage.bucket_name,
                                                 region_name= self._config.cloud_storage.region_name)
         if not self._aws_s3:
-            storage_info.minio_endpoint_url = self._config.cloud_storage.minio.endpoint_url
+            storage_info.endpoint_url = self._config.cloud_storage.minio.endpoint_url
 
 
         # send message
@@ -172,6 +158,13 @@ class Asyn2fServer(Server):
         else:
             LOGGER.info(f"Up to testing global epoch {model_evaluation.version}. Best model is:")
             LOGGER.info(self._best_model)
+
+
+    def _handle_client_ping(self, message):
+        message_utils.print_message(message)
+        self._worker_manager.update_worker_last_ping(message['headers']['client_id'])
+
+    
 
 
     def _update(self, n_local_updates):

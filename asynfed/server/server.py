@@ -130,7 +130,19 @@ class Server(ABC):
     # function for queue consumer to call
     # handling when receiving message
     @abstractmethod
-    def _handle_when_receiving_message(self, message):
+    def _respond_connection(self, message):
+        pass
+
+    @abstractmethod
+    def _handle_client_notify_model(self, message):
+        pass
+
+    @abstractmethod
+    def _handle_client_notify_evaluation(self, message):
+        pass
+
+    @abstractmethod
+    def _handle_client_ping(self, message):
         pass
 
 
@@ -141,9 +153,24 @@ class Server(ABC):
         # update the timestamp of the client 
         # so that timestamp accross geographical regions could be consistent
         msg_received['headers']['timestamp'] = now
-        self._handle_when_receiving_message(message= msg_received)
+
+        # Format the datetime object as a string and return it
+        msg_type = msg_received['headers']['message_type']
+
+        if msg_type == MessageType.CLIENT_INIT_MESSAGE:
+            self._respond_connection(msg_received)
+        elif msg_type == MessageType.CLIENT_NOTIFY_MESSAGE:
+            self._handle_client_notify_model(msg_received)
+        elif msg_type == MessageType.CLIENT_NOTIFY_EVALUATION:
+            self._handle_client_notify_evaluation(msg_received)
+        elif msg_type == MessageType.CLIENT_PING_MESSAGE:
+            self._handle_client_ping(msg_received)
+            # message_utils.print_message(msg_received)
+            # self._worker_manager.update_worker_last_ping(msg_received['headers']['client_id'])
 
 
+
+    
     def _load_config_info(self, config: dict) -> ServerConfig:
         bucket_name = config['cloud_storage']['bucket_name']
         config['server_id'] = config.get("server_id") or f"server-{bucket_name}"
@@ -365,18 +392,18 @@ class Server(ABC):
 
     def _check_stop_conditions(self, info: dict):
         for k, v in info.items():
-            if k == "loss" and self._config.stop_conditions.min_loss is not None:
-                if v <= self._config.stop_conditions.min_loss:
-                    LOGGER.info(f"Stop condition: loss {v} <= {self._config.stop_conditions.min_loss}")
+            if k == "loss" and self._config.model_config.stop_conditions.min_loss is not None:
+                if v <= self._config.model_config.stop_conditions.min_loss:
+                    LOGGER.info(f"Stop condition: loss {v} <= {self._config.model_config.stop_conditions.min_loss}")
                     return True
-            elif k == "performance" and self._config.stop_conditions.max_performance is not None:
-                if v >= self._config.stop_conditions.max_performance:
-                    LOGGER.info(f"Stop condition: performance {v} >= {self._config.stop_conditions.max_performance}")
+            elif k == "performance" and self._config.model_config.stop_conditions.max_performance is not None:
+                if v >= self._config.model_config.stop_conditions.max_performance:
+                    LOGGER.info(f"Stop condition: performance {v} >= {self._config.model_config.stop_conditions.max_performance}")
                     return True
                 
-            elif k == "version" and self._config.stop_conditions.max_version is not None:
-                if v >= self._config.stop_conditions.max_version:
-                    LOGGER.info(f"Stop condition: version {v} >= {self._config.stop_conditions.max_version}")
+            elif k == "version" and self._config.model_config.stop_conditions.max_version is not None:
+                if v >= self._config.model_config.stop_conditions.max_version:
+                    LOGGER.info(f"Stop condition: version {v} >= {self._config.model_configstop_conditions.max_version}")
                     return True
 
 
