@@ -7,11 +7,11 @@ import pickle
 
 from time import sleep 
 
-from asynfed.commons.messages import Message
-from asynfed.commons.config import MessageType
+from asynfed.common.messages import Message
+from asynfed.common.config import MessageType
 
 
-from asynfed.commons.messages.client import ClientModelUpdate, NotifyEvaluation, TesterRequestStop
+from asynfed.common.messages.client import ClientModelUpdate, NotifyEvaluation, TesterRequestStop
 
 from asynfed.client import Client
 
@@ -24,24 +24,23 @@ LOGGER.setLevel(logging.INFO)
 
 # This is the proposed federated asynchronous training algorithm of our paper
 # More algorithms can be found at other files in this directory 
-class ClientAsyncFl(Client):
+class Asyn2fClient(Client):
+    '''
+    - model must be an instance of an inheritant of class ModelWrapper
+    - for train
+        - model.train_ds: require 
+        - model.test_ds: optional
+    - for tester: test_ds is required
+
+    - train_ds and test_ds must in a format of a list of several batches
+        each batch contain x, y
+    - detail instruction (use as reference) of how to create a tensorflow model 
+        is found at asynfed/client/tensorflow/tensorflow_framework
+    - user is freely decided to follow the sample
+        or create their own model in their own platform (pytorch,...)
+    '''
     def __init__(self, model, config: dict):
         super().__init__(model, config)
-        '''
-        - model must be an instance of an inheritant of class ModelWrapper
-        - for train
-            - model.train_ds: require 
-            - model.test_ds: optional
-        - for tester: test_ds is required
-
-        - train_ds and test_ds must in a format of a list of several batches
-            each batch contain x, y
-        - detail instruction (use as reference) of how to create a tensorflow model 
-            is found at asynfed/client/tensorflow/tensorflow_framework
-        - user is freely decided to follow the sample
-            or create their own model in their own platform (pytorch,...)
-        '''
-
 
 
     def _train(self):
@@ -189,7 +188,7 @@ class ClientAsyncFl(Client):
 
 
             # # check the stop conditions
-            # if performance > self._config.stop_conditions.expected_performance or loss < self._config.stop_conditions.expected_loss:
+            # if performance > self._config.model_config.stop_conditions.expected_performance or loss < self._config.model_config.stop_conditions.expected_loss:
             #     headers = self._create_headers(message_type= MessageType.CLIENT_NOTIFY_STOP)
             #     content = content=TesterRequestStop(self._global_model_name, performance, loss).to_dict()
             #     message = Message(headers= headers, content= content).to_json()
@@ -202,9 +201,13 @@ class ClientAsyncFl(Client):
             self._start_publish_new_local_update_thread()
             
         # Save weights locally after training
-        filename = f'{self._config.client_id}_v{self._local_epoch}.pkl'
+        # filename = f'{self._config.client_id}_v{self._local_epoch}.pkl'
+        filename = f'{self._local_epoch}.{self._file_extention}'
+        
         save_location = os.path.join(self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, filename)
-        remote_file_path = os.path.join("clients", self._config.client_id, filename)
+        # for the remote storage path, use forwawrd slash as the separator
+        # regardless of os
+        remote_file_path = f"{self._remote_upload_folder}/{filename}"
 
         self._local_model_update_info.update(weight_array= self._model.get_weights(), 
                                             filename= filename, local_weight_path= save_location, 
@@ -269,7 +272,7 @@ class ClientAsyncFl(Client):
 
 
     def _get_model_dim_ready(self):
-        if self._config.role == "train":
+        if self._config.role == "trainer":
             ds = self._model.train_ds
         else:
             ds = self._model.test_ds

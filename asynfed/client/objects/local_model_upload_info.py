@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from asynfed.commons.messages import MessageObject
+from asynfed.common.messages import MessageObject
 
 class LocalModelUpdateInfo(MessageObject):
     '''

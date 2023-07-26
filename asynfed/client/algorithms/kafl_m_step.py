@@ -8,11 +8,11 @@ import pickle
 
 from time import sleep 
 
-from asynfed.commons.messages import Message
-from asynfed.commons.config import MessageType
+from asynfed.common.messages import Message
+from asynfed.common.config import MessageType
 
 
-from asynfed.commons.messages.client import ClientModelUpdate, NotifyEvaluation, TesterRequestStop
+from asynfed.common.messages.client import ClientModelUpdate, NotifyEvaluation, TesterRequestStop
 
 from asynfed.client import Client
 
@@ -190,7 +190,7 @@ class KAFLMStep(Client):
 
 
             # # check the stop conditions
-            # if performance > self._config.stop_conditions.expected_performance or loss < self._config.stop_conditions.expected_loss:
+            # if performance > self._config.model_config.stop_conditions.expected_performance or loss < self._config.model_config.stop_conditions.expected_loss:
             #     headers = self._create_headers(message_type= MessageType.CLIENT_NOTIFY_STOP)
             #     content = content=TesterRequestStop(self._global_model_name, performance, loss).to_dict()
             #     message = Message(headers= headers, content= content).to_json()
@@ -224,7 +224,7 @@ class KAFLMStep(Client):
 
 
     def _get_model_dim_ready(self):
-        if self._config.role == "train":
+        if self._config.role == "trainer":
             ds = self._model.train_ds
         else:
             ds = self._model.test_ds

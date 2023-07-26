@@ -42,7 +42,7 @@ class TensorflowFramework(ModelWrapper):
 
         role = config['role']
 
-        if role == "train":
+        if role == "trainer":
             self.qod = config['dataset']['qod']
             self.epoch = config['training_params']['epoch']
             self.regularization = config['training_params']['regularization']

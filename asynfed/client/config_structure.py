@@ -1,6 +1,6 @@
-from asynfed.commons.messages import MessageObject
+from asynfed.common.messages import MessageObject
 
-from asynfed.commons.config import QueueConfig
+from asynfed.common.config import QueueConfig
 
 import uuid
 
@@ -46,7 +46,7 @@ class TestingParams(MessageObject):
 
 
 class ClientConfig(MessageObject):
-    def __init__(self, queue_exchange: str, client_id: str = "", role: str = "train", 
+    def __init__(self, queue_exchange: str, client_id: str = "", role: str = "trainer", 
                  gpu_index: int = 0, save_log: bool = True, tracking_point: int = None, 
                  download_attempt: int = 10, dataset: dict = None, stop_conditions: dict = None,
                  cleaning_config: dict = None, training_params: dict = None, testing_params: dict = None,

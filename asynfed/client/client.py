@@ -4,29 +4,29 @@ import logging
 from threading import Thread, Lock
 import uuid
 from time import sleep
-from abc import abstractmethod
+from abc import abstractmethod, ABC
+
 import re
 import pickle
 
-from asynfed.commons.messages import Message
+from asynfed.common.messages import Message
 
-from asynfed.commons.utils import AmqpConsumer, AmqpProducer
-import asynfed.commons.utils.time_ultils as time_utils
+from asynfed.common.utils import AmqpConsumer, AmqpProducer
+import asynfed.common.utils.time_ultils as time_utils
 
-from asynfed.commons.config import LocalStoragePath, MessageType, QueueConfig
-from asynfed.commons.messages.client import ClientInitConnection, DataDescription, SystemInfo, ResponseToPing
-from asynfed.commons.messages.client import ClientModelUpdate
-from asynfed.commons.messages.server import ServerModelUpdate
-
-
-from asynfed.commons.messages.server.server_response_to_init import ResponseToInit, StorageInfo
-import asynfed.commons.messages.utils as message_utils 
+from asynfed.common.config import LocalStoragePath, MessageType
+from asynfed.common.messages.client import ClientInitConnection, DataDescription, SystemInfo, ResponseToPing
+from asynfed.common.messages.client import ClientModelUpdate
+from asynfed.common.messages.server import ServerModelUpdate
 
 
-from .client_storage_connector import ClientStorageAWS, ClientStorageMinio
-from .model_wrapper import ModelWrapper
-from .client_config import ClientConfig
-from .local_model_upload_info import LocalModelUpdateInfo
+from asynfed.common.messages.server.server_response_to_init import ServerRespondToInit, StorageInfo
+import asynfed.common.messages as message_utils 
+
+
+from .objects import ModelWrapper, LocalModelUpdateInfo
+from .config_structure import ClientConfig
+from .storage_connector import ClientStorageAWS, ClientStorageMinio
 
 import concurrent.futures
 thread_pool_ref = concurrent.futures.ThreadPoolExecutor
@@ -39,7 +39,7 @@ LOGGER.setLevel(logging.INFO)
 lock = Lock()
 
 
-class Client(object):
+class Client(ABC):
     def __init__(self, model: ModelWrapper, config: dict):
         """
         config structure can be found at client_config.py file
@@ -313,7 +313,7 @@ class Client(object):
             self._delete_local_files(directory= self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, threshold= global_threshold)
 
             # -------- Client weight files cleaning -----------
-            if self._config.role == "train":
+            if self._config.role == "trainer":
                 local_threshold = self._local_epoch - self._config.cleaning_config.local_keep_version_num
                 self._delete_local_files(directory= self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, threshold= local_threshold)
 
@@ -343,29 +343,36 @@ class Client(object):
     def _handle_server_init_response(self, msg_received):
         LOGGER.info("Server Response to Init Message")
         message_utils.print_message(msg_received)
-
+        
         content = msg_received['content']
-        server_init_response: ResponseToInit = ResponseToInit(**content)
+        server_init_response: ServerRespondToInit = ServerRespondToInit(**content)
 
-        if server_init_response.reconnect:
+        session_id = msg_received['headers']['session_id']
+        reconnect = msg_received['headers']['reconnect']
+
+        if reconnect:
             LOGGER.info("=" * 40)
             LOGGER.info("Reconnect to server.")
             LOGGER.info("=" * 40)
 
-        self._config.session_id = server_init_response.session_id
+        self._config.session_id = session_id
 
 
         # get the exchange condition from server
-        self._min_acc = server_init_response.exchange_at.performance
-        self._min_epoch = server_init_response.exchange_at.epoch
+        self._min_acc = server_init_response.model_info.exchange_at.performance
+        self._min_epoch = server_init_response.model_info.exchange_at.epoch
 
+        self._remote_global_folder: str = f"{server_init_response.model_info.global_folder}/{server_init_response.model_info.name}"
+        # self._global_name: str = server_init_response.model_info.name
+        self._file_extention: str = server_init_response.model_info.file_extention
 
         # connect to cloud storage service provided by server
         storage_info: StorageInfo = server_init_response.storage_info
-        self._cloud_storage_type = storage_info.storage_type
+        self._cloud_storage_type = storage_info.type
+        self._remote_upload_folder: str = storage_info.client_upload_folder
 
 
-        if self._cloud_storage_type == "s3":
+        if self._cloud_storage_type == "aws_s3":
             self._storage_connector = ClientStorageAWS(storage_info)
         else:
 
@@ -401,12 +408,12 @@ class Client(object):
                 # update info in profile file
                 self._update_profile()
 
-                if self._config.role == "train":
+                if self._config.role == "trainer":
                     self._start_training_thread()
 
                 # for testing, do not need to start thread
                 # because tester just test whenever it receive new model 
-                elif self._config.role == "test":
+                elif self._config.role == "tester":
                     self._test()
 
                 if not os.path.exists(self._profile_file_name):
@@ -427,7 +434,7 @@ class Client(object):
         # check whether the client is chosen to engage in this training epoch
         # default status for tester is true
         is_chosen = True
-        if self._config.role == "train":
+        if self._config.role == "trainer":
             self._global_chosen_list = server_model_udpate.chosen_id
             is_chosen = self._config.client_id in self._global_chosen_list or not self._global_chosen_list
 
@@ -436,8 +443,7 @@ class Client(object):
                 # attempt to download the global model
                 # for cloud storage, always use forward slash
                 # regardless of os
-                remote_path = f'global-models/{server_model_udpate.global_model_name}'
-                # remote_path = os.path.join("global-models", server_model_udpate.global_model_name)
+                remote_path = f'{self._remote_global_folder}/{server_model_udpate.global_model.version}.{self._file_extention}'
                 local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, server_model_udpate.global_model_name)
 
                 file_exists = self._storage_connector.is_file_exists(file_path= remote_path)
@@ -469,11 +475,11 @@ class Client(object):
                 # print the content only when succesfully download new model
                 message_utils.print_message(server_model_udpate.to_dict())
 
-                if self._config.role == "test":
+                if self._config.role == "tester":
                     # test everytime receive new global model notify from server
                     self._test()
 
-                elif self._config.role == "train":
+                elif self._config.role == "trainer":
                     LOGGER.info(f"{self._config.client_id} is chosen to train for global model version {self._current_global_version}")
                     # update global info for merging process
                     self._global_model_update_data_size = server_model_udpate.global_model_update_data_size
