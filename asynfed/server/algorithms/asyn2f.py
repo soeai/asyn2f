@@ -1,6 +1,6 @@
 
 # Standard library imports
-from threading import Thread, Lock
+from threading import Lock
 from time import sleep
 import concurrent.futures
 import copy
@@ -9,21 +9,17 @@ import os
 import shutil
 import sys
 from typing import Dict
-import uuid
 
 # Third party imports
 from asynfed.common.config import MessageType
 from asynfed.common.messages import Message
-from asynfed.common.messages.client import ClientInitConnection, ClientModelUpdate, NotifyEvaluation, TesterRequestStop
-from asynfed.common.messages.server import ServerModelUpdate, PingToClient, ServerRequestStop
+from asynfed.common.messages.client import ClientModelUpdate, NotifyEvaluation, TesterRequestStop
+from asynfed.common.messages.server import ServerRequestStop
 from asynfed.common.messages.server.server_response_to_init import ServerRespondToInit, ModelInfo, StorageInfo
 import asynfed.common.messages as message_utils
 
 # Local imports
 from asynfed.server.objects import Worker
-
-
-
 from asynfed.server import Server
 
 
@@ -38,6 +34,9 @@ LOGGER.setLevel(logging.INFO)
 class Asyn2fServer(Server):
     def __init__(self, config: dict):
         super().__init__(config)
+        if not self._config.strategy.update_period or self._config.strategy.update_period == 0:
+            # constantly check for new udpate
+            self._config.strategy.update_period = 2
 
     def start(self):
         self._start_threads()
@@ -50,65 +49,18 @@ class Asyn2fServer(Server):
 
             with lock:
                 n_local_updates = len(self._worker_manager.get_completed_workers())
-            if n_local_updates < self._config.update_conditions.min_workers:
-                LOGGER.info(f'just {n_local_updates} update found. Do not reach the minimum number of workers required: {self._config.update_conditions.min_workers}. Sleep for {self._config.update_conditions.update_period} seconds...')
 
-                sleep(self._config.update_conditions.update_period)
+            if n_local_updates < self._config.strategy.m:
+                sleep(self._config.strategy.update_period)
 
             else:
                 try:
-                    LOGGER.info(f'Start update global model with {n_local_updates} local updates')
+                    LOGGER.info(f'Update condition is met. Start update global model with {n_local_updates} local updates')
                     self._update(n_local_updates)
                     self._publish_new_global_model()
 
                 except Exception as e:
                     raise e
-
-
-    def _update(self, n_local_updates):
-        if n_local_updates == 1:
-            LOGGER.info("Only one update from client, passing the model to all other client in the network...")
-            completed_worker: dict[str, Worker] = self._worker_manager.get_completed_workers()
-            self._pass_one_local_model(completed_worker)
-
-        else:
-            LOGGER.info("Aggregating process...")
-            completed_workers: dict[str, Worker] = self._worker_manager.get_completed_workers()
-            
-            # reset the state of worker in completed workers list
-            for w_id, worker in completed_workers.items():
-                worker.is_completed = False
-                # keep track of the latest local version of worker used for cleaning task
-                model_filename = worker.get_remote_weight_file_path().split(os.path.sep)[-1]
-                worker.update_local_version_used = self._get_model_version(model_filename)
-
-            # pass out a copy of completed worker to aggregating process
-            worker_list = copy.deepcopy(completed_workers)
-            self._strategy.aggregate(worker_list, self._cloud_storage, self._local_storage_path)
-
-
-
-    def _pass_one_local_model(self, completed_worker: Dict [str, Worker]):
-        for w_id, worker in completed_worker.items():
-            LOGGER.info(w_id)
-            self._strategy.avg_loss = worker.loss
-            self._strategy.avg_qod = worker.qod
-            self._strategy.global_model_update_data_size = worker.data_size
-            worker.is_completed = False
-
-            # download worker weight file
-            remote_weight_file = worker.get_remote_weight_file_path()
-            local_weight_file = worker.get_weight_file_path(local_model_root_folder= self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER)
-            self._cloud_storage.download(remote_file_path= remote_weight_file, 
-                                        local_file_path= local_weight_file)
-
-            # keep track of the latest local version of worker used for cleaning task
-            model_filename = local_weight_file.split(os.path.sep)[-1]
-            worker.update_local_version_used = self._get_model_version(model_filename)
-
-        # copy the worker model weight to the global model folder
-        save_location = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self._strategy.get_new_global_model_filename())
-        shutil.copy(local_weight_file, save_location)
 
 
     def _handle_when_receiving_message(self, message):
@@ -218,3 +170,49 @@ class Asyn2fServer(Server):
         else:
             LOGGER.info(f"Up to testing global epoch {model_evaluation.version}. Best model is:")
             LOGGER.info(self._best_model)
+
+
+    def _update(self, n_local_updates):
+        if n_local_updates == 1:
+            LOGGER.info("Only one update from client, passing the model to all other client in the network...")
+            completed_worker: dict[str, Worker] = self._worker_manager.get_completed_workers()
+            self._pass_one_local_model(completed_worker)
+
+        else:
+            LOGGER.info("Aggregating process...")
+            completed_workers: dict[str, Worker] = self._worker_manager.get_completed_workers()
+            
+            # reset the state of worker in completed workers list
+            for w_id, worker in completed_workers.items():
+                worker.is_completed = False
+                # keep track of the latest local version of worker used for cleaning task
+                model_filename = worker.get_remote_weight_file_path().split(os.path.sep)[-1]
+                worker.update_local_version_used = self._get_model_version(model_filename)
+
+            # pass out a copy of completed worker to aggregating process
+            worker_list = copy.deepcopy(completed_workers)
+            self._strategy.aggregate(worker_list, self._cloud_storage, self._local_storage_path)
+
+
+
+    def _pass_one_local_model(self, completed_worker: Dict [str, Worker]):
+        for w_id, worker in completed_worker.items():
+            LOGGER.info(w_id)
+            self._strategy.avg_loss = worker.loss
+            self._strategy.avg_qod = worker.qod
+            self._strategy.global_model_update_data_size = worker.data_size
+            worker.is_completed = False
+
+            # download worker weight file
+            remote_weight_file = worker.get_remote_weight_file_path()
+            local_weight_file = worker.get_weight_file_path(local_model_root_folder= self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER)
+            self._cloud_storage.download(remote_file_path= remote_weight_file, 
+                                        local_file_path= local_weight_file)
+
+            # keep track of the latest local version of worker used for cleaning task
+            model_filename = local_weight_file.split(os.path.sep)[-1]
+            worker.update_local_version_used = self._get_model_version(model_filename)
+
+        # copy the worker model weight to the global model folder
+        save_location = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self._strategy.get_new_global_model_filename())
+        shutil.copy(local_weight_file, save_location)
