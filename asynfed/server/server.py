@@ -8,10 +8,7 @@ import copy
 import json
 import logging
 import os
-import re
-import shutil
 import sys
-from typing import Dict
 import uuid
 from abc import abstractmethod, ABC
 
@@ -22,15 +19,16 @@ from asynfed.common.messages import Message
 from asynfed.common.messages.client import ClientInitConnection, ClientModelUpdate, NotifyEvaluation, TesterRequestStop
 from asynfed.common.messages.server import GlobalModel, ServerModelUpdate, PingToClient, ServerRequestStop
 from asynfed.common.messages.server.server_response_to_init import ModelInfo, StorageInfo 
-from asynfed.common.utils import AmqpConsumer, AmqpProducer
-import asynfed.common.messages as message_utils
-from asynfed.common.messages import ExchangeMessage
+from asynfed.common.queue_connectors import AmqpConsumer, AmqpProducer
 
+from asynfed.common.messages import ExchangeMessage
+import asynfed.common.messages as message_utils
 import asynfed.common.utils.time_ultils as time_utils
+import asynfed.common.utils.storage_cleaner as storage_cleaner
 
 # Local imports
 from .config_structure import ServerConfig
-from .objects import Worker, BestModel
+from .objects import BestModel, Worker
 
 from .monitor.influxdb import InfluxDB
 from .strategies import Strategy, Asyn2F, KAFLMStep
@@ -61,8 +59,12 @@ class Server(ABC):
         # load config info 
         self._config: ServerConfig = self._load_config_info(config= config)
         # get local and cloud storage path
+        # global_model structure: {global_folder}/{model_name}/{version}.{file_extension}
+
+        global_model_root_folder: str = f"{self._config.cloud_storage.global_model_root_folder}/{self._config.model_config.name}"
         self._local_storage_path: LocalStoragePath = self._get_local_storage_path()
-        self._cloud_storage_path: CloudStoragePath = CloudStoragePath()
+        self._cloud_storage_path: CloudStoragePath = CloudStoragePath(global_model_root_folder= global_model_root_folder,
+                                                    client_model_root_folder= self._config.cloud_storage.client_model_root_folder,)
 
         LOGGER.info("All configs on server")
         message_utils.print_message(self._config.to_dict())
@@ -82,6 +84,7 @@ class Server(ABC):
         # self._influxdb: InfluxDB = InfluxDB(self._config['influxdb'])
 
         # queue
+        # put self in to handle message from client (on_message_received)
         self._queue_consumer: AmqpConsumer = AmqpConsumer(self._config.queue_consumer, self)
         self._queue_producer: AmqpProducer = AmqpProducer(self._config.queue_producer)
 
@@ -130,36 +133,23 @@ class Server(ABC):
     def _handle_when_receiving_message(self, message):
         pass
 
-    def _set_up_strategy(self) -> Strategy:
-        strategy = self._config.strategy.name.lower()
-        model_name = self._config.model_name
-        strategy_object: Strategy
-        if strategy == "asyn2f":
-            strategy_object = Asyn2F(model_name= model_name)
-        elif strategy == "kafl":
-            strategy_object = KAFLMStep(model_name= model_name)
-        else:
-            LOGGER.info("*" * 20)
-            LOGGER.info(f"The framework has not yet support the strategy you choose ({strategy})")
-            LOGGER.info("Please choose either Asyn2F, KALMSTEP, or FedAvg (not case sensitive)")
-            LOGGER.info("*" * 20)
-            sys.exit(0)
-        return strategy_object
-    
 
     def on_message_received(self, ch, method, props, body):
         msg_received = message_utils.deserialize(body.decode('utf-8'))
         now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        # when the server receive the message from client
+        # update the timestamp of the client 
+        # so that timestamp accross geographical regions could be consistent
         msg_received['headers']['timestamp'] = now
         self._handle_when_receiving_message(message= msg_received)
-
 
 
     def _load_config_info(self, config: dict) -> ServerConfig:
         bucket_name = config['cloud_storage']['bucket_name']
         config['server_id'] = config.get("server_id") or f"server-{bucket_name}"
         config['server_id'] = f"{config['strategy']['name']}-{config['server_id']}"
-        config['model_name'] = config['model_name'] or config['server_id']
+        
+        config['model_config']['name'] = config['model_config']['name'] or config['server_id']
 
         # for multiple user to run on the same queue, 
         # set bucket name to be the queue name
@@ -177,6 +167,45 @@ class Server(ABC):
             config['queue_producer']['queue_exchange'] = queue_exchange
 
         return ServerConfig(**config)
+
+
+    def _check_client_identity_when_joining(self, msg_received: dict):
+
+        content: dict = msg_received['content']
+        client_init_message: ClientInitConnection = ClientInitConnection(**content)
+
+        client_id: str = msg_received['headers']['client_id']
+        session_id: str = msg_received['headers']['session_id']
+
+        if session_id in self._worker_manager.list_sessions():
+            reconnect = True
+            worker = self._worker_manager.get_worker_by_id(client_id)
+        else:
+            session_id = str(uuid.uuid4())
+            # new entry
+            reconnect = False
+            access_key, secret_key = self._cloud_storage.get_client_key(client_id)
+            worker = Worker(
+                    session_id=session_id,
+                    worker_id=client_id,
+                    sys_info=client_init_message.system_info.to_dict(),
+                    data_size=client_init_message.data_description.size,
+                    qod=client_init_message.data_description.qod,
+                    cloud_access_key= access_key, cloud_secret_key= secret_key
+                    )
+
+            # add to the worker manager 
+            self._worker_manager.add_worker(worker)
+
+            # create a local folder name to store weight file of worker
+            client_folder_name = os.path.join(self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, worker.worker_id)
+            if not os.path.exists(client_folder_name):
+                os.makedirs(client_folder_name)
+
+        LOGGER.info("*" * 20)
+        LOGGER.info(worker)
+        LOGGER.info("*" * 20)
+        return session_id, reconnect
 
 
     def _get_local_storage_path(self) -> LocalStoragePath:
@@ -222,7 +251,7 @@ class Server(ABC):
             LOGGER.info("-" * 40)
 
 
-    def _set_up_cloud_storage(self):
+    def _set_up_cloud_storage(self) -> ServerStorageBoto3:
         self._aws_s3 = False
         if self._config.cloud_storage.type == "aws_s3":
             self._aws_s3 = True
@@ -245,9 +274,31 @@ class Server(ABC):
             cloud_storage: ServerStorageAWS = ServerStorageAWS(cloud_storage_info)
         else:
             cloud_storage: ServerStorageMinio = ServerStorageMinio(cloud_storage_info)
-
+            cloud_storage.set_client_key(client_access_key= cloud_config.client_access_key,
+                                         client_secret_key= cloud_config.client_secret_key)
+            
+        cloud_storage.load_model_config(global_model_root_folder= self._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER,
+                                        initial_model_path= self._config.model_config.initial_model_path,
+                                        file_extension= self._config.model_config.file_extension
+                                        )
         return cloud_storage
 
+    def _set_up_strategy(self) -> Strategy:
+        strategy = self._config.strategy.name.lower()
+        model_name = self._config.model_name
+        strategy_object: Strategy
+        if strategy == "asyn2f":
+            strategy_object = Asyn2F(model_name= model_name, file_extension= self._config.model_config.file_extension)
+        elif strategy == "kafl":
+            strategy_object = KAFLMStep(model_name= model_name, file_extension= self._config.model_config.file_extension)
+        else:
+            LOGGER.info("*" * 20)
+            LOGGER.info(f"The framework has not yet support the strategy you choose ({strategy})")
+            LOGGER.info("Please choose either Asyn2F, KALMSTEP, or FedAvg (not case sensitive)")
+            LOGGER.info("*" * 20)
+            sys.exit(0)
+        return strategy_object
+    
 
     def _start_consumer(self):
         self._queue_consumer.start()
@@ -276,21 +327,27 @@ class Server(ABC):
 
             if self._best_model.model_name != "":
                 best_model_name = self._best_model.model_name
-                best_global_model_version = self._get_model_version(best_model_name)
+                best_global_model_version = self._strategy.extract_model_version(best_model_name)
             else:
                 best_global_model_version = None
             
             # delete remote files
-            self._delete_remote_files(global_folder= True, threshold= global_threshold, best_version= best_global_model_version)
+            storage_cleaner.delete_remote_files(cloud_storage= self._cloud_storage,
+                                    folder_path= self._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER,
+                                    threshold= global_threshold, best_version= best_global_model_version,
+                                    file_extension= self._config.model_config.file_extension)
+            
             # delete local files
-            self._delete_local_files(directory= self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, threshold= global_threshold, 
-                                     best_version= best_global_model_version)
+            storage_cleaner.delete_local_files(folder_path= self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
+                                               threshold= global_threshold, best_version= best_global_model_version, 
+                                               file_extension= self._config.model_config.file_extension)
+            
             # -------- Global Weight File Cleaning ------------ 
 
-            # -------- Client weight files cleaning -----------
-            # workers = self._worker_manager.get_all_worker()
 
+            # -------- Client weight files cleaning -----------
             current_workers = self._worker_manager.get_all_worker()
+            # get a deep copy of the list of current worker in the framework
             workers = copy.deepcopy(current_workers)
             
             for w_id, worker in workers.items():
@@ -301,7 +358,8 @@ class Server(ABC):
 
                 # delete local files
                 local_directory = os.path.join(self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, w_id)
-                self._delete_local_files(directory= local_directory, threshold= client_threshold)
+                storage_cleaner.delete_local_files(folder_path= local_directory, threshold= client_threshold,
+                                                   file_extension= self._config.model_config.file_extension)
             # -------- Client weight files cleaning -----------
 
 

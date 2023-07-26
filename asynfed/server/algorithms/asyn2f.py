@@ -89,8 +89,8 @@ class Asyn2fServer(Server):
         # notify newest global model to worker
         model_url = self._cloud_storage.get_newest_global_model()
         # always use forward slash for the cloud storage regardless os
-        global_model_name = model_url.split("/")[-1]
-        model_version = self._get_model_version(global_model_name)
+        model_version = self._strategy.extract_model_version(folder_path= model_url)
+        
         # update the current version for the strategy 
         # if the server is just on the first round
         if self._strategy.current_version == None:
@@ -99,9 +99,11 @@ class Asyn2fServer(Server):
 
         # model info
         exchange_at= self._config.model_exchange_at.to_dict()
-        model_info: ModelInfo = ModelInfo(folder= "global-models", name= self._config.model_name,
-                                          version=self._strategy.current_version,
-                                          file_extention= "pkl", exchange_at= exchange_at)
+
+
+        model_info: ModelInfo = ModelInfo(folder= self._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
+                                          name= self._config.model_name, version=self._strategy.current_version,
+                                          file_extention= self._strategy.file_extension, exchange_at= exchange_at)
         
         # check the correctness of message when sending
         message_utils.print_message(model_info.to_dict())
@@ -151,7 +153,7 @@ class Asyn2fServer(Server):
             self._best_model.update(model_evaluation)
             self._write_record()
 
-        model_evaluation.version = self._get_model_version(model_evaluation.remote_storage_path)
+        model_evaluation.version = self._strategy.extract_model_version(model_evaluation.remote_storage_path)
         model_evaluation_dict = model_evaluation.to_dict()
 
         if self._check_stop_conditions(model_evaluation_dict):
@@ -187,7 +189,7 @@ class Asyn2fServer(Server):
                 worker.is_completed = False
                 # keep track of the latest local version of worker used for cleaning task
                 model_filename = worker.get_remote_weight_file_path().split(os.path.sep)[-1]
-                worker.update_local_version_used = self._get_model_version(model_filename)
+                worker.update_local_version_used = self._strategy.extract_model_version(model_filename)
 
             # pass out a copy of completed worker to aggregating process
             worker_list = copy.deepcopy(completed_workers)
@@ -211,7 +213,7 @@ class Asyn2fServer(Server):
 
             # keep track of the latest local version of worker used for cleaning task
             model_filename = local_weight_file.split(os.path.sep)[-1]
-            worker.update_local_version_used = self._get_model_version(model_filename)
+            worker.update_local_version_used = self._strategy.extract_model_version(model_filename)
 
         # copy the worker model weight to the global model folder
         save_location = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self._strategy.get_new_global_model_filename())
