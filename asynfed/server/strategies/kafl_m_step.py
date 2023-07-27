@@ -16,13 +16,13 @@ LOGGER = logging.getLogger(__name__)
 
 class KAFLMStepStrategy(Strategy):
 
-    def __init__(self, model_name: str, file_extension: str, m: int = 3, agg_hyperparam: float = 0.8):
+    def __init__(self, server, model_name: str, file_extension: str, m: int = 3, agg_hyperparam: float = 0.8):
         """
         Args:
             m (int, optional): Number of workers to aggregate. Defaults to 3.
             agg_hyperparam (float, optional): Aggregation hyperparameter. Defaults to 0.8.
         """
-        super().__init__(model_name= model_name, file_extension= file_extension)
+        super().__init__(server, model_name= model_name, file_extension= file_extension)
         self.m = m 
         self.agg_hyperparam = agg_hyperparam 
 

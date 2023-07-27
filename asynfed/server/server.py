@@ -10,7 +10,7 @@ import logging
 import os
 import sys
 import uuid
-from abc import abstractmethod, ABC
+# from abc import abstractmethod, ABC
 
 
 # Third party imports
@@ -43,7 +43,8 @@ LOGGER = logging.getLogger(__name__)
 logging.getLogger("pika").setLevel(logging.WARNING)
 LOGGER.setLevel(logging.INFO)
 
-class Server(ABC):
+# class Server(ABC):
+class Server(object):
     """
     - This is the abstract class for server, we delegate the stop condition to be decided by user.
     - Extend this Server class and implement the stop condition methods.
@@ -122,27 +123,9 @@ class Server(ABC):
         self._clean_storage_thread.start()
 
 
-    @abstractmethod
     def start(self):
-        pass
+        self._strategy.start_server()
 
-    # function for queue consumer to call
-    # handling when receiving message
-    @abstractmethod
-    def _respond_connection(self, message):
-        pass
-
-    @abstractmethod
-    def _handle_client_notify_model(self, message):
-        pass
-
-    @abstractmethod
-    def _handle_client_notify_evaluation(self, message):
-        pass
-
-    @abstractmethod
-    def _handle_client_ping(self, message):
-        pass
 
 
     def on_message_received(self, ch, method, props, body):
@@ -167,6 +150,19 @@ class Server(ABC):
             # message_utils.print_message(msg_received)
             # self._worker_manager.update_worker_last_ping(msg_received['headers']['client_id'])
 
+    # function for queue consumer to call
+    # handling when receiving message
+    def _respond_connection(self, message):
+        self._strategy.respond_connection(message= message)
+
+    def _handle_client_notify_model(self, message):
+        self._strategy.handle_client_notify_model(message= message)
+
+    def _handle_client_notify_evaluation(self, message):
+        self._strategy.handle_client_notify_evaluation(message= message)
+
+    def _handle_client_ping(self, message):
+        self._strategy.handle_client_ping(message= message)
 
 
     
@@ -265,13 +261,13 @@ class Server(ABC):
             global_model = GlobalModel(version= self._strategy.current_version,
                                        total_data_size= self._strategy.global_model_update_data_size,
                                        avg_loss= self._strategy.avg_loss, avg_qod= self._strategy.avg_qod)
-            # global_model = GlobalModel(name= self._strategy.model_name, version= self._strategy.current_version,
-            #                            total_data_size= self._strategy.global_model_update_data_size,
-            #                            avg_loss= self._strategy.avg_loss, avg_qod= self._strategy.avg_qod)
+
 
             server_model_update: ServerModelUpdate = ServerModelUpdate(worker_id=[], global_model= global_model.to_dict())
             
+
             message = ExchangeMessage(headers= headers, content= server_model_update).to_json()
+
 
             self._queue_producer.send_data(message)
             
@@ -318,13 +314,15 @@ class Server(ABC):
         model_name = self._config.model_config.name
         strategy_object: Strategy
         if strategy == "asyn2f":
-            strategy_object = Asyn2fStrategy(model_name= model_name, file_extension= self._config.model_config.file_extension)
+            strategy_object = Asyn2fStrategy(server= self, model_name= model_name, file_extension= self._config.model_config.file_extension,
+                                             m = self._config.strategy.m)
         elif strategy == "kafl":
-            strategy_object = KAFLMStepStrategy(model_name= model_name, file_extension= self._config.model_config.file_extension)
+            strategy_object = KAFLMStepStrategy(server= self, model_name= model_name, file_extension= self._config.model_config.file_extension,
+                                                m = self._config.strategy.m)
         else:
             LOGGER.info("*" * 20)
             LOGGER.info(f"The framework has not yet support the strategy you choose ({strategy})")
-            LOGGER.info("Please choose either Asyn2F, KALMSTEP, or FedAvg (not case sensitive)")
+            LOGGER.info("Please choose either Asyn2F, KAFL, or FedAvg (not case sensitive)")
             LOGGER.info("*" * 20)
             sys.exit(0)
         return strategy_object

@@ -12,13 +12,18 @@ from asynfed.server.storage_connectors.boto3 import ServerStorageBoto3
 import logging
 LOGGER = logging.getLogger(__name__)
 
+# from asynfed.server import Server
 
 class Strategy(ABC):
     """
     This here the Interface of strategy, follow the strategy design pattern.
     Any new strategy will follow this interface. 
     """
-    def __init__(self, model_name: str, file_extension: str = "pkl"):
+    # def __init__(self, server: Server, model_name: str, file_extension: str = "pkl"):
+    def __init__(self, server, model_name: str, file_extension: str = "pkl"):
+        
+        self._server = server
+
         self.model_name = model_name
         self.file_extension = file_extension
         self.current_version: int = None
@@ -37,6 +42,30 @@ class Strategy(ABC):
     def get_new_global_model_filename(self) -> str:
         # "23.pkl"
         return f"{self.current_version + 1}.{self.file_extension}"
+
+
+    # strategy also
+    # handle the flow of server
+    # to get the behavior that they want
+    @abstractmethod
+    def start_server(self):
+        pass
+
+    @abstractmethod
+    def respond_connection(self, message):
+        pass
+
+    @abstractmethod
+    def handle_client_notify_model(self, message):
+        pass
+
+    @abstractmethod
+    def handle_client_notify_evaluation(self, message):
+        pass
+
+    @abstractmethod
+    def handle_client_ping(self, message):
+        pass
 
 
     @abstractmethod
