@@ -12,7 +12,7 @@ from typing import Dict
 
 # Third party imports
 from asynfed.common.config import MessageType
-from asynfed.common.messages import Message
+from asynfed.common.messages import ExchangeMessage
 from asynfed.common.messages.client import ClientModelUpdate, NotifyEvaluation, TesterRequestStop
 from asynfed.common.messages.server import ServerRequestStop
 from asynfed.common.messages.server.server_response_to_init import ServerRespondToInit, ModelInfo, StorageInfo
@@ -86,18 +86,20 @@ class Asyn2fServer(Server):
         exchange_at= self._config.model_config.model_exchange_at.to_dict()
 
 
-        model_info: ModelInfo = ModelInfo(folder= self._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
+        model_info: ModelInfo = ModelInfo(global_folder= self._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
                                           name= self._config.model_name, version=self._strategy.current_version,
-                                          file_extention= self._strategy.file_extension, exchange_at= exchange_at)
+                                          file_extension= self._strategy.file_extension, exchange_at= exchange_at)
         
         # check the correctness of message when sending
         message_utils.print_message(model_info.to_dict())
 
+        client_folder = f"{self._cloud_storage_path.CLIENT_MODEL_ROOT_FOLDER}/{client_id}"
         # storage info
         storage_info: StorageInfo = StorageInfo(type= self._config.cloud_storage.type,
                                                 access_key= access_key, secret_key= secret_key, 
                                                 bucket_name= self._config.cloud_storage.bucket_name,
-                                                region_name= self._config.cloud_storage.region_name)
+                                                region_name= self._config.cloud_storage.region_name,
+                                                client_upload_folder= client_folder)
         if not self._aws_s3:
             storage_info.endpoint_url = self._config.cloud_storage.minio.endpoint_url
 
@@ -113,7 +115,7 @@ class Asyn2fServer(Server):
         
 
         message_utils.print_message(response_to_init.to_dict())
-        message= Message(headers= headers, content= response_to_init.to_dict()).to_json()
+        message= ExchangeMessage(headers= headers, content= response_to_init.to_dict()).to_json()
         self._queue_producer.send_data(message)
 
 
@@ -146,7 +148,7 @@ class Asyn2fServer(Server):
             headers: dict = self._create_headers(message_type= MessageType.SERVER_STOP_TRAINING)
             require_to_stop: ServerRequestStop = ServerRequestStop()
 
-            message = Message(headers= headers, content= require_to_stop.to_dict()).to_json()
+            message = ExchangeMessage(headers= headers, content= require_to_stop.to_dict()).to_json()
             self._queue_producer.send_data(message)
             LOGGER.info("=" * 50)
             LOGGER.info("Stop condition met. Log out best model")

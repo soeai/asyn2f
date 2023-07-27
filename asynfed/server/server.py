@@ -31,7 +31,7 @@ from .config_structure import ServerConfig
 from .objects import BestModel, Worker
 
 from .monitor.influxdb import InfluxDB
-from .strategies import Strategy, Asyn2F, KAFLMStep
+from .strategies import Strategy, Asyn2fStrategy, KAFLMStepStrategy
 from .worker_manager import WorkerManager
 from .storage_connector import ServerStorageBoto3, ServerStorageAWS, ServerStorageMinio
 
@@ -173,8 +173,9 @@ class Server(ABC):
     
     def _load_config_info(self, config: dict) -> ServerConfig:
         bucket_name = config['cloud_storage']['bucket_name']
+        strategy = config['strategy']['name']
         config['server_id'] = config.get("server_id") or f"server-{bucket_name}"
-        config['server_id'] = f"{config['strategy']['name']}-{config['server_id']}"
+        config['server_id'] = f"{strategy}-{config['server_id']}"
         
         config['model_config']['name'] = config['model_config']['name'] or config['server_id']
 
@@ -182,7 +183,7 @@ class Server(ABC):
         # set bucket name to be the queue name
         # and also the queue exchange name
         # user may already set in the run file, but just to make sure that it is set
-        queue_exchange = bucket_name
+        queue_exchange = f"{bucket_name}"
         server_consume_queue_name =  f"server-listen-queue-{queue_exchange}"
         server_publish_queue_name = f"server-publish-queue-{queue_exchange}"
 
@@ -262,9 +263,12 @@ class Server(ABC):
         if upload_success:
             headers: dict = self._create_headers(message_type= MessageType.SERVER_NOTIFY_MESSAGE)
 
-            global_model = GlobalModel(name= self._strategy.model_name, version= self._strategy.current_version,
+            global_model = GlobalModel(version= self._strategy.current_version,
                                        total_data_size= self._strategy.global_model_update_data_size,
                                        avg_loss= self._strategy.avg_loss, avg_qod= self._strategy.avg_qod)
+            # global_model = GlobalModel(name= self._strategy.model_name, version= self._strategy.current_version,
+            #                            total_data_size= self._strategy.global_model_update_data_size,
+            #                            avg_loss= self._strategy.avg_loss, avg_qod= self._strategy.avg_qod)
 
             server_model_update: ServerModelUpdate = ServerModelUpdate(worker_id=[], global_model= global_model.to_dict())
             
@@ -315,9 +319,9 @@ class Server(ABC):
         model_name = self._config.model_name
         strategy_object: Strategy
         if strategy == "asyn2f":
-            strategy_object = Asyn2F(model_name= model_name, file_extension= self._config.model_config.file_extension)
+            strategy_object = Asyn2fStrategy(model_name= model_name, file_extension= self._config.model_config.file_extension)
         elif strategy == "kafl":
-            strategy_object = KAFLMStep(model_name= model_name, file_extension= self._config.model_config.file_extension)
+            strategy_object = KAFLMStepStrategy(model_name= model_name, file_extension= self._config.model_config.file_extension)
         else:
             LOGGER.info("*" * 20)
             LOGGER.info(f"The framework has not yet support the strategy you choose ({strategy})")
@@ -337,7 +341,7 @@ class Server(ABC):
                 LOGGER.info(f'Ping to client {client_id}')
                 headers: dict = self._create_headers(message_type= MessageType.SERVER_PING_TO_CLIENT)
                 pint_to_client: PingToClient = PingToClient(client_id= client_id)
-                message = Message(headers= headers, content= pint_to_client.to_dict()).to_json()
+                message = ExchangeMessage(headers= headers, content= pint_to_client.to_dict()).to_json()
                 self._queue_producer.send_data(message)
             sleep(self._config.ping_period)
 

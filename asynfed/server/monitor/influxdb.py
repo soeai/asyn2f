@@ -1,7 +1,7 @@
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-from asynfed.commons.messages.client import ClientModelUpdate
+from asynfed.common.messages.client import ClientModelUpdate
 
 import logging
 LOGGER = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ class InfluxDB():
             "url": "http://localhost:8086",
             "token": "",
             "org": "ttu",
-            "bucket_name": "test",
+            "bucket_name": "tester",
         }
         """
         self.client = InfluxDBClient(url=config['url'], token=config['token'], org=config['org'])

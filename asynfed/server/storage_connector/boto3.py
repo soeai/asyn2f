@@ -11,7 +11,7 @@ from time import sleep
 LOGGER = logging.getLogger(__name__)
 
 from asynfed.common.messages.server.server_response_to_init import StorageInfo
-from asynfed.common.storage_connector import Boto3Connector
+from asynfed.common.storage_connectors import Boto3Connector
 
 class ServerStorageBoto3(Boto3Connector):
     def __init__(self, storage_info: StorageInfo, parent= None):
@@ -20,7 +20,7 @@ class ServerStorageBoto3(Boto3Connector):
 
 
     @abstractmethod
-    def get_client_key(self, worker_id: str):
+    def get_client_key(self):
         pass
 
     # @abstractmethod
@@ -34,7 +34,7 @@ class ServerStorageBoto3(Boto3Connector):
                     Bucket=self._bucket_name,
                 )            
                 logging.info(f"Created bucket {self._bucket_name}")
-                self._s3.put_object(Bucket=self._bucket_name, Key='global-models/')
+                # self._s3.put_object(Bucket=self._bucket_name, Key= f'{self._global_model_root_folder}/')
 
             except Exception as e:
                 if 'BucketAlreadyOwnedByYou' in str(e):
@@ -52,13 +52,13 @@ class ServerStorageBoto3(Boto3Connector):
 
  
     def get_newest_global_model(self) -> str:
-        # get the newest object in the global-models bucket
-        objects = self._s3.list_objects_v2(Bucket=self._bucket_name, Prefix='global-models/', Delimiter='/')['Contents']
+        # get the newest object in the global folders inside the bucket
+        objects = self._s3.list_objects_v2(Bucket=self._bucket_name, Prefix= self._global_model_root_folder, Delimiter='/')['Contents']
         # Sort the list of objects by LastModified in descending order
         sorted_objects = sorted(objects, key=lambda x: x['LastModified'], reverse=True)
 
         try:
-            if sorted_objects[0]['Key'] == 'global-models/':
+            if sorted_objects[0]['Key'] == self._global_model_root_folder:
                 LOGGER.info(sorted_objects)
                 return sorted_objects[1]['Key']
             return sorted_objects[0]['Key']
@@ -68,38 +68,39 @@ class ServerStorageBoto3(Boto3Connector):
             LOGGER.info("NO MODEL EXIST YET")
             LOGGER.info("Uploading initial model...")
             current_folder = os.getcwd()
-            weight_file_name = "testweight_v1.pkl"
-            local_weight_path = os.path.join(current_folder, weight_file_name)
-            remote_weight_path = os.path.join("global-models", weight_file_name)
+
+            local_weight_path = os.path.join(current_folder, self._initial_model_path)
+            remote_weight_path = os.path.join(self._global_model_root_folder, f"1.{self._file_extension}")
+
             self.upload(local_file_path= local_weight_path, remote_file_path= remote_weight_path)
-            LOGGER.info("Upload initial model succesfully")
+            LOGGER.info(f"Upload initial model {remote_weight_path} succesfully")
             LOGGER.info("*" * 20)
             return remote_weight_path
 
 
+    def load_model_config(self, global_model_root_folder: str, initial_model_path: str, 
+                          file_extension: str):
+        self._global_model_root_folder = global_model_root_folder
+        self._s3.put_object(Bucket=self._bucket_name, Key= f'{global_model_root_folder}/')
 
-    # def list_files(self, parent_folder: str = "clients", target_folder: str = ''):
-    def list_files(self, parent_folder: str = 'client', target_folder: str = ''):
-        """Lists all files in the specified folder and its subfolders within the MinIO bucket"""
+        self._initial_model_path = initial_model_path
+        self._file_extension = file_extension
+
+
+    def list_files(self, folder_path):
+        """Lists all files in the specified client_id folder within the MinIO bucket"""
         try:
-            response = self._s3.list_objects_v2(Bucket=self._bucket_name, Prefix=parent_folder, Delimiter='/')
+            response = self._s3.list_objects_v2(Bucket=self._bucket_name, Prefix=folder_path, Delimiter='/')
             files = []
 
             if 'Contents' in response:
-                files += [file['Key'] for file in response['Contents'] if target_folder in file['Key']]
+                files += [file['Key'].replace(folder_path, '') for file in response['Contents']]
 
-            if 'CommonPrefixes' in response:
-                subfolders = [prefix['Prefix'] for prefix in response['CommonPrefixes']]
-                for subfolder in subfolders:
-                    files += self.list_files(subfolder, target_folder=target_folder)
-
-
-            # remove the target folder path
-            files = [file for file in files if len(file.split("/")[-1]) != 0]
             return files
         except Exception as e:
             logging.error(e)
             return []
+
 
         
     def delete_files(self, file_keys: List[str]):

@@ -7,7 +7,7 @@ from time import sleep
 import pickle
 from typing import Dict
 from asynfed.server.objects import Worker
-from asynfed.server.storage_connector.boto3_storage_connector import ServerStorageBoto3
+from asynfed.server.storage_connector.boto3 import ServerStorageBoto3
 
 import logging
 LOGGER = logging.getLogger(__name__)

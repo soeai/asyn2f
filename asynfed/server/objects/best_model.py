@@ -1,4 +1,4 @@
-from asynfed.commons.messages.client import NotifyEvaluation
+from asynfed.common.messages.client import NotifyEvaluation
 
 
 class BestModel:

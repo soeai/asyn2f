@@ -3,13 +3,12 @@ from typing import Dict, List
 import os.path
 
 import numpy as np
-from numpy import ndarray
 import pickle
 
 
 from asynfed.server.objects import Worker
-from asynfed.server.server_boto3_storage_connector import ServerStorageBoto3
-from asynfed.commons.config import LocalStoragePath
+from asynfed.server.storage_connector.boto3 import ServerStorageBoto3
+from asynfed.common.config import LocalStoragePath
 
 from .strategy import Strategy
 
@@ -17,10 +16,11 @@ from .strategy import Strategy
 import logging
 LOGGER = logging.getLogger(__name__)
 
-class AsynFL(Strategy):
+class Asyn2fStrategy(Strategy):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, model_name: str, file_extension: str, m: int = 3):
+        super().__init__(model_name= model_name, file_extension= file_extension)
+        self.m = m
 
     def select_client(self, all_clients) -> List [str]:
         return all_clients
@@ -45,11 +45,6 @@ class AsynFL(Strategy):
 
         LOGGER.info(f"After checking for validity of remote file, the number of workers joining the aggregating process is now {len(completed_workers)}")
         LOGGER.info("*" * 20)
-        # # log out worker info
-        # for w_id, worker in completed_workers.items():
-        #     LOGGER.info(f"{worker.worker_id} qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
-        # LOGGER.info("*" * 20)
-
 
         # increment the current version
         self.update_version = self.current_version + 1
@@ -86,16 +81,6 @@ class AsynFL(Strategy):
         # aggregating to get the new global weights
         merged_weights = None
         for w_id, worker in completed_workers.items():
-            # # download only when aggregating
-            # remote_weight_file = worker.get_remote_weight_file_path()
-            # local_weight_file = worker.get_weight_file_path(local_storage_path.LOCAL_MODEL_ROOT_FOLDER)
-
-            # cloud_storage.download(remote_file_path= remote_weight_file, 
-            #                             local_file_path= local_weight_file)
-            
-            # # Load the weight from file
-            # worker_weights = self._get_model_weights(local_weight_file)
-
             # initialized zero array if merged weight is None
             if merged_weights is None:
                 # choose dtype = float 32 to reduce the size of the weight file
@@ -142,7 +127,6 @@ class AsynFL(Strategy):
             file_exists = cloud_storage.is_file_exists(file_path= remote_path)
             
             if file_exists:
-                # valid_completed_workers[w_id] = worker
                 LOGGER.info(f"{remote_path} exists in the cloud. Begin to download shortly")
                 local_path = worker.get_weight_file_path(local_model_root_folder= local_model_root_folder)
                 download_success = self._attempt_to_download(cloud_storage= cloud_storage, 

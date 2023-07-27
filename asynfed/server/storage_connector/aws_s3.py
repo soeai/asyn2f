@@ -4,7 +4,7 @@ import json
 
 
 from asynfed.common.utils import AWSConnector
-from .boto3_storage_connector import ServerStorageBoto3
+from .boto3 import ServerStorageBoto3
 from asynfed.common.messages.server.server_response_to_init import StorageInfo
 
 LOGGER = logging.getLogger(__name__)
@@ -12,16 +12,18 @@ LOGGER = logging.getLogger(__name__)
 class ServerStorageAWS(AWSConnector, ServerStorageBoto3):
     def __init__(self, storage_info: StorageInfo, parent= None):
         super().__init__(storage_info, parent= parent)
+        self._storage_info = storage_info
 
-        self._client_keys = self._create_bucket_access_policy(storage_info= storage_info)
+
+
+    def get_client_key(self):
+        self._client_keys = self._create_bucket_access_policy(storage_info= self._storage_info)
         self._client_access_key_id = self._client_keys['AccessKeyId']
         self._client_secret_key = self._client_keys['SecretAccessKey']
 
-
-    def get_client_key(self, worker_id):
         # Generate an access key and secret key for the user
-        client_folder_full_path = f"clients/{worker_id}/"
-        self._s3.put_object(Bucket=self._bucket_name, Key= client_folder_full_path)
+        # client_folder_full_path = f"clients/{worker_id}/"
+        # self._s3.put_object(Bucket=self._bucket_name, Key= client_folder_full_path)
         return self._client_access_key_id, self._client_secret_key
 
 

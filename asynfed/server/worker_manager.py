@@ -2,8 +2,8 @@ import logging
 from typing import Dict, List
 
 from asynfed.server.objects import Worker
-from asynfed.commons.messages.client import ClientModelUpdate
-from asynfed.commons.utils.time_ultils import time_diff, time_now
+from asynfed.common.messages.client import ClientModelUpdate
+import asynfed.common.utils.time_ultils as time_utils
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,12 +33,12 @@ class WorkerManager:
         self.worker_pool[worker.worker_id] = worker
 
 
-    def total(self) -> int:
-        """Get the total number of Workers.
-        Returns:
-            int: The number of Workers in the worker_pools attribute.
-        """
-        return len(self.worker_pool)
+    # def total(self) -> int:
+    #     """Get the total number of Workers.
+    #     Returns:
+    #         int: The number of Workers in the worker_pools attribute.
+    #     """
+    #     return len(self.worker_pool)
 
     def get_all_worker(self) -> Dict [str, Worker]:
         """Get all Workers from the worker_pools attribute.
@@ -50,12 +50,12 @@ class WorkerManager:
 
 
     def add_local_update(self, client_id: str, client_model_update: ClientModelUpdate):
-        # update worker states with information from local worker.
         worker: Worker = self.worker_pool[client_id]
-        worker.weight_file = client_model_update.remote_worker_weight_path
-        worker.current_version = client_model_update.global_version_used
-        worker.loss = client_model_update.loss
         worker.is_completed = True
+
+        worker.remote_file_path = client_model_update.storage_path
+        worker.global_version_used = client_model_update.global_version_used
+        worker.loss = client_model_update.loss
 
 
 
@@ -88,12 +88,12 @@ class WorkerManager:
         Update worker connections
         """
         for worker_id in self.worker_pool.keys():
-            if time_diff(time_now(), self.worker_pool[worker_id].last_ping) < 10:
+            if time_utils.time_diff(time_utils.time_now(), self.worker_pool[worker_id].last_ping) < 300:
                 self.worker_pool[worker_id].is_connected = True
             else:
                 self.worker_pool[worker_id].is_connected = False
 
 
     def update_worker_last_ping(self, worker_id):
-        self.worker_pool[worker_id].last_ping = time_now()
+        self.worker_pool[worker_id].last_ping = time_utils.time_now()
 

@@ -5,24 +5,24 @@ import copy
 import pickle
 import numpy as np
 from asynfed.server.objects import Worker
-from asynfed.server.server_boto3_storage_connector import ServerStorageBoto3
-from asynfed.commons.config import LocalStoragePath
-from asynfed.server.worker_manager import WorkerManager
+from asynfed.server.storage_connector.boto3 import ServerStorageBoto3
+from asynfed.common.config import LocalStoragePath
+from asynfed.server.manager.worker_manager import WorkerManager
 from .strategy import Strategy
 
 
 import logging
 LOGGER = logging.getLogger(__name__)
 
-class KAFLMStep(Strategy):
+class KAFLMStepStrategy(Strategy):
 
-    def __init__(self, m: int = 3, agg_hyperparam: float = 0.8):
+    def __init__(self, model_name: str, file_extension: str, m: int = 3, agg_hyperparam: float = 0.8):
         """
         Args:
             m (int, optional): Number of workers to aggregate. Defaults to 3.
             agg_hyperparam (float, optional): Aggregation hyperparameter. Defaults to 0.8.
         """
-        super().__init__()
+        super().__init__(model_name= model_name, file_extension= file_extension)
         self.m = m 
         self.agg_hyperparam = agg_hyperparam 
 
@@ -42,7 +42,7 @@ class KAFLMStep(Strategy):
             worker.is_completed = False
             # keep track of the latest local version of worker used for cleaning task
             model_filename = worker.get_remote_weight_file_path().split(os.path.sep)[-1]
-            worker.update_local_version_used = self._get_model_version(model_filename)
+            worker.update_local_version_used = self.extract_model_version(model_filename)
 
         # pass out a copy of completed worker to aggregating process
         completed_workers = copy.deepcopy(completed_workers)
