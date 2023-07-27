@@ -8,20 +8,23 @@ from abc import abstractmethod, ABC
 
 import re
 import pickle
+from tqdm import tqdm
 
-from asynfed.common.messages import Message
 
-from asynfed.common.utils import AmqpConsumer, AmqpProducer
+from asynfed.common.messages import ExchangeMessage
+
+from asynfed.common.queue_connectors import AmqpConsumer, AmqpProducer
 import asynfed.common.utils.time_ultils as time_utils
 
 from asynfed.common.config import LocalStoragePath, MessageType
 from asynfed.common.messages.client import ClientInitConnection, DataDescription, SystemInfo, ResponseToPing
-from asynfed.common.messages.client import ClientModelUpdate
+from asynfed.common.messages.client import ClientModelUpdate, NotifyEvaluation, TesterRequestStop
 from asynfed.common.messages.server import ServerModelUpdate
 
 
 from asynfed.common.messages.server.server_response_to_init import ServerRespondToInit, StorageInfo
 import asynfed.common.messages as message_utils 
+import asynfed.common.utils.storage_cleaner as storage_cleaner
 
 
 from .objects import ModelWrapper, LocalModelUpdateInfo
@@ -70,7 +73,9 @@ class Client(ABC):
         # dynamic - training process
         # local model update info object
         self._local_model_update_info: LocalModelUpdateInfo = LocalModelUpdateInfo()
-        self._merged_global_version: int = 0
+        self._previous_global_version_used = 0
+        self._global_version_used: int = 0
+
         self._local_epoch = 0
         self._train_acc = 0.0
         self._train_loss = 0.0
@@ -79,7 +84,6 @@ class Client(ABC):
         # --------- info get from server ------------
         self._global_chosen_list: list = []
         # for updating new global model
-        self._previous_global_version = 0
         self._current_global_version = 0
 
 
@@ -133,6 +137,364 @@ class Client(ABC):
         # send message to server for connection
         self._send_init_message()
 
+    @abstractmethod
+    def _train(self):
+        pass
+
+    # @abstractmethod
+    # def _handle_server_init_response(self, message):
+    #     pass
+
+    # @abstractmethod
+    # def _handle_server_notify_message(self, message):
+    #     pass
+
+
+
+    # Run the client
+    def start(self):
+        self._thread_consumer.start()
+        self._clean_storage_thread.start()
+
+        while not self._is_stop_condition:
+            # check the stop condition every 300 seconds
+            sleep(300)
+        sys.exit(0)
+
+
+    # consumer queue callback
+    def on_message_received(self, ch, method, props, body):
+        msg_received: dict = message_utils.deserialize(body.decode('utf-8'))
+        message_type: str = msg_received['headers']['message_type']
+
+        # these two abstract method
+        # handle differently by each algorithm
+        if message_type == MessageType.SERVER_INIT_RESPONSE and not self._is_connected:
+            self._handle_server_init_response(msg_received)
+
+        elif message_type == MessageType.SERVER_NOTIFY_MESSAGE and self._is_connected:
+            self._handle_server_notify_message(msg_received)
+
+        elif message_type == MessageType.SERVER_STOP_TRAINING: 
+            message_utils.print_message(msg_received)
+            self._is_stop_condition = True
+            sys.exit(0)
+
+        elif message_type == MessageType.SERVER_PING_TO_CLIENT:
+            self._handle_server_ping_to_client(msg_received)
+
+
+    # cloud storage callback
+    # report result on parent process
+    def on_download(self, result):
+        if result:
+            self._new_model_flag = True
+            LOGGER.info(f"ON PARENT. Successfully downloaded new global model, version {self._current_global_version}")
+        else:
+            LOGGER.info("ON PARENT. Download model failed. Passed this version!")
+
+    def on_upload(self, result):
+        pass
+
+
+
+    def _test(self):
+        current_global_model_file_name = self._get_current_global_model_file_name()
+        file_exist, current_global_weights = self._load_weights_from_file(folder= self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER,
+                                                                          file_name= current_global_model_file_name)
+        if file_exist:
+            try:
+                self._model.set_weights(current_global_weights)
+            except Exception as e:
+                LOGGER.info("=" * 20)
+                LOGGER.info(e)
+                LOGGER.info("=" * 20)
+                self._get_model_dim_ready()
+                self._model.set_weights(current_global_weights)
+
+            # reset state after testing each global model
+            self._model.reset_test_loss()
+            self._model.reset_test_performance()
+            
+            LOGGER.info('Testing the model')
+            for test_images, test_labels in tqdm(self._model.test_ds):
+                performance, loss = self._model.evaluate(test_images, test_labels)
+
+            headers = self._create_headers(message_type= MessageType.CLIENT_NOTIFY_EVALUATION)
+
+            remote_storage_path = f"{self._remote_global_folder}/{current_global_model_file_name}"
+
+            notify_evaluation_message: NotifyEvaluation = NotifyEvaluation(remote_storage_path= remote_storage_path,
+                                                                           performance= performance, loss= loss)
+
+
+            LOGGER.info("*" * 20)
+            LOGGER.info(notify_evaluation_message.to_dict())
+            LOGGER.info("*" * 20)
+            message = ExchangeMessage(headers= headers, content= notify_evaluation_message.to_dict()).to_json()
+            self._queue_producer.send_data(message)
+
+            # # check the stop conditions
+            # if performance > self._config.model_config.stop_conditions.expected_performance or loss < self._config.model_config.stop_conditions.expected_loss:
+            #     headers = self._create_headers(message_type= MessageType.CLIENT_NOTIFY_STOP)
+
+            #     content = TesterRequestStop(remote_storage_path, performance, loss).to_dict()
+            #     message = ExchangeMessage(headers= headers, content= content).to_json()
+            #     self._queue_producer.send_data(message)
+        
+
+    # queue handling functions
+    def _handle_server_init_response(self, msg_received):
+        LOGGER.info("Server Response to Init Message")
+        message_utils.print_message(msg_received)
+        
+        content = msg_received['content']
+        server_init_response: ServerRespondToInit = ServerRespondToInit(**content)
+
+        session_id = msg_received['headers']['session_id']
+        reconnect = msg_received['headers']['reconnect']
+
+        if reconnect:
+            LOGGER.info("=" * 40)
+            LOGGER.info("Reconnect to server.")
+            LOGGER.info("=" * 40)
+
+        self._config.session_id = session_id
+
+
+        # get the exchange condition from server
+        self._min_acc = server_init_response.model_info.exchange_at.performance
+        self._min_epoch = server_init_response.model_info.exchange_at.epoch
+
+        self._remote_global_folder: str = f"{server_init_response.model_info.global_folder}/{server_init_response.model_info.name}"
+        # self._global_name: str = server_init_response.model_info.name
+
+        self._file_extension: str = server_init_response.model_info.file_extension
+
+        # connect to cloud storage service provided by server
+        storage_info: StorageInfo = server_init_response.storage_info
+        self._cloud_storage_type = storage_info.type
+        self._remote_upload_folder: str = storage_info.client_upload_folder
+
+
+        if self._cloud_storage_type == "aws_s3":
+            self._storage_connector = ClientStorageAWS(storage_info)
+        else:
+
+            self._storage_connector = ClientStorageMinio(storage_info, parent=None)
+
+        self._is_connected = True
+
+        file_name = f"{server_init_response.model_info.version}.{self._file_extension}"
+        remote_path = f"{self._remote_global_folder}/{file_name}"
+
+        # Check whether it is a new global model to arrive
+        file_exists = self._storage_connector.is_file_exists(file_path= remote_path)
+
+        if file_exists:
+            LOGGER.info("*" * 20)
+            LOGGER.info(f"{remote_path} exists in the cloud. Start updating new global model process")
+            LOGGER.info("*" * 20)
+            if self._current_global_version < server_init_response.model_info.model_version:
+                LOGGER.info("Detect new global version.")
+                local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, file_name)
+
+                # to make sure the other process related to the new global model version start
+                # only when the downloading process success
+                self._download_success = False
+                self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
+
+
+            if self._download_success:
+                # update only downloading process is success
+                self._global_model_name = server_init_response.model_info.name
+                self._current_global_version = server_init_response.model_info.version
+
+                LOGGER.info(f"Successfully downloaded global model {self._global_model_name}, version {self._current_global_version}")
+                # update info in profile file
+                self._update_profile()
+
+                if self._config.role == "trainer":
+                    self._start_training_thread()
+
+                # for testing, do not need to start thread
+                # because tester just test whenever it receive new model 
+                elif self._config.role == "tester":
+                    self._test()
+
+                if not os.path.exists(self._profile_file_name):
+                    self._create_profile()
+                else:
+                    self._load_profile()
+        else:
+            LOGGER.info("*" * 20)
+            LOGGER.info(f"{remote_path} does not exist in the cloud. Start updating process")
+            LOGGER.info("*" * 20)
+
+
+    def _handle_server_init_response(self, msg_received):
+        LOGGER.info("Server Response to Init Message")
+        message_utils.print_message(msg_received)
+        
+        content = msg_received['content']
+        server_init_response: ServerRespondToInit = ServerRespondToInit(**content)
+
+        session_id = msg_received['headers']['session_id']
+        reconnect = msg_received['headers']['reconnect']
+
+        if reconnect:
+            LOGGER.info("=" * 40)
+            LOGGER.info("Reconnect to server.")
+            LOGGER.info("=" * 40)
+
+        self._config.session_id = session_id
+
+
+        # get the exchange condition from server
+        self._min_acc = server_init_response.model_info.exchange_at.performance
+        self._min_epoch = server_init_response.model_info.exchange_at.epoch
+
+        self._remote_global_folder: str = f"{server_init_response.model_info.global_folder}/{server_init_response.model_info.name}"
+        # self._global_name: str = server_init_response.model_info.name
+
+        self._file_extension: str = server_init_response.model_info.file_extension
+
+        # connect to cloud storage service provided by server
+        storage_info: StorageInfo = server_init_response.storage_info
+        self._cloud_storage_type = storage_info.type
+        self._remote_upload_folder: str = storage_info.client_upload_folder
+
+
+        if self._cloud_storage_type == "aws_s3":
+            self._storage_connector = ClientStorageAWS(storage_info)
+        else:
+
+            self._storage_connector = ClientStorageMinio(storage_info, parent=None)
+
+        self._is_connected = True
+
+        file_name = f"{server_init_response.model_info.version}.{self._file_extension}"
+        remote_path = f"{self._remote_global_folder}/{file_name}"
+
+        # Check whether it is a new global model to arrive
+        file_exists = self._storage_connector.is_file_exists(file_path= remote_path)
+
+        if file_exists:
+            LOGGER.info("*" * 20)
+            LOGGER.info(f"{remote_path} exists in the cloud. Start updating new global model process")
+            LOGGER.info("*" * 20)
+            if self._current_global_version < server_init_response.model_info.model_version:
+                LOGGER.info("Detect new global version.")
+                local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, file_name)
+
+                # to make sure the other process related to the new global model version start
+                # only when the downloading process success
+                self._download_success = False
+                self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
+
+
+            if self._download_success:
+                # update only downloading process is success
+                self._global_model_name = server_init_response.model_info.name
+                self._current_global_version = server_init_response.model_info.version
+
+                LOGGER.info(f"Successfully downloaded global model {self._global_model_name}, version {self._current_global_version}")
+                # update info in profile file
+                self._update_profile()
+
+                if self._config.role == "trainer":
+                    self._start_training_thread()
+
+                # for testing, do not need to start thread
+                # because tester just test whenever it receive new model 
+                elif self._config.role == "tester":
+                    self._test()
+
+                if not os.path.exists(self._profile_file_name):
+                    self._create_profile()
+                else:
+                    self._load_profile()
+        else:
+            LOGGER.info("*" * 20)
+            LOGGER.info(f"{remote_path} does not exist in the cloud. Start updating process")
+            LOGGER.info("*" * 20)
+
+
+    def _handle_server_notify_message(self, msg_received):
+        message_utils.print_message(msg_received)
+        server_model_udpate: ServerModelUpdate = ServerModelUpdate(**msg_received['content'])
+
+        # check whether the client is chosen to engage in this training epoch
+        # default status for tester is true
+        is_chosen = True
+        if self._config.role == "trainer":
+            self._global_chosen_list = server_model_udpate.worker_id
+            is_chosen = self._config.client_id in self._global_chosen_list or not self._global_chosen_list
+
+        if is_chosen:
+            with lock:
+                # attempt to download the global model
+                # for cloud storage, always use forward slash
+                # regardless of os
+                remote_path = f'{self._remote_global_folder}/{server_model_udpate.global_model.version}.{self._file_extension}'
+                local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, server_model_udpate.global_model_name)
+
+                file_exists = self._storage_connector.is_file_exists(file_path= remote_path)
+                
+
+                if file_exists:
+                    LOGGER.info("*" * 20)
+                    LOGGER.info(f"{remote_path} exists in the cloud. Start updating new global model process")
+                    LOGGER.info("*" * 20)
+                    # to make sure the other process related to the new global model version start
+                    # only when the downloading process success
+                    self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
+                else:
+                    self._download_success = False
+                    LOGGER.info("*" * 20)
+                    LOGGER.info(f"{remote_path} does not exist in the cloud. Ignore this server update message")
+                    LOGGER.info("*" * 20)
+
+            if self._download_success:
+                # Only update info when download is success
+                # update local version (the latest global model that the client have)
+                self._current_global_version = server_model_udpate.global_model.version
+
+
+                LOGGER.info(f"Successfully downloaded new global model {self._global_model_name}, version {self._current_global_version}")
+                # print the content only when succesfully download new model
+                message_utils.print_message(server_model_udpate.to_dict())
+
+                if self._config.role == "tester":
+                    # test everytime receive new global model notify from server
+                    self._test()
+
+                elif self._config.role == "trainer":
+                    LOGGER.info(f"{self._config.client_id} is chosen to train for global model version {self._current_global_version}")
+                    # update global info for merging process
+                    self._global_model_update_data_size = server_model_udpate.global_model_update_data_size
+                    self._global_avg_loss = server_model_udpate.avg_loss
+                    self._global_avg_qod = server_model_udpate.avg_qod
+
+                    # if the training thread does not start yet 
+                    # (fail to download the global model in the response to init message from server)
+                    # start now
+                    # else just update the state of the new model flag
+                    if self._training_thread_is_running:
+                        self._new_model_flag = True
+                    else:
+                        self._start_training_thread()
+
+
+
+    def _handle_server_ping_to_client(self, msg_received):
+        if msg_received['content']['client_id'] == self._config.client_id:
+            message_utils.print_message(msg_received)
+            headers = self._create_headers(message_type= MessageType.CLIENT_PING_MESSAGE)
+            message = ExchangeMessage(headers= headers, content=ResponseToPing().to_dict()).to_json()
+            self._queue_producer.send_data(message)
+
+
     def _start_publish_new_local_update_thread(self):
         LOGGER.info("*" * 40)
         LOGGER.info("Publish New Local Model Thread is Runnning!")
@@ -174,7 +536,7 @@ class Client(ABC):
                                                     loss=new_update_info.train_loss,
                                                     performance=new_update_info.train_acc)
                         
-                        message = Message(headers= headers, content= notify_local_model_message.to_dict()).to_json()
+                        message = ExchangeMessage(headers= headers, content= notify_local_model_message.to_dict()).to_json()
                         
                         self._queue_producer.send_data(message)
                         self._update_profile()
@@ -219,59 +581,6 @@ class Client(ABC):
         return LocalStoragePath(root_folder= full_path, save_log= self._config.save_log)
 
 
-    # Run the client
-    def start(self):
-        self._thread_consumer.start()
-        self._clean_storage_thread.start()
-
-        while not self._is_stop_condition:
-            # check the stop condition every 300 seconds
-            sleep(300)
-        sys.exit(0)
-
-
-    # consumer queue callback
-    def on_message_received(self, ch, method, props, body):
-        msg_received: dict = message_utils.deserialize(body.decode('utf-8'))
-        message_type: str = msg_received['headers']['message_type']
-
-        if message_type == MessageType.SERVER_INIT_RESPONSE and not self._is_connected:
-            self._handle_server_init_response(msg_received)
-
-        elif message_type == MessageType.SERVER_NOTIFY_MESSAGE and self._is_connected:
-            self._handle_server_notify_message(msg_received)
-
-        elif message_type == MessageType.SERVER_STOP_TRAINING: 
-            message_utils.print_message(msg_received)
-            self._is_stop_condition = True
-            sys.exit(0)
-
-        elif message_type == MessageType.SERVER_PING_TO_CLIENT:
-            self._handle_server_ping_to_client(msg_received)
-
-
-    # cloud storage callback
-    # report result on parent process
-    def on_download(self, result):
-        if result:
-            self._new_model_flag = True
-            LOGGER.info(f"ON PARENT. Successfully downloaded new global model, version {self._current_global_version}")
-        else:
-            LOGGER.info("ON PARENT. Download model failed. Passed this version!")
-
-    def on_upload(self, result):
-        pass
-
-
-    @abstractmethod
-    def _train(self):
-        pass
-
-    @abstractmethod
-    def _test(self):
-        pass
-
-
     def _send_init_message(self):
         data_description = {
             'data_size': self._config.dataset.data_size,
@@ -286,7 +595,7 @@ class Client(ABC):
         
 
         headers = self._create_headers(message_type= MessageType.CLIENT_INIT_MESSAGE)
-        message = Message(headers= headers, content= client_init_message.to_dict()).to_json()
+        message = ExchangeMessage(headers= headers, content= client_init_message.to_dict()).to_json()
         self._queue_producer.send_data(message)
 
 
@@ -315,195 +624,11 @@ class Client(ABC):
             # -------- Client weight files cleaning -----------
             if self._config.role == "trainer":
                 local_threshold = self._local_epoch - self._config.cleaning_config.local_keep_version_num
-                self._delete_local_files(directory= self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, threshold= local_threshold)
+                # self._delete_local_files(directory= self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, threshold= local_threshold)
+                storage_cleaner.delete_local_files(folder_path= self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER,
+                                                   threshold= local_threshold, file_extension= self._file_extension)
 
 
-    def _delete_local_files(self, directory: str, threshold: int):
-        files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
-        versions = [self._get_model_version(file) for file in files]
-        delete_list = [file for file, version in zip(files, versions) if version <= threshold]
-        if delete_list:
-            LOGGER.info("=" * 20)
-            LOGGER.info(f"Delete {len(delete_list)} files in local folder {directory}")
-            LOGGER.info([self._get_model_version(file) for file in delete_list])
-            LOGGER.info("=" * 20)
-
-        for file in delete_list:
-            full_path = os.path.join(directory, file)
-            try:
-                os.remove(full_path)
-            except FileNotFoundError:
-                LOGGER.info(f"File {full_path} was not found")
-            except PermissionError:
-                LOGGER.info(f"Permission denied for deleting {full_path}")
-            except Exception as e:
-                LOGGER.info(f"Unable to delete {full_path} due to: {str(e)}")
-
-
-    def _handle_server_init_response(self, msg_received):
-        LOGGER.info("Server Response to Init Message")
-        message_utils.print_message(msg_received)
-        
-        content = msg_received['content']
-        server_init_response: ServerRespondToInit = ServerRespondToInit(**content)
-
-        session_id = msg_received['headers']['session_id']
-        reconnect = msg_received['headers']['reconnect']
-
-        if reconnect:
-            LOGGER.info("=" * 40)
-            LOGGER.info("Reconnect to server.")
-            LOGGER.info("=" * 40)
-
-        self._config.session_id = session_id
-
-
-        # get the exchange condition from server
-        self._min_acc = server_init_response.model_info.exchange_at.performance
-        self._min_epoch = server_init_response.model_info.exchange_at.epoch
-
-        self._remote_global_folder: str = f"{server_init_response.model_info.global_folder}/{server_init_response.model_info.name}"
-        # self._global_name: str = server_init_response.model_info.name
-        self._file_extention: str = server_init_response.model_info.file_extention
-
-        # connect to cloud storage service provided by server
-        storage_info: StorageInfo = server_init_response.storage_info
-        self._cloud_storage_type = storage_info.type
-        self._remote_upload_folder: str = storage_info.client_upload_folder
-
-
-        if self._cloud_storage_type == "aws_s3":
-            self._storage_connector = ClientStorageAWS(storage_info)
-        else:
-
-            self._storage_connector = ClientStorageMinio(storage_info, parent=None)
-
-        self._is_connected = True
-
-
-        # Check whether it is a new global model to arrive
-        file_exists = self._storage_connector.is_file_exists(file_path= server_init_response.model_info.model_url)
-
-        if file_exists:
-            LOGGER.info("*" * 20)
-            LOGGER.info(f"{server_init_response.model_info.model_url} exists in the cloud. Start updating new global model process")
-            LOGGER.info("*" * 20)
-            if self._current_global_version < server_init_response.model_info.model_version:
-                LOGGER.info("Detect new global version.")
-                remote_path = server_init_response.model_info.model_url
-                local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, server_init_response.model_info.global_model_name)
-
-                # to make sure the other process related to the new global model version start
-                # only when the downloading process success
-                self._download_success = False
-                self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
-
-
-            if self._download_success:
-                # update only downloading process is success
-                self._global_model_name = server_init_response.model_info.global_model_name
-                self._current_global_version = server_init_response.model_info.model_version
-
-                LOGGER.info(f"Successfully downloaded global model {self._global_model_name}")
-                # update info in profile file
-                self._update_profile()
-
-                if self._config.role == "trainer":
-                    self._start_training_thread()
-
-                # for testing, do not need to start thread
-                # because tester just test whenever it receive new model 
-                elif self._config.role == "tester":
-                    self._test()
-
-                if not os.path.exists(self._profile_file_name):
-                    self._create_profile()
-                else:
-                    self._load_profile()
-        else:
-            LOGGER.info("*" * 20)
-            LOGGER.info(f"{server_init_response.model_info.model_url} does not exist in the cloud. Start updating process")
-            LOGGER.info("*" * 20)
-            
-
-
-    def _handle_server_notify_message(self, msg_received):
-        message_utils.print_message(msg_received)
-        server_model_udpate: ServerModelUpdate = ServerModelUpdate(**msg_received['content'])
-
-        # check whether the client is chosen to engage in this training epoch
-        # default status for tester is true
-        is_chosen = True
-        if self._config.role == "trainer":
-            self._global_chosen_list = server_model_udpate.chosen_id
-            is_chosen = self._config.client_id in self._global_chosen_list or not self._global_chosen_list
-
-        if is_chosen:
-            with lock:
-                # attempt to download the global model
-                # for cloud storage, always use forward slash
-                # regardless of os
-                remote_path = f'{self._remote_global_folder}/{server_model_udpate.global_model.version}.{self._file_extention}'
-                local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, server_model_udpate.global_model_name)
-
-                file_exists = self._storage_connector.is_file_exists(file_path= remote_path)
-                
-
-                if file_exists:
-                    LOGGER.info("*" * 20)
-                    LOGGER.info(f"{remote_path} exists in the cloud. Start updating new global model process")
-                    LOGGER.info("*" * 20)
-                    # to make sure the other process related to the new global model version start
-                    # only when the downloading process success
-                    self._download_success = self._attempt_to_download(remote_file_path= remote_path, local_file_path= local_path)
-                else:
-                    self._download_success = False
-                    LOGGER.info("*" * 20)
-                    LOGGER.info(f"{remote_path} does not exist in the cloud. Ignore this server update message")
-                    LOGGER.info("*" * 20)
-
-            if self._download_success:
-                # Only update info when download is success
-                # save the previous local version of the global model to log it to file
-                self._global_model_name = server_model_udpate.global_model_name
-                self._previous_global_version = self._current_global_version
-
-                # update local version (the latest global model that the client have)
-                self._current_global_version = server_model_udpate.global_model_version
-
-                LOGGER.info(f"Successfully downloaded new global model, version {self._current_global_version}")
-                # print the content only when succesfully download new model
-                message_utils.print_message(server_model_udpate.to_dict())
-
-                if self._config.role == "tester":
-                    # test everytime receive new global model notify from server
-                    self._test()
-
-                elif self._config.role == "trainer":
-                    LOGGER.info(f"{self._config.client_id} is chosen to train for global model version {self._current_global_version}")
-                    # update global info for merging process
-                    self._global_model_update_data_size = server_model_udpate.global_model_update_data_size
-                    self._global_avg_loss = server_model_udpate.avg_loss
-                    self._global_avg_qod = server_model_udpate.avg_qod
-
-                    # if the training thread does not start yet 
-                    # (fail to download the global model in the response to init message from server)
-                    # start now
-                    # else just update the state of the new model flag
-                    if self._training_thread_is_running:
-                        self._new_model_flag = True
-                    else:
-                        self._start_training_thread()
-
-
-
-    # queue handling functions
-    def _handle_server_ping_to_client(self, msg_received):
-        if msg_received['content']['client_id'] == self._config.client_id:
-            message_utils.print_message(msg_received)
-            headers = self._create_headers(message_type= MessageType.CLIENT_PING_MESSAGE)
-            message = Message(headers= headers, content=ResponseToPing().to_dict()).to_json()
-            self._queue_producer.send_data(message)
 
 
     def _attempt_to_download(self, remote_file_path: str, local_file_path: str) -> bool:
@@ -573,6 +698,64 @@ class Client(ABC):
         except Exception as e:
             LOGGER.info(e)
 
-    def _get_model_version(self, model_name: str):
-        return int(re.search(r"v(\d+)", model_name.split("_")[1]).group(1))
+
+    def _extract_version(self, folder_path):
+        match = re.search(rf"(\d+){re.escape(self._file_extension)}$", folder_path)
+        if match:
+            return int(match.group(1))
+        else:
+            return None
+        
+
+    def _get_current_global_model_file_name(self):
+        return f"{self._current_global_version}.{self._file_extension}"
     
+    def _get_model_dim_ready(self):
+        if self._config.role == "trainer":
+            ds = self._model.train_ds
+        else:
+            ds = self._model.test_ds
+        for images, labels in ds:
+            self._model.fit(images, labels)
+            break
+
+    def _load_weights_from_file(self, folder: str, file_name: str):
+        full_path = os.path.join(folder, file_name)
+
+        file_exist = os.path.isfile(full_path)
+        if not file_exist:
+            LOGGER.info("error in either downloading process or opening file in local. Please check again")
+
+        weights = []
+        if file_exist:
+            with open(full_path, "rb") as f:
+                weights: List = pickle.load(f)
+
+        return file_exist, weights
+    
+    def _tracking_training_process(self, batch_num):
+        total_trained_sample = batch_num * self._config.training_params.batch_size
+        if total_trained_sample > self._tracking_point:
+            LOGGER.info(f"Training up to {total_trained_sample} samples")
+            self._multiplier += 1
+            self._tracking_point = self._tracking_period * self._multiplier
+
+
+    def _update_new_local_model_info(self):
+        if not self._publish_new_local_update_is_running:
+            self._start_publish_new_local_update_thread()
+            
+        # Save weights locally after training
+        filename = f'{self._local_epoch}.{self._file_extension}'
+        
+        save_location = os.path.join(self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, filename)
+        # for the remote storage path, use forwawrd slash as the separator
+        # regardless of os
+        remote_file_path = f"{self._remote_upload_folder}/{filename}"
+
+        self._local_model_update_info.update(weight_array= self._model.get_weights(), 
+                                            filename= filename, local_weight_path= save_location, 
+                                            global_version_used= self._global_version_used,
+                                            remote_weight_path= remote_file_path,
+                                            train_acc= self._train_acc, train_loss= self._train_loss)
+
