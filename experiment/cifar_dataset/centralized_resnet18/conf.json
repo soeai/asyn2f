@@ -1,6 +1,6 @@
 {
     "client_id": "centralized-training",
-    "role": "train",
+    "role": "trainer",
     "gpu_index": 0,
     "tracking_point": 10000,
 

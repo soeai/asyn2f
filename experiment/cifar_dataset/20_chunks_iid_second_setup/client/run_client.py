@@ -8,7 +8,7 @@ sys.path.append(root)
 
 
 
-from asynfed.client.algorithms import ClientAsyncFl
+from asynfed.client.algorithms import Asyn2fClient
 from asynfed.client.frameworks.tensorflow import TensorflowFramework
 
 from experiment.cifar_dataset.resnet18 import Resnet18
@@ -98,7 +98,7 @@ tensorflow_framework = TensorflowFramework(model=model,
                                            config=config)
 
 
-tf_client = ClientAsyncFl(model=tensorflow_framework, config=config)
+tf_client = Asyn2fClient(model=tensorflow_framework, config=config)
 tf_client.start()
 scheduler.start()
 pause.days(1) # or it can anything as per your need

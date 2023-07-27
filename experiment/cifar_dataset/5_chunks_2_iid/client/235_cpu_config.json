@@ -1,6 +1,6 @@
 {
     "client_id": "235-cpu",
-    "role": "train",
+    "role": "trainer",
     "gpu_index": 0,
     "save_log": true,
     "tracking_point": 2000,

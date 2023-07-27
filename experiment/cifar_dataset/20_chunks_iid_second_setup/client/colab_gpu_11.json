@@ -1,6 +1,6 @@
 {
     "client_id": "colab-gpu-11",
-    "role": "train",
+    "role": "trainer",
     "gpu_index": 0,
     "save_log": false,
     "tracking_point": 1000,

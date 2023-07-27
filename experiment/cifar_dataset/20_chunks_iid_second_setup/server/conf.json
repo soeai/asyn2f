@@ -3,26 +3,39 @@
     "ping_period": 300,
     "save_log": true,
     
-    "stop_conditions": {
-        "max_version": 240,
-        "max_performance": 0.85,
-        "min_loss": 0.02
+    
+    "strategy": {
+        "name": "asyn2f",
+        "m": 3,
+        "n": 5
     },
     
-    "model_exchange_at": {
-        "performance": 0.3,
-        "epoch": 20
-    },
+    "model_config": {
+        "name": "",
+        "initial_model": "initial_model.pkl",
+        "file_extension": "pkl",
 
-    "update_conditions":{
-        "update_period": 30,
-        "min_workers": 9
+        "model_exchange_at": {
+            "performance": 0.3,
+            "epoch": 20
+            
+        },
+        
+        "stop_conditions": {
+            "max_version": 240,
+            "max_performance": 0.85,
+            "min_loss": 0.02
+        }
     },
 
     "cloud_storage": {
         "type": "minio",
         "bucket_name": "cifar10-20-chunks-gpu",
         "region_name": "ap-southeast-2",
+
+        "global_model_root_folder": "global-models",
+        "client_model_root_folder": "clients",
+        
         "aws_s3": {
             "access_key": "",
             "secret_key": ""
@@ -31,7 +44,8 @@
             "access_key": "",
             "secret_key": "",
             "client_access_key": "",
-            "client_secret_key": ""
+            "client_secret_key": "",
+            "endpoint_url": ""
         }
     },
 

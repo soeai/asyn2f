@@ -1,6 +1,6 @@
 {
     "client_id": "sit-gpu-1",
-    "role": "train",
+    "role": "trainer",
     "gpu_index": 0,
     "save_log": true,
     "tracking_point": 1000,

@@ -1,6 +1,6 @@
 {
     "client_id": "tester",
-    "role": "test",
+    "role": "tester",
     "save_log": true,
     "gpu_index": 0,
     "download_attempt": 15,

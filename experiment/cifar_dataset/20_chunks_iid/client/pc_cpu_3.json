@@ -1,6 +1,6 @@
 {
     "client_id": "pc-cpu-3",
-    "role": "train",
+    "role": "trainer",
     "save_log": true,
     "tracking_point": 1000,
     "download_attempt": 10,

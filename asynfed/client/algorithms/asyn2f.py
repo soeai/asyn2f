@@ -2,7 +2,6 @@ import os
 import logging
 from typing import List
 import numpy as np
-from tqdm import tqdm
 import pickle
 from threading import Lock
 
@@ -12,7 +11,6 @@ from asynfed.common.messages import ExchangeMessage
 import asynfed.common.messages as message_utils 
 from asynfed.common.messages.server import ServerModelUpdate
 from asynfed.common.messages.server.server_response_to_init import ServerRespondToInit, StorageInfo
-from .storage_connector import ClientStorageAWS, ClientStorageMinio
 
 from asynfed.common.config import MessageType
 
