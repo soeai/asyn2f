@@ -27,7 +27,7 @@ import asynfed.common.messages as message_utils
 from .objects import ModelWrapper, LocalModelUploadInfo, ServerTrainingConfig
 from .config_structure import ClientConfig
 from .components import ClientComponents
-from .algorithms import Asyn2f
+from .algorithms import Asyn2f, KaflMStep
 
 import concurrent.futures
 thread_pool_ref = concurrent.futures.ThreadPoolExecutor
@@ -283,10 +283,18 @@ class Client(object):
 
         # initialize client algorithm from here
         if self.server_training_config.strategy == "asyn2f":
-            LOGGER.info("*" * 40)
-            LOGGER.info(f"Server choose {self.server_training_config.strategy} as the algorithm use in this training network")
-            LOGGER.info("*" * 40)
             self._algorithm = Asyn2f(client= self)
+        elif self.server_training_config.strategy == "kafl":
+            self._algorithm = KaflMStep(client= self)
+        else:
+            LOGGER.info("*" * 40)
+            LOGGER.info(f"The algorithm {self.server_training_config.strategy} server choose is not supported yet in client. About to exit the program...")
+            LOGGER.info("*" * 40)
+            sys.exit(0)
+        LOGGER.info("*" * 40)
+        LOGGER.info(f"Server choose {self.server_training_config.strategy} as the algorithm use in this training network")
+        LOGGER.info("*" * 40)
+
 
         # get the exchange condition from server
 
