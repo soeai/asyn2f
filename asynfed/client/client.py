@@ -513,7 +513,8 @@ class Client(object):
         # create local folder for storage
         # get the current folder path, then save all local file within the current folder
         # full_path = os.path.join(os.getcwd(), self.config.record_root_folder, self.config.client_id)
-        full_path = os.path.join(os.getcwd(), self.config.client_id)
+        # full_path = os.path.join(os.getcwd(), self.config.client_id)
+        full_path = os.path.join(os.getcwd(), f"{self.config.client_id}-record")
 
         # Initialize a profile file for client
         # self._profile_file_name = os.path.join(full_path, "profile.json")

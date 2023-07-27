@@ -68,7 +68,6 @@ class Asyn2fStrategy(Strategy):
                 sleep(self._server._config.strategy.update_period)
 
             else:
-                print(self.m, n_local_updates)
                 try:
                     LOGGER.info(f'Update condition is met. Start update global model with {n_local_updates} local updates')
                     self._update(n_local_updates)

@@ -99,25 +99,10 @@ tensorflow_framework = TensorflowFramework(model=model,
                                            train_ds= train_ds, 
                                            test_ds= test_ds, 
                                            config=config)
-# strategy = args.strategy
 
-# record_root_folder = f"{strategy}-record"
 
-# if not os.path.exists(record_root_folder):
-#     os.makedirs(record_root_folder)
-
-# config['strategy'] = strategy
-# config['record_root_folder'] = record_root_folder
-
-# if strategy == "asyn2f":
-#     client = Asyn2fClient(model= tensorflow_framework, config= config)
-# elif strategy == "kafl":
-#     client = KAFLMStepClient(model= tensorflow_framework, config= config)
-
-# client = Asyn2fClient(model= tensorflow_framework, config= config)
 client = Client(model= tensorflow_framework, config= config)
 
-# tf_client = Asyn2fClient(model=tensorflow_framework, config=config)
 client.start()
 scheduler.start()
 pause.days(1) # or it can anything as per your need
