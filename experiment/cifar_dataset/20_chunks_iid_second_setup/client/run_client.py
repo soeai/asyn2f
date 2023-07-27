@@ -8,7 +8,9 @@ sys.path.append(root)
 
 
 
-from asynfed.client.algorithms import Asyn2fClient, KAFLMStepClient
+# from asynfed.client.algorithms import Asyn2fClient, KAFLMStepClient
+from asynfed.client import Client
+
 from asynfed.client.frameworks.tensorflow import TensorflowFramework
 
 from experiment.cifar_dataset.resnet18 import Resnet18
@@ -112,7 +114,8 @@ tensorflow_framework = TensorflowFramework(model=model,
 # elif strategy == "kafl":
 #     client = KAFLMStepClient(model= tensorflow_framework, config= config)
 
-client = Asyn2fClient(model= tensorflow_framework, config= config)
+# client = Asyn2fClient(model= tensorflow_framework, config= config)
+client = Client(model= tensorflow_framework, config= config)
 
 # tf_client = Asyn2fClient(model=tensorflow_framework, config=config)
 client.start()

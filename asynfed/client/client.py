@@ -24,11 +24,10 @@ from asynfed.common.messages.server.server_response_to_init import ServerRespond
 import asynfed.common.messages as message_utils
 
 
-
-
 from .objects import ModelWrapper, LocalModelUploadInfo, ServerTrainingConfig
 from .config_structure import ClientConfig
 from .components import ClientComponents
+from .algorithms import Asyn2f
 
 import concurrent.futures
 thread_pool_ref = concurrent.futures.ThreadPoolExecutor
@@ -67,29 +66,29 @@ class TrainingProcessInfo(object):
         self.train_loss = 0.0
 
 
-from abc import ABC, abstractmethod
 
 # class Client(object):
-class Client(ABC):
+# class Client(ABC):
+class Client(object):
     def __init__(self, model: ModelWrapper, config: dict):
         """
         config structure can be found at client_config.py file
 
         """
-        self._config: ClientConfig = self._load_config_info(config= config)
-        self._local_storage_path: LocalStoragePath = self._get_local_storage_path()
+        self.config: ClientConfig = self._load_config_info(config= config)
+        self.local_storage_path: LocalStoragePath = self._get_local_storage_path()
 
-        self._config.session_id = ""
+        self.config.session_id = ""
 
         # initial the state of client
-        self._state = ClientState()
-        self._training_process_info = TrainingProcessInfo()
+        self.state = ClientState()
+        self.training_process_info = TrainingProcessInfo()
 
 
         # --------- info get from server ------------
         # just initialize these property when receiving respone from server for the first time
-        self._global_model_info: GlobalModelInfo = None
-        self._server_training_config: ServerTrainingConfig = None
+        self.global_model_info: GlobalModelInfo = None
+        self.server_training_config: ServerTrainingConfig = None
         self._remote_upload_folder: str = None
 
         # dynamic - training process
@@ -98,21 +97,21 @@ class Client(ABC):
 
 
         # fixed property
-        self._model = model
-        self._config.dataset.data_size = self._config.dataset.data_size or self._model.data_size
-        self._config.dataset.qod = self._config.dataset.qod or self._model.qod
+        self.model = model
+        self.config.dataset.data_size = self.config.dataset.data_size or self.model.data_size
+        self.config.dataset.qod = self.config.dataset.qod or self.model.qod
 
 
         LOGGER.info("Client config for training process")
-        message_utils.print_message(self._config.to_dict())
+        message_utils.print_message(self.config.to_dict())
 
 
         # load components of client: queue, storage cleaner
         # the cloud storage will be loaded later when received info from server
-        storage_cleaner_conf = {"global_model_folder": self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER,
-                                "local_model_folder": self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER}
-        self._components = ClientComponents(host_object= self, queue_consumer_conf= self._config.queue_consumer,
-                                            queue_producer_conf= self._config.queue_producer,
+        storage_cleaner_conf = {"global_model_folder": self.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER,
+                                "local_model_folder": self.local_storage_path.LOCAL_MODEL_ROOT_FOLDER}
+        self._components = ClientComponents(host_object= self, queue_consumer_conf= self.config.queue_consumer,
+                                            queue_producer_conf= self.config.queue_producer,
                                             storage_cleaner_conf= storage_cleaner_conf)
 
 
@@ -120,24 +119,24 @@ class Client(ABC):
         self._thread_consumer = Thread(target= self._start_consumer, name= "client_consumer_thread")
         self._clean_storage_thread = Thread(target= self._clean_storage, name= "client_clean_storage_thread")
         self._clean_storage_thread.daemon = True
+        # only start training thread when receiving response from server
 
 
 
         LOGGER.info("-" * 40)
-        LOGGER.info(f'Client Id: {self._config.client_id}')
+        LOGGER.info(f'Client Id: {self.config.client_id}')
         LOGGER.info(f'Consumer Queue')
-        message_utils.print_message(self._config.queue_consumer.to_dict())
+        message_utils.print_message(self.config.queue_consumer.to_dict())
         LOGGER.info(f'Producer Queue')
-        message_utils.print_message(self._config.queue_producer.to_dict()) 
+        message_utils.print_message(self.config.queue_producer.to_dict()) 
         LOGGER.info("-" * 40)
 
 
         # send message to server for connection
         self._send_init_message()
 
-    @abstractmethod
     def _train(self):
-        pass
+        self._algorithm.train()        
 
     # Run the client
     def start(self):
@@ -145,7 +144,7 @@ class Client(ABC):
         self._thread_consumer.start()
         self._clean_storage_thread.start()
 
-        while not self._state.is_stop_condition:
+        while not self.state.is_stop_condition:
             # check the stop condition every 300 seconds
             sleep(300)
         sys.exit(0)
@@ -158,11 +157,11 @@ class Client(ABC):
 
         # these two abstract method
         # handle differently by each algorithm
-        if message_type == MessageType.SERVER_INIT_RESPONSE and not self._state.is_connected:
+        if message_type == MessageType.SERVER_INIT_RESPONSE and not self.state.is_connected:
             self._handle_server_init_response(msg_received)
 
 
-        elif message_type == MessageType.SERVER_NOTIFY_MESSAGE and self._state.is_connected:
+        elif message_type == MessageType.SERVER_NOTIFY_MESSAGE and self.state.is_connected:
             self._handle_server_notify_message(msg_received)
 
 
@@ -172,47 +171,67 @@ class Client(ABC):
 
         elif message_type == MessageType.SERVER_STOP_TRAINING: 
             message_utils.print_message(msg_received)
-            self._state.is_stop_condition = True
+            self.state.is_stop_condition = True
             sys.exit(0)
 
 
-    # cloud storage callback
-    # report result on parent process
-    def on_download(self, result):
-        pass
 
-    def on_upload(self, result):
-        pass
 
+    def _start_consumer(self):
+        self._components.queue_consumer.start()
+
+    def _start_training_thread(self):
+        LOGGER.info("Start training thread.")
+        self.state.training_thread_is_running = True
+        training_thread = Thread(target= self._train, name= "client_training_thread")
+        training_thread.daemon = True
+
+        training_thread.start()
+
+
+    def _clean_storage(self):
+        LOGGER.info("CLEANING STORAGE THREAD IS RUNNING")
+        while True:
+            sleep(self.config.cleaning_config.clean_storage_period)
+            LOGGER.info("CLEANING TIME")
+
+            # -------- Global Weight File Cleaning ------------ 
+            global_threshold = self.global_model_info.version - self.config.cleaning_config.global_keep_version_num
+            self._components.storage_cleaner.delete_local_files(is_global_folder= True, threshold= global_threshold)
+
+            # -------- Client weight files cleaning -----------
+            if self.config.role == "trainer":
+                local_threshold = self.training_process_info.local_epoch - self.config.cleaning_config.local_keep_version_num
+                self._components.storage_cleaner.delete_local_files(is_global_folder= False, threshold= local_threshold)
 
 
     def _test(self):
-        current_global_model_file_name = self._global_model_info.get_file_name()
+        current_global_model_file_name = self.global_model_info.get_file_name()
         
-        file_exist, current_global_weights = self._load_weights_from_file(folder= self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER,
+        file_exist, current_global_weights = self.load_weights_from_file(folder= self.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER,
                                                                           file_name= current_global_model_file_name)
 
         if file_exist:
             try:
-                self._model.set_weights(current_global_weights)
+                self.model.set_weights(current_global_weights)
             except Exception as e:
                 LOGGER.info("=" * 20)
                 LOGGER.info(e)
                 LOGGER.info("=" * 20)
-                self._get_model_dim_ready()
-                self._model.set_weights(current_global_weights)
+                self.get_model_dim_ready()
+                self.model.set_weights(current_global_weights)
 
             # reset state after testing each global model
-            self._model.reset_test_loss()
-            self._model.reset_test_performance()
+            self.model.reset_test_loss()
+            self.model.reset_test_performance()
             
             LOGGER.info('Testing the model')
-            for test_images, test_labels in tqdm(self._model.test_ds):
-                performance, loss = self._model.evaluate(test_images, test_labels)
+            for test_images, test_labels in tqdm(self.model.test_ds):
+                performance, loss = self.model.evaluate(test_images, test_labels)
 
             headers = self._create_headers(message_type= MessageType.CLIENT_NOTIFY_EVALUATION)
 
-            remote_storage_path = self._global_model_info.get_full_remote_file_path()
+            remote_storage_path = self.global_model_info.get_full_remote_file_path()
 
             notify_evaluation_message: NotifyEvaluation = NotifyEvaluation(remote_storage_path= remote_storage_path,
                                                                            performance= performance, loss= loss)
@@ -225,13 +244,20 @@ class Client(ABC):
             self._components.queue_producer.send_data(message)
 
             # # check the stop conditions
-            # if performance > self._config.model_config.stop_conditions.expected_performance or loss < self._config.model_config.stop_conditions.expected_loss:
+            # if performance > self.config.model_config.stop_conditions.expected_performance or loss < self.config.model_config.stop_conditions.expected_loss:
             #     headers = self._create_headers(message_type= MessageType.CLIENT_NOTIFY_STOP)
 
             #     content = TesterRequestStop(remote_storage_path, performance, loss).to_dict()
             #     message = ExchangeMessage(headers= headers, content= content).to_json()
             #     self._components.queue_producer.send_data(message)
         
+    # cloud storage callback
+    # report result on parent process
+    def on_download(self, result):
+        pass
+
+    def on_upload(self, result):
+        pass
 
     # queue handling functions
     def _handle_server_init_response(self, msg_received):
@@ -249,13 +275,18 @@ class Client(ABC):
             LOGGER.info("Reconnect to server.")
             LOGGER.info("=" * 40)
 
-        self._config.session_id = session_id
+        self.config.session_id = session_id
 
-        self._server_training_config = ServerTrainingConfig(strategy= server_init_response.strategy,
+        self.server_training_config = ServerTrainingConfig(strategy= server_init_response.strategy,
                                         exchange_at= server_init_response.model_info.exchange_at.to_dict(),
                                         epoch_update_frequency= server_init_response.epoch_update_frequency)
 
         # initialize client algorithm from here
+        if self.server_training_config.strategy == "asyn2f":
+            LOGGER.info("*" * 40)
+            LOGGER.info(f"Server choose {self.server_training_config.strategy} as the algorithm use in this training network")
+            LOGGER.info("*" * 40)
+            self._algorithm = Asyn2f(client= self)
 
         # get the exchange condition from server
 
@@ -268,13 +299,13 @@ class Client(ABC):
         storage_info: StorageInfo = server_init_response.storage_info
         self._cloud_storage_type = storage_info.type
 
-        # self._config.
+        # self.config.
         self._remote_upload_folder: str = storage_info.client_upload_folder
 
 
         self._components.add_cloud_storage(storage_info= storage_info)
 
-        self._state.is_connected = True
+        self.state.is_connected = True
 
         file_name = f"{server_init_response.model_info.version}.{self._file_extension}"
         remote_path = f"{remote_global_folder}/{file_name}"
@@ -283,7 +314,7 @@ class Client(ABC):
         file_exists = self._components.cloud_storage.is_file_exists(file_path= remote_path)
 
         # initialize the global model information
-        self._global_model_info = GlobalModelInfo(remote_folder_path= remote_global_folder, 
+        self.global_model_info = GlobalModelInfo(remote_folder_path= remote_global_folder, 
                                                 name = server_init_response.model_info.name, 
                                                 version= server_init_response.model_info.version, 
                                                 file_extension= server_init_response.model_info.file_extension)
@@ -296,9 +327,9 @@ class Client(ABC):
             
             # download_success = False
 
-            # if self._global_model_info.version < server_init_response.model_info.version:
+            # if self.global_model_info.version < server_init_response.model_info.version:
             # LOGGER.info("Detect new global version.")
-            local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, file_name)
+            local_path = os.path.join(self.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, file_name)
 
             # to make sure the other process related to the new global model version start
             # only when the downloading process success
@@ -307,16 +338,16 @@ class Client(ABC):
 
             if download_success:
                 # update only downloading process is success
-                LOGGER.info(f"Successfully downloaded global model {self._global_model_info.name}, version {self._global_model_info.version}")
+                LOGGER.info(f"Successfully downloaded global model {self.global_model_info.name}, version {self.global_model_info.version}")
                 # # update info in profile file
                 # self._update_profile()
 
-                if self._config.role == "trainer":
+                if self.config.role == "trainer":
                     self._start_training_thread()
 
                 # for testing, do not need to start thread
                 # because tester just test whenever it receive new model 
-                elif self._config.role == "tester":
+                elif self.config.role == "tester":
                     self._test()
 
                 # if not os.path.exists(self._profile_file_name):
@@ -337,9 +368,9 @@ class Client(ABC):
         # check whether the client is chosen to engage in this training epoch
         # default status for tester is true
         is_chosen = True
-        if self._config.role == "trainer":
-            self._training_process_info.global_chosen_list = server_model_udpate.worker_id
-            is_chosen = self._config.client_id in self._training_process_info.global_chosen_list or not self._training_process_info.global_chosen_list
+        if self.config.role == "trainer":
+            self.training_process_info.global_chosen_list = server_model_udpate.worker_id
+            is_chosen = self.config.client_id in self.training_process_info.global_chosen_list or not self.training_process_info.global_chosen_list
 
         if is_chosen:
             with lock:
@@ -347,10 +378,10 @@ class Client(ABC):
                 # for cloud storage, always use forward slash
                 # regardless of os
                 file_name = f"{server_model_udpate.global_model.version}.{self._file_extension}"
-                remote_path = f'{self._global_model_info.remote_folder_path}/{file_name}'
+                remote_path = f'{self.global_model_info.remote_folder_path}/{file_name}'
 
 
-                local_path = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, file_name)
+                local_path = os.path.join(self.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, file_name)
 
                 file_exists = self._components.cloud_storage.is_file_exists(file_path= remote_path)
                 
@@ -372,33 +403,33 @@ class Client(ABC):
             if download_success:
                 # Only update info when download is success
                 # update local version (the latest global model that the client have)
-                self._global_model_info.update(**server_model_udpate.global_model.to_dict())
+                self.global_model_info.update(**server_model_udpate.global_model.to_dict())
 
 
-                LOGGER.info(f"Successfully downloaded new global model {self._global_model_info.name}, version {self._global_model_info.version}")
+                LOGGER.info(f"Successfully downloaded new global model {self.global_model_info.name}, version {self.global_model_info.version}")
                 # print the content only when succesfully download new model
                 message_utils.print_message(server_model_udpate.to_dict())
 
-                if self._config.role == "tester":
+                if self.config.role == "tester":
                     # test everytime receive new global model notify from server
                     self._test()
 
-                elif self._config.role == "trainer":
-                    LOGGER.info(f"{self._config.client_id} is chosen to train for global model version {self._global_model_info.version}")
+                elif self.config.role == "trainer":
+                    LOGGER.info(f"{self.config.client_id} is chosen to train for global model version {self.global_model_info.version}")
 
                     # if the training thread does not start yet 
                     # (fail to download the global model in the response to init message from server)
                     # start now
                     # else just update the state of the new model flag
-                    if self._state.training_thread_is_running:
-                        self._state.new_model_flag = True
+                    if self.state.training_thread_is_running:
+                        self.state.new_model_flag = True
                     else:
                         self._start_training_thread()
 
 
 
     def _handle_server_ping_to_client(self, msg_received):
-        if msg_received['content']['client_id'] == self._config.client_id:
+        if msg_received['content']['client_id'] == self.config.client_id:
             message_utils.print_message(msg_received)
             headers = self._create_headers(message_type= MessageType.CLIENT_PING_MESSAGE)
             message = ExchangeMessage(headers= headers, content=ResponseToPing().to_dict()).to_json()
@@ -409,7 +440,7 @@ class Client(ABC):
         LOGGER.info("*" * 40)
         LOGGER.info("Publish New Local Model Thread is Runnning!")
         LOGGER.info("*" * 40)
-        self._state.publish_new_local_update_is_running = True
+        self.state.publish_new_local_update_is_running = True
 
         publish_new_local_update_thread = Thread(target= self._publish_new_local_update, name= "client_publish_new_local_update_thread")
         publish_new_local_update_thread.daemon = True
@@ -481,24 +512,24 @@ class Client(ABC):
     def _get_local_storage_path(self) -> LocalStoragePath:
         # create local folder for storage
         # get the current folder path, then save all local file within the current folder
-        # full_path = os.path.join(os.getcwd(), self._config.record_root_folder, self._config.client_id)
-        full_path = os.path.join(os.getcwd(), self._config.client_id)
+        # full_path = os.path.join(os.getcwd(), self.config.record_root_folder, self.config.client_id)
+        full_path = os.path.join(os.getcwd(), self.config.client_id)
 
         # Initialize a profile file for client
         # self._profile_file_name = os.path.join(full_path, "profile.json")
 
 
-        return LocalStoragePath(root_folder= full_path, save_log= self._config.save_log)
+        return LocalStoragePath(root_folder= full_path, save_log= self.config.save_log)
 
 
     def _send_init_message(self):
         data_description = {
-            'size': self._config.dataset.data_size,
-            'qod': self._config.dataset.qod,
+            'size': self.config.dataset.data_size,
+            'qod': self.config.dataset.qod,
         }
 
         client_init_message: ClientInitConnection = ClientInitConnection(
-                                                    role=self._config.role,
+                                                    role=self.config.role,
                                                     system_info= SystemInfo().to_dict(),
                                                     data_description=DataDescription(**data_description).to_dict()
                                                     )
@@ -510,40 +541,11 @@ class Client(ABC):
 
 
 
-    def _start_consumer(self):
-        self._components.queue_consumer.start()
-
-    def _start_training_thread(self):
-        LOGGER.info("Start training thread.")
-        self._state.training_thread_is_running = True
-        training_thread = Thread(target= self._train, name= "client_training_thread")
-        training_thread.daemon = True
-
-        training_thread.start()
-
-
-    def _clean_storage(self):
-        LOGGER.info("CLEANING STORAGE THREAD IS RUNNING")
-        while True:
-            sleep(self._config.cleaning_config.clean_storage_period)
-            LOGGER.info("CLEANING TIME")
-
-            # -------- Global Weight File Cleaning ------------ 
-            global_threshold = self._global_model_info.version - self._config.cleaning_config.global_keep_version_num
-            self._components.storage_cleaner.delete_local_files(is_global_folder= True, threshold= global_threshold)
-
-            # -------- Client weight files cleaning -----------
-            if self._config.role == "trainer":
-                local_threshold = self._training_process_info.local_epoch - self._config.cleaning_config.local_keep_version_num
-                self._components.storage_cleaner.delete_local_files(is_global_folder= False, threshold= local_threshold)
-
-
-
 
     def _attempt_to_download(self, remote_file_path: str, local_file_path: str) -> bool:
         LOGGER.info("Downloading new global model............")
 
-        for i in range(self._config.download_attempt):
+        for i in range(self.config.download_attempt):
             if self._components.cloud_storage.download(remote_file_path= remote_file_path, 
                                             local_file_path= local_file_path):
                 return True
@@ -551,26 +553,26 @@ class Client(ABC):
             LOGGER.info(f"{i + 1} attempt: download model failed, retry in 5 seconds.")
 
             i += 1
-            if i == self._config.download_attempt:
-                LOGGER.info(f"Already try {self._config.download_attempt} time. Pass this global version: {remote_file_path}")
+            if i == self.config.download_attempt:
+                LOGGER.info(f"Already try {self.config.download_attempt} time. Pass this global version: {remote_file_path}")
             sleep(5)
 
         return False
     
 
     def _create_headers(self, message_type: str) -> dict:
-        headers = {'timestamp': time_utils.time_now(), 'message_type': message_type, 'session_id': self._config.session_id, 'client_id': self._config.client_id}
+        headers = {'timestamp': time_utils.time_now(), 'message_type': message_type, 'session_id': self.config.session_id, 'client_id': self.config.client_id}
         return headers
 
     # # profile related
     # def _create_message(self):
     #     data = {
-    #         "session_id": self._config.session_id,
-    #         "client_id": self._config.client_id,
-    #         "global_model_name": self._global_model_info.name or None,
-    #         "local_epoch": self._training_process_info.local_epoch,
-    #         "local_qod": self._config.dataset.qod,
-    #         "save_global_model_version": self._global_model_info.version,
+    #         "session_id": self.config.session_id,
+    #         "client_id": self.config.client_id,
+    #         "global_model_name": self.global_model_info.name or None,
+    #         "local_epoch": self.training_process_info.local_epoch,
+    #         "local_qod": self.config.dataset.qod,
+    #         "save_global_model_version": self.global_model_info.version,
     #         "save_global_model_update_data_size": self._global_model_update_data_size,
     #         "save_global_avg_loss": self._global_avg_loss,
     #         "save_global_avg_qod": self._global_avg_qod,
@@ -592,8 +594,8 @@ class Client(ABC):
     #     try:
     #         with open(self._profile_file_name) as json_file:
     #             data = json.load(json_file)
-    #             self._config.session_id = data["session_id"]
-    #             self._config.client_id = data["client_id"]
+    #             self.config.session_id = data["session_id"]
+    #             self.config.client_id = data["client_id"]
     #             self._global_model_name = data["global_model_name"]
     #             self._.local_epoch = data["local_epoch"]
     #             self._local_qod = data["local_qod"]
@@ -616,16 +618,16 @@ class Client(ABC):
             return None
         
 
-    def _get_model_dim_ready(self):
-        if self._config.role == "trainer":
-            ds = self._model.train_ds
+    def get_model_dim_ready(self):
+        if self.config.role == "trainer":
+            ds = self.model.train_ds
         else:
-            ds = self._model.test_ds
+            ds = self.model.test_ds
         for images, labels in ds:
-            self._model.fit(images, labels)
+            self.model.fit(images, labels)
             break
 
-    def _load_weights_from_file(self, folder: str, file_name: str):
+    def load_weights_from_file(self, folder: str, file_name: str):
         full_path = os.path.join(folder, file_name)
 
         file_exist = os.path.isfile(full_path)
@@ -639,29 +641,29 @@ class Client(ABC):
 
         return file_exist, weights
     
-    def _tracking_training_process(self, batch_num):
-        total_trained_sample = batch_num * self._config.training_params.batch_size
-        if total_trained_sample > self._tracking_point:
+    def tracking_training_process(self, batch_num):
+        total_trained_sample = batch_num * self.config.training_params.batch_size
+        if total_trained_sample > self.tracking_point:
             LOGGER.info(f"Training up to {total_trained_sample} samples")
-            self._multiplier += 1
-            self._tracking_point = self._tracking_period * self._multiplier
+            self.multiplier += 1
+            self.tracking_point = self.tracking_period * self.multiplier
 
 
-    def _update_new_local_model_info(self):
-        if not self._state.publish_new_local_update_is_running:
+    def update_new_local_model_info(self):
+        if not self.state.publish_new_local_update_is_running:
             self._start_publish_new_local_update_thread()
             
         # Save weights locally after training
-        filename = f'{self._training_process_info.local_epoch}.{self._file_extension}'
+        filename = f'{self.training_process_info.local_epoch}.{self._file_extension}'
         
-        save_location = os.path.join(self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, filename)
+        save_location = os.path.join(self.local_storage_path.LOCAL_MODEL_ROOT_FOLDER, filename)
         # for the remote storage path, use forwawrd slash as the separator
         # regardless of os
         remote_file_path = f"{self._remote_upload_folder}/{filename}"
 
-        self._local_model_upload_info.update(weight_array= self._model.get_weights(), 
+        self._local_model_upload_info.update(weight_array= self.model.get_weights(), 
                                             filename= filename, local_weight_path= save_location, 
-                                            global_version_used= self._training_process_info.global_version_used,
+                                            global_version_used= self.training_process_info.global_version_used,
                                             remote_weight_path= remote_file_path,
-                                            train_acc= self._training_process_info.train_acc, train_loss= self._training_process_info.train_loss)
+                                            train_acc= self.training_process_info.train_acc, train_loss= self.training_process_info.train_loss)
 
