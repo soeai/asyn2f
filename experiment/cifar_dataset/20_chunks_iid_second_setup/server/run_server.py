@@ -5,8 +5,10 @@ import argparse
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
 sys.path.append(root)
 
-from asynfed.server.algorithms import Asyn2fServer, KAFLMStepServer
+# from asynfed.server.algorithms import Asyn2fServer, KAFLMStepServer
 # from asynfed.server.strategies import Asyn2fStrategy
+
+from asynfed.server import Server
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -51,10 +53,7 @@ config['strategy']['name'] = args.strategy
 print(f"Begin the framework with {config['strategy']['name']} strategy")
 
 
-if args.strategy == "asyn2f":
-    server = Asyn2fServer(config)
-elif args.strategy == "kafl":
-    server = KAFLMStepServer(config)
+server = Server(config= config)
 
 server.start()
 
