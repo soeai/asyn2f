@@ -170,9 +170,8 @@ class Asyn2fStrategy(Strategy):
         headers['session_id'] = session_id
         headers['reconnect'] = reconnect
 
-        epoch_update_frequency = 5
         response_to_init: ServerRespondToInit = ServerRespondToInit(strategy= self._server._config.strategy.name,
-                                                    epoch_update_frequency= epoch_update_frequency,
+                                                    epoch_update_frequency= self._server._config.strategy.n,
                                                     model_info= model_info.to_dict(),
                                                     storage_info= storage_info.to_dict())
         

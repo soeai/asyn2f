@@ -56,6 +56,7 @@ class Server(object):
         """
         super().__init__()
 
+
         # load config info 
         self._config: ServerConfig = self._load_config_info(config= config)
         # get local and cloud storage path
