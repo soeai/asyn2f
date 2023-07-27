@@ -1,21 +1,9 @@
-import os
 import logging
-from typing import List
 import numpy as np
-import pickle
 from threading import Lock
 
 from time import sleep 
 
-from asynfed.common.messages import ExchangeMessage
-import asynfed.common.messages as message_utils 
-from asynfed.common.messages.server import ServerModelUpdate
-from asynfed.common.messages.server.server_response_to_init import ServerRespondToInit, StorageInfo
-
-from asynfed.common.config import MessageType
-
-
-from asynfed.common.messages.client import ClientModelUpdate, NotifyEvaluation, TesterRequestStop
 
 # from asynfed.client import Client
 
@@ -30,20 +18,7 @@ lock = Lock()
 # This is the proposed federated asynchronous training algorithm of our paper
 # More algorithms can be found at other files in this directory 
 class Asyn2f(object):
-    '''
-    - model must be an instance of an inheritant of class ModelWrapper
-    - for train
-        - model.train_ds: require 
-        - model.test_ds: optional
-    - for tester: test_ds is required
 
-    - train_ds and test_ds must in a format of a list of several batches
-        each batch contain x, y
-    - detail instruction (use as reference) of how to create a tensorflow model 
-        is found at asynfed/client/tensorflow/tensorflow_framework
-    - user is freely decided to follow the sample
-        or create their own model in their own platform (pytorch,...)
-    '''
     # def __init__(self, client: Client):
     def __init__(self, client):
         self._client = client
@@ -137,7 +112,6 @@ class Asyn2f(object):
                             self._merge()
                         else:
                             pass
-                            # LOGGER.info(f"Cannot find the file in the directory: {}")
 
                         # if not file_exist, also changing the flag status
                         self._client.state.new_model_flag = False
@@ -159,16 +133,20 @@ class Asyn2f(object):
                     f'\tLast Batch Test Loss: {test_loss:.4f}'
                 )
                 LOGGER.info("*" * 20)
-                min_acc = self._client.server_training_config.exchange_at.performance
-                min_epoch = self._client.server_training_config.exchange_at.epoch
-                if (min_acc <= self._client.training_process_info.train_acc) or (min_epoch <= self._client.training_process_info.local_epoch):
-                    self._client.update_new_local_model_info()
 
-                else:
-                    LOGGER.info("*" * 20)
-                    LOGGER.info(f"At epoch {self._client.training_process_info.local_epoch}, current train acc is {self._client.training_process_info.train_acc:.4f}, which does not meet either the min acc {min_acc} or min epoch {min_epoch} to notify model to server")
-                    LOGGER.info("*" * 20)
+                # instead of notifying the server every epoch
+                # reduce the communication by notifying every n epoch
+                # n set by server as epoch_update_frequency param
+                if self._client.training_process_info.local_epoch % self._client.server_training_config.epoch_update_frequency == 0:
+                    min_acc = self._client.server_training_config.exchange_at.performance
+                    min_epoch = self._client.server_training_config.exchange_at.epoch
+                    if (min_acc <= self._client.training_process_info.train_acc) or (min_epoch <= self._client.training_process_info.local_epoch):
+                        self._client.update_new_local_model_info()
 
+                    else:
+                        LOGGER.info("*" * 20)
+                        LOGGER.info(f"At epoch {self._client.training_process_info.local_epoch}, current train acc is {self._client.training_process_info.train_acc:.4f}, which does not meet either the min acc {min_acc} or min epoch {min_epoch} to notify model to server")
+                        LOGGER.info("*" * 20)
 
 
     def _merge(self):
