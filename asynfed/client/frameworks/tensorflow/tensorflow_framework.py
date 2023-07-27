@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import Model
-from ...model_wrapper import ModelWrapper
+from asynfed.client.objects import ModelWrapper
 
 '''
     - This is a reference of how user can defined a tensorflow model

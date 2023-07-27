@@ -6,13 +6,13 @@
     
     "strategy": {
         "name": "asyn2f",
-        "m": 3,
+        "m": 2,
         "n": 5
     },
     
     "model_config": {
         "name": "",
-        "initial_model": "initial_model.pkl",
+        "initial_model_path": "initial_model.pkl",
         "file_extension": "pkl",
 
         "model_exchange_at": {

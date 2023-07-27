@@ -1,16 +1,29 @@
 import json
 import os, sys
+import argparse
+
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
 sys.path.append(root)
 
-from asynfed.server import Server
-from asynfed.server.strategies import AsynFL
+from asynfed.server.algorithms import Asyn2fServer, KAFLMStepServer
+# from asynfed.server.strategies import Asyn2fStrategy
 
 from dotenv import load_dotenv
 load_dotenv()
 
+# Create an argument parser
+parser = argparse.ArgumentParser()
+# Add arguments
+parser.add_argument('--strategy', dest='strategy', type=str, default="asyn2f",
+                    choices=['kafl', 'asyn2f'],
+                    help='specify the strategy')
+parser.add_argument('--config_file', dest='config_file', type=str, default= "asyn2f_conf.json",
+                     help='specify the config file for running')
 
-with open('conf.json', 'r') as json_file:
+# Parse the arguments
+args = parser.parse_args()
+
+with open(args.config_file, 'r') as json_file:
     config = json.load(json_file)
 
 # load minio key
@@ -33,6 +46,15 @@ config['queue_producer']['endpoint'] = os.getenv("queue_producer_endpoint")
 
 
 
-strategy = AsynFL()
-fedasync_server = Server(strategy, config)
-fedasync_server.start()
+config['strategy']['name'] = args.strategy
+
+print(f"Begin the framework with {config['strategy']['name']} strategy")
+
+
+if args.strategy == "asyn2f":
+    server = Asyn2fServer(config)
+elif args.strategy == "kafl":
+    server = KAFLMStepServer(config)
+
+server.start()
+

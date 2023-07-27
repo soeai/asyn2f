@@ -49,7 +49,7 @@ class Worker:
 
 
     def get_local_weight_file_path(self, local_model_root_folder: str):
-        filename = self.weight_file.split(os.path.sep)[-1]
+        filename = self.remote_file_path.split(os.path.sep)[-1]
         return os.path.join(local_model_root_folder, self.worker_id, filename)
     
     def get_remote_weight_file_path(self):
@@ -71,4 +71,4 @@ class Worker:
         """
         Implement toString function here!
         """
-        return f"Worker: {self.worker_id} | current_version: {self.current_version} | qod: {self.qod} | datasize: {self.data_size} | performance: {self.performance} | loss: {self.loss}"
+        return f"Worker: {self.worker_id} | latest global version used {self.global_version_used} | qod: {self.qod} | datasize: {self.data_size} | performance: {self.performance} | loss: {self.loss}"

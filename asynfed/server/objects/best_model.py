@@ -14,7 +14,7 @@ class BestModel:
 
 
     def update(self, model_evaluation: NotifyEvaluation):
-        self.model_name = model_evaluation.weight_file
+        self.model_name = model_evaluation.remote_storage_path
         self.loss = model_evaluation.loss
         self.performance =  model_evaluation.performance
 

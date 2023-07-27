@@ -7,7 +7,7 @@ from time import sleep
 import pickle
 from typing import Dict
 from asynfed.server.objects import Worker
-from asynfed.server.storage_connector.boto3 import ServerStorageBoto3
+from asynfed.server.storage_connectors.boto3 import ServerStorageBoto3
 
 import logging
 LOGGER = logging.getLogger(__name__)
@@ -72,9 +72,18 @@ class Strategy(ABC):
         return weights
     
     
-    def extract_model_version(self, folder_path):
-        match = re.search(rf"(\d+){re.escape(self.file_extension)}$", folder_path)
+
+    def extract_model_version(self, folder_path: str) -> int:
+        # Use os.path to split the path into components
+        _, filename = os.path.split(folder_path)
+        
+        # Search for any sequence of digits (\d+) that comes directly before the file extension
+        # match = re.search(rf'(\d+){re.escape(self.file_extension)}', filename)
+        match = re.search(r'(\d+)\.', filename)  # Look for digits followed by a dot
+
+        # If a match was found, convert it to int and return it
         if match:
             return int(match.group(1))
-        else:
-            return None
+        
+        # If no match was found, return None
+        return None

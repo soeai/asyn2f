@@ -66,16 +66,17 @@ class Asyn2fServer(Server):
     def _respond_connection(self, msg_received: dict):
         message_utils.print_message(msg_received)
 
-        session_id, reconnect = self._check_client_identity_when_joining(msg_received= message)
+        session_id, reconnect = self._check_client_identity_when_joining(msg_received= msg_received)
         client_id: str = msg_received['headers']['client_id']
-        access_key, secret_key = self._cloud_storage.get_client_key(client_id)
+        access_key, secret_key = self._cloud_storage.get_client_key()
 
 
         # notify newest global model to worker
         model_url = self._cloud_storage.get_newest_global_model()
+
         # always use forward slash for the cloud storage regardless os
         model_version = self._strategy.extract_model_version(folder_path= model_url)
-        
+
         # update the current version for the strategy 
         # if the server is just on the first round
         if self._strategy.current_version == None:
@@ -86,8 +87,8 @@ class Asyn2fServer(Server):
         exchange_at= self._config.model_config.model_exchange_at.to_dict()
 
 
-        model_info: ModelInfo = ModelInfo(global_folder= self._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
-                                          name= self._config.model_name, version=self._strategy.current_version,
+        model_info: ModelInfo = ModelInfo(global_folder= self._config.cloud_storage.global_model_root_folder, 
+                                          name= self._config.model_config.name, version=self._strategy.current_version,
                                           file_extension= self._strategy.file_extension, exchange_at= exchange_at)
         
         # check the correctness of message when sending
@@ -202,7 +203,7 @@ class Asyn2fServer(Server):
 
             # download worker weight file
             remote_weight_file = worker.get_remote_weight_file_path()
-            local_weight_file = worker.get_weight_file_path(local_model_root_folder= self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER)
+            local_weight_file = worker.get_local_weight_file_path(local_model_root_folder= self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER)
             self._cloud_storage.download(remote_file_path= remote_weight_file, 
                                         local_file_path= local_weight_file)
 

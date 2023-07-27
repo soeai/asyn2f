@@ -5,7 +5,7 @@ import os
 LOGGER = logging.getLogger(__name__)
 
 from asynfed.common.messages.server.server_response_to_init import StorageInfo
-from asynfed.common.utils import MinioConnector
+from asynfed.common.storage_connectors import MinioConnector
 from .boto3 import ServerStorageBoto3
 
 

@@ -53,12 +53,19 @@ class ServerStorageBoto3(Boto3Connector):
  
     def get_newest_global_model(self) -> str:
         # get the newest object in the global folders inside the bucket
-        objects = self._s3.list_objects_v2(Bucket=self._bucket_name, Prefix= self._global_model_root_folder, Delimiter='/')['Contents']
+        # print(self._global_model_root_folder)
+        folder =  f"{self._global_model_root_folder}/"
+        objects = self._s3.list_objects_v2(Bucket=self._bucket_name, Prefix= folder, Delimiter='/')['Contents']
+        # Exclude the prefix itself
+        objects = [obj for obj in objects if obj['Key'] != folder]
+
+        # print(objects)
+
         # Sort the list of objects by LastModified in descending order
         sorted_objects = sorted(objects, key=lambda x: x['LastModified'], reverse=True)
-
+        
         try:
-            if sorted_objects[0]['Key'] == self._global_model_root_folder:
+            if sorted_objects[0]['Key'] == folder:
                 LOGGER.info(sorted_objects)
                 return sorted_objects[1]['Key']
             return sorted_objects[0]['Key']

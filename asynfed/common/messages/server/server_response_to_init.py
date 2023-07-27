@@ -23,9 +23,9 @@ class ModelInfo(MessageObject):
 
 # support two type of storage: aws and minio
 class StorageInfo(MessageObject):
-    def __init__(self, bucket_name: str, region_name: str, client_upload_folder: str, 
+    def __init__(self, bucket_name: str, region_name: str, client_upload_folder: str = "", 
                         type: str = "minio", endpoint_url: str = None,
-                        access_key: str = "", secret_key: str = ""):
+                        access_key: str = "", secret_key: str = "", *args, **kwargs):
         self.type = type
         self.endpoint_url = endpoint_url
         self.access_key = access_key

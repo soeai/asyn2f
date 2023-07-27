@@ -7,7 +7,7 @@ import pickle
 
 
 from asynfed.server.objects import Worker
-from asynfed.server.storage_connector.boto3 import ServerStorageBoto3
+from asynfed.server.storage_connectors.boto3 import ServerStorageBoto3
 from asynfed.common.config import LocalStoragePath
 
 from .strategy import Strategy
@@ -28,7 +28,7 @@ class Asyn2fStrategy(Strategy):
     def compute_alpha(self, worker: Worker) -> float:
         # avoid division by zero
         alpha  = worker.qod * worker.data_size / (worker.loss + 1e-7)
-        alpha /= (self.update_version - worker.current_version)
+        alpha /= (self.update_version - worker.global_version_used)
         return alpha
 
     def aggregate(self, completed_workers: Dict [str, Worker], cloud_storage: ServerStorageBoto3, 
@@ -63,8 +63,8 @@ class Asyn2fStrategy(Strategy):
         LOGGER.info("*" * 20)
         for w_id, worker in completed_workers.items():
             LOGGER.info(f"Update global version: {self.update_version}")
-            LOGGER.info(f"worker id {worker.worker_id} with global version used {worker.current_version}")
-            LOGGER.info(f"substract: {self.update_version - worker.current_version}")
+            LOGGER.info(f"worker id {worker.worker_id} with global version used {worker.global_version_used}")
+            LOGGER.info(f"substract: {self.update_version - worker.global_version_used}")
             
             worker.alpha = self.compute_alpha(worker)
             sum_alpha += worker.alpha
@@ -128,7 +128,7 @@ class Asyn2fStrategy(Strategy):
             
             if file_exists:
                 LOGGER.info(f"{remote_path} exists in the cloud. Begin to download shortly")
-                local_path = worker.get_weight_file_path(local_model_root_folder= local_model_root_folder)
+                local_path = worker.get_local_weight_file_path(local_model_root_folder= local_model_root_folder)
                 download_success = self._attempt_to_download(cloud_storage= cloud_storage, 
                                                              remote_file_path= remote_path, local_file_path= local_path)
                 

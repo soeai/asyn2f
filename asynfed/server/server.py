@@ -15,7 +15,6 @@ from abc import abstractmethod, ABC
 
 # Third party imports
 from asynfed.common.config import CloudStoragePath, LocalStoragePath, MessageType
-from asynfed.common.messages import Message
 from asynfed.common.messages.client import ClientInitConnection, ClientModelUpdate, NotifyEvaluation, TesterRequestStop
 from asynfed.common.messages.server import GlobalModel, ServerModelUpdate, PingToClient, ServerRequestStop
 from asynfed.common.messages.server.server_response_to_init import ModelInfo, StorageInfo 
@@ -33,7 +32,7 @@ from .objects import BestModel, Worker
 from .monitor.influxdb import InfluxDB
 from .strategies import Strategy, Asyn2fStrategy, KAFLMStepStrategy
 from .worker_manager import WorkerManager
-from .storage_connector import ServerStorageBoto3, ServerStorageAWS, ServerStorageMinio
+from .storage_connectors import ServerStorageBoto3, ServerStorageAWS, ServerStorageMinio
 
 
 
@@ -212,7 +211,7 @@ class Server(ABC):
             session_id = str(uuid.uuid4())
             # new entry
             reconnect = False
-            access_key, secret_key = self._cloud_storage.get_client_key(client_id)
+            access_key, secret_key = self._cloud_storage.get_client_key()
             worker = Worker(
                     session_id=session_id,
                     worker_id=client_id,
@@ -298,7 +297,7 @@ class Server(ABC):
         cloud_config.storage_type = self._config.cloud_storage.type
         cloud_config.bucket_name = self._config.cloud_storage.bucket_name
         cloud_config.region_name = self._config.cloud_storage.region_name
-        
+
         cloud_storage_info: StorageInfo = StorageInfo(**cloud_config.to_dict())
 
         if self._aws_s3:
@@ -316,7 +315,7 @@ class Server(ABC):
 
     def _set_up_strategy(self) -> Strategy:
         strategy = self._config.strategy.name.lower()
-        model_name = self._config.model_name
+        model_name = self._config.model_config.name
         strategy_object: Strategy
         if strategy == "asyn2f":
             strategy_object = Asyn2fStrategy(model_name= model_name, file_extension= self._config.model_config.file_extension)
@@ -365,13 +364,11 @@ class Server(ABC):
             # delete remote files
             storage_cleaner.delete_remote_files(cloud_storage= self._cloud_storage,
                                     folder_path= self._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER,
-                                    threshold= global_threshold, best_version= best_global_model_version,
-                                    file_extension= self._config.model_config.file_extension)
+                                    threshold= global_threshold, best_version= best_global_model_version)
             
             # delete local files
             storage_cleaner.delete_local_files(folder_path= self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
-                                               threshold= global_threshold, best_version= best_global_model_version, 
-                                               file_extension= self._config.model_config.file_extension)
+                                               threshold= global_threshold, best_version= best_global_model_version)
             
             # -------- Global Weight File Cleaning ------------ 
 
@@ -385,13 +382,16 @@ class Server(ABC):
                 client_threshold = worker.update_local_version_used - self._config.cleaning_config.local_keep_version_num
 
                 # delete remote files
-                self._delete_remote_files(directory= w_id, threshold= client_threshold)
+                # self._delete_remote_files(directory= w_id, threshold= client_threshold)
+                client_folder = f"{self._cloud_storage_path.CLIENT_MODEL_ROOT_FOLDER}/{w_id}"
+                storage_cleaner.delete_remote_files(cloud_storage= self._cloud_storage, folder_path= client_folder,
+                                                    threshold= client_threshold)
 
                 # delete local files
                 local_directory = os.path.join(self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, w_id)
-                storage_cleaner.delete_local_files(folder_path= local_directory, threshold= client_threshold,
-                                                   file_extension= self._config.model_config.file_extension)
+                storage_cleaner.delete_local_files(folder_path= local_directory, threshold= client_threshold)
             # -------- Client weight files cleaning -----------
+
 
 
     def _check_stop_conditions(self, info: dict):
@@ -413,7 +413,7 @@ class Server(ABC):
 
 
     def _write_record(self):
-        folder_name = "best_model"
+        folder_name = f"{self._config.server_id}-record/best_model"
         if not os.path.exists(folder_name):
             os.makedirs(folder_name)
         # write the record of best model

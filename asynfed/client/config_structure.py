@@ -46,7 +46,7 @@ class TestingParams(MessageObject):
 
 
 class ClientConfig(MessageObject):
-    def __init__(self, queue_exchange: str, client_id: str = "", role: str = "trainer", 
+    def __init__(self, queue_exchange: str, strategy: str = "asyn2f", record_root_folder: str = "", client_id: str = "", role: str = "trainer", 
                  gpu_index: int = 0, save_log: bool = True, tracking_point: int = None, 
                  download_attempt: int = 10, dataset: dict = None, stop_conditions: dict = None,
                  cleaning_config: dict = None, training_params: dict = None, testing_params: dict = None,
@@ -55,6 +55,8 @@ class ClientConfig(MessageObject):
 
         # these property provide default values
         self.client_id = client_id or str(uuid.uuid4())
+        self.strategy = strategy
+        self.record_root_folder = record_root_folder
         self.role = role
         self.gpu_index = gpu_index
         self.save_log = save_log

@@ -28,7 +28,7 @@ class ExchangeMessage(MessageObject):
     '''
 
     def __init__(self, headers: dict, content: MessageObject):
-        self.header = headers
+        self.headers = headers
         self.content = content
 
     def to_json(self):

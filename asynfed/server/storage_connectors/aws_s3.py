@@ -3,7 +3,7 @@ import boto3
 import json
 
 
-from asynfed.common.utils import AWSConnector
+from asynfed.common.storage_connectors import AWSConnector
 from .boto3 import ServerStorageBoto3
 from asynfed.common.messages.server.server_response_to_init import StorageInfo
 
