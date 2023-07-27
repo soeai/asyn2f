@@ -27,7 +27,7 @@ class MessageType:
 
 class QueueConfig(MessageObject):
     def __init__(self, queue_name: str, queue_exchange: str, exchange_type: str, 
-                 routing_key: str, endpoint: str):
+                 routing_key: str, endpoint: str, **kwargs):
         self.queue_name = queue_name
         self.queue_exchange = queue_exchange
         self.exchange_type = exchange_type

@@ -6,7 +6,7 @@
     
     "strategy": {
         "name": "asyn2f",
-        "m": 2,
+        "m": 1,
         "n": 5
     },
     

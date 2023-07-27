@@ -28,9 +28,9 @@ parser = argparse.ArgumentParser()
 # Add arguments
 parser.add_argument('--config_file', dest='config_file', type=str, help='specify the config file for running')
 parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-20-chunks-gpu", help='specify the queue exchange')
-parser.add_argument('--strategy', dest='strategy', type=str, default="asyn2f",
-                    choices=['kafl', 'asyn2f'],
-                    help='specify the strategy')
+# parser.add_argument('--strategy', dest='strategy', type=str, default="asyn2f",
+#                     choices=['kafl', 'asyn2f'],
+#                     help='specify the strategy')
 # Parse the arguments
 args = parser.parse_args()
 
@@ -97,21 +97,22 @@ tensorflow_framework = TensorflowFramework(model=model,
                                            train_ds= train_ds, 
                                            test_ds= test_ds, 
                                            config=config)
-strategy = args.strategy
+# strategy = args.strategy
 
-record_root_folder = f"{strategy}-record"
+# record_root_folder = f"{strategy}-record"
 
-if not os.path.exists(record_root_folder):
-    os.makedirs(record_root_folder)
+# if not os.path.exists(record_root_folder):
+#     os.makedirs(record_root_folder)
 
-config['strategy'] = strategy
-config['record_root_folder'] = record_root_folder
+# config['strategy'] = strategy
+# config['record_root_folder'] = record_root_folder
 
-if strategy == "asyn2f":
-    client = Asyn2fClient(model= tensorflow_framework, config= config)
-elif strategy == "kafl":
-    client = KAFLMStepClient(model= tensorflow_framework, config= config)
+# if strategy == "asyn2f":
+#     client = Asyn2fClient(model= tensorflow_framework, config= config)
+# elif strategy == "kafl":
+#     client = KAFLMStepClient(model= tensorflow_framework, config= config)
 
+client = Asyn2fClient(model= tensorflow_framework, config= config)
 
 # tf_client = Asyn2fClient(model=tensorflow_framework, config=config)
 client.start()

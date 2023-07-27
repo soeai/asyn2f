@@ -36,7 +36,9 @@ class StorageInfo(MessageObject):
 
 
 class ServerRespondToInit(MessageObject):
-    def __init__(self, model_info: dict, storage_info: dict, strategy: str = "asynfed"):
+    def __init__(self, model_info: dict, epoch_update_frequency: int,
+                 storage_info: dict, strategy: str = "asynfed"):
         self.strategy = strategy
+        self.epoch_update_frequency = epoch_update_frequency
         self.model_info: ModelInfo = ModelInfo(**model_info)
         self.storage_info: StorageInfo = StorageInfo(**storage_info)
