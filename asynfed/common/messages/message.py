@@ -27,7 +27,7 @@ class ExchangeMessage(MessageObject):
         }
     '''
 
-    def __init__(self, headers: MessageObject, content: MessageObject):
+    def __init__(self, headers: dict, content: MessageObject):
         self.header = headers
         self.content = content
 

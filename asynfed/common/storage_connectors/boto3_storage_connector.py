@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import os
-import logging
 from time import sleep
+import logging
 
 logging.getLogger(__name__)
 

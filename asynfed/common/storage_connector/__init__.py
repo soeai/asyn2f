@@ -1,2 +1,0 @@
-from .aws_storage_connector import AWSConnector
-from .minio_storage_connector import MinioConnector
