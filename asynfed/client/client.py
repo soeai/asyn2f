@@ -154,10 +154,11 @@ class Client(object):
     def on_message_received(self, ch, method, props, body):
         msg_received: dict = message_utils.deserialize(body.decode('utf-8'))
         message_type: str = msg_received['headers']['message_type']
+        client_id: str = msg_received['headers']['client_id']
 
         # these two abstract method
         # handle differently by each algorithm
-        if message_type == MessageType.SERVER_INIT_RESPONSE and not self.state.is_connected:
+        if message_type == MessageType.SERVER_INIT_RESPONSE and not self.state.is_connected and self.config.client_id == client_id:
             self._handle_server_init_response(msg_received)
 
 

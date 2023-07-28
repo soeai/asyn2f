@@ -169,6 +169,7 @@ class Asyn2fStrategy(Strategy):
         headers: dict = self._server._create_headers(message_type= MessageType.SERVER_INIT_RESPONSE)
         headers['session_id'] = session_id
         headers['reconnect'] = reconnect
+        headers['client_id'] = client_id
 
         response_to_init: ServerRespondToInit = ServerRespondToInit(strategy= self._server._config.strategy.name,
                                                     epoch_update_frequency= self._server._config.strategy.n,
