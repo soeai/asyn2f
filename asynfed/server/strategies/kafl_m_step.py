@@ -235,38 +235,35 @@ class KAFLMStepStrategy(Strategy):
     
 
     # also differ here
-    def aggregate(self, worker_models: List [Worker], cloud_storage: ServerStorageBoto3,
+    def aggregate(self, workers: List [Worker], cloud_storage: ServerStorageBoto3,
                   local_storage_path: LocalStoragePath):
-        # Get current global weight
-        # Check if global model is in local storage
+
         remote_path = cloud_storage.get_newest_global_model()
         filename = remote_path.split(os.path.sep)[-1]
         local_path = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, filename)
         if not os.path.exists(local_path):
-            cloud_storage.download(remote_file_path=remote_path, local_file_path=local_path)            
+            cloud_storage.download(remote_file_path=remote_path, local_file_path=local_path)
+        w_g = np.array(self._get_model_weights(local_path))
+        # Execute global update 
+        ## Calculate w_new(t)
+        w_new = 0
+        w_tmp = []
+        for i in range(len(workers)):
+            w_i = np.array(self._get_model_weights(workers[i].get_local_weight_file_path(local_model_root_folder=local_storage_path.LOCAL_MODEL_ROOT_FOLDER)))
+            w_tmp.append(w_i)
+            w_new += (w_tmp[i]* workers[i].data_size)
+        total_num_samples = sum([workers[i].data_size for i in range(len(workers))])
+        w_new /= total_num_samples
 
-        current_global_weights = self._get_model_weights(local_path)
-        
-        aggregate_weights = None
-        new_global_weights = None
-
-        total_num_samples = sum([worker.data_size for worker in worker_models])
-
-        for worker in worker_models:
-            if aggregate_weights is None:
-                aggregate_weights = [np.zeros(layer.shape, dtype=np.float32) for layer in worker.weight_array]
-                new_global_weights = [np.zeros(layer.shape, dtype=np.float32) for layer in worker.weight_array]
-            
-            for aggregate_layer, worker_layer, current_global_layer ,new_global_layer in zip(aggregate_weights, worker.weight_array, current_global_weights, new_global_weights):
-                aggregate_layer += worker.data_size / total_num_samples * worker_layer
-                new_global_layer += current_global_layer * (1 - self.agg_hyperparam) + aggregate_layer * self.agg_hyperparam
+        ## Calculate w_g(t+1)
+        w_g_new = w_g * (1-self.agg_hyperparam) + w_new * self.agg_hyperparam
         
 
         # save weight file.
         save_location = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self.get_new_global_model_filename())
 
         with open(save_location, "wb") as f:
-            pickle.dump(new_global_weights, f)
+            pickle.dump(w_g_new, f)
         LOGGER.info('=' * 20)
         LOGGER.info(save_location)
         LOGGER.info('=' * 20)
