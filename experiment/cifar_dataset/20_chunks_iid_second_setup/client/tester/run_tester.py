@@ -9,7 +9,8 @@ root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.d
 sys.path.append(root)
 
 
-from asynfed.client.algorithms import Asyn2fClient, KAFLMStepClient
+# from asynfed.client.algorithms import Asyn2fClient, KAFLMStepClient
+from asynfed.client import Client
 from asynfed.client.frameworks.tensorflow import TensorflowFramework
 
 from experiment.cifar_dataset.resnet18 import Resnet18
@@ -93,13 +94,14 @@ if not os.path.exists(record_root_folder):
 config['strategy'] = strategy
 config['record_root_folder'] = record_root_folder
 
-if strategy == "asyn2f":
-    client = Asyn2fClient(model= tensorflow_framework, config= config)
-elif strategy == "kafl":
-    client = KAFLMStepClient(model= tensorflow_framework, config= config)
-
+# if strategy == "asyn2f":
+#     client = Asyn2fClient(model= tensorflow_framework, config= config)
+# elif strategy == "kafl":
+#     client = KAFLMStepClient(model= tensorflow_framework, config= config)
+#
 
 # tf_client = Asyn2fClient(model=tensorflow_framework, config=config)
+client = Client(model= tensorflow_framework, config= config)
 client.start()
 scheduler.start()
 pause.days(1) # or it can anything as per your need
