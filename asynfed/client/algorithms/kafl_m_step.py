@@ -86,6 +86,7 @@ class KaflMStep(object):
 
                 # check for new global model every epoch
                 if self._client.state.new_model_flag:
+                    
                     current_global_model_file_name = self._client.global_model_info.get_file_name()
                     file_exist, global_weights = self._client.load_weights_from_file(self._client.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
                                                                                             current_global_model_file_name)
@@ -94,9 +95,10 @@ class KaflMStep(object):
                         LOGGER.info(f"New model ? - {self._client.state.new_model_flag}")
                         LOGGER.info(f"Set global weight to the local model")    
                         self._client.model.set_weights(global_weights)
-
+                        
                     # if not file_exist, also changing the flag status
                     self._client.state.new_model_flag = False
+
 
 
                 if self._client.model.test_ds:

@@ -17,7 +17,7 @@
 
         "model_exchange_at": {
             "performance": 0.8,
-            "epoch": 50
+            "epoch": 100
             
         },
         

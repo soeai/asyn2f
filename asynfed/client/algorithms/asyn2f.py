@@ -88,6 +88,7 @@ class Asyn2f(object):
 
                     # merging when receiving a new global model
                     if self._client.state.new_model_flag:
+                        
                         # update some tracking info
                         self._client.training_process_info.previous_global_version_used = self._client.training_process_info.global_version_used
                         self._client.training_process_info.global_version_used = self._client.global_model_info.version
@@ -112,9 +113,9 @@ class Asyn2f(object):
                             self._merge()
                         else:
                             pass
-
                         # if not file_exist, also changing the flag status
                         self._client.state.new_model_flag = False
+
 
 
                 if self._client.model.test_ds:
