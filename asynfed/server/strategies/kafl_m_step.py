@@ -40,11 +40,11 @@ from asynfed.common.messages.server.server_response_to_init import ServerRespond
 import asynfed.common.messages as message_utils
 
 
-from asynfed.server import Server
+# from asynfed.server import Server
 class KAFLMStepStrategy(Strategy):
 
-    def __init__(self, server: Server, model_name: str, file_extension: str, m: int = 3, agg_hyperparam: float = 0.8):
-    # def __init__(self, server, model_name: str, file_extension: str, m: int = 3, agg_hyperparam: float = 0.8):
+    # def __init__(self, server: Server, model_name: str, file_extension: str, m: int = 3, agg_hyperparam: float = 0.8):
+    def __init__(self, server, model_name: str, file_extension: str, m: int = 3, agg_hyperparam: float = 0.8):
         """
         Args:
             m (int, optional): Number of workers to aggregate. Defaults to 3.

@@ -12,15 +12,15 @@ from asynfed.server.storage_connectors.boto3 import ServerStorageBoto3
 import logging
 LOGGER = logging.getLogger(__name__)
 
-from asynfed.server import Server
+# from asynfed.server import Server
 
 class Strategy(ABC):
     """
     This here the Interface of strategy, follow the strategy design pattern.
     Any new strategy will follow this interface. 
     """
-    def __init__(self, server: Server, model_name: str, file_extension: str = "pkl"):
-    # def __init__(self, server, model_name: str, file_extension: str = "pkl"):
+    # def __init__(self, server: Server, model_name: str, file_extension: str = "pkl"):
+    def __init__(self, server, model_name: str, file_extension: str = "pkl"):
         
         self._server = server
 
