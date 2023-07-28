@@ -16,16 +16,14 @@ load_dotenv()
 # Create an argument parser
 parser = argparse.ArgumentParser()
 # Add arguments
-parser.add_argument('--strategy', dest='strategy', type=str, default="asyn2f",
-                    choices=['kafl', 'asyn2f'],
-                    help='specify the strategy')
-# parser.add_argument('--config_file', dest='config_file', type=str, default= "config.json",
-#                      help='specify the config file for running')
+
+parser.add_argument('--config_file', dest='config_file', type=str, default= "asyn2f.json",
+                     help='specify the config file for running')
 
 # Parse the arguments
 args = parser.parse_args()
 
-with open("config.json", 'r') as json_file:
+with open(args.config_file, 'r') as json_file:
     config = json.load(json_file)
     
 # with open(args.config_file, 'r') as json_file:
@@ -50,10 +48,6 @@ config['queue_consumer']['endpoint'] = os.getenv("queue_consumer_endpoint")
 config['queue_producer']['endpoint'] = os.getenv("queue_producer_endpoint")
 
 
-
-config['strategy']['name'] = args.strategy
-
-print(f"Begin the framework with {config['strategy']['name']} strategy")
 
 
 server = Server(config= config)

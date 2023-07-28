@@ -291,6 +291,7 @@ class Client(object):
             LOGGER.info(f"The algorithm {self.server_training_config.strategy} server choose is not supported yet in client. About to exit the program...")
             LOGGER.info("*" * 40)
             sys.exit(0)
+            
         LOGGER.info("*" * 40)
         LOGGER.info(f"Server choose {self.server_training_config.strategy} as the algorithm use in this training network")
         LOGGER.info("*" * 40)

@@ -311,19 +311,6 @@ class Asyn2fStrategy(Strategy):
         LOGGER.info('=' * 20)
         
 
-    def _get_model_weights(self, file_path):
-        while not os.path.isfile(file_path):
-            LOGGER.info("*" * 20)
-            LOGGER.info("Sleep 5 second when the the download process is not completed, then retry")
-            LOGGER.info(file_path)
-            LOGGER.info("*" * 20)
-            sleep(5)
-
-        with open(file_path, "rb") as f:
-            weights = pickle.load(f)
-            
-        return weights
-    
 
     def _get_valid_completed_workers(self, workers: Dict[str, Worker], cloud_storage: ServerStorageBoto3,
                                      local_model_root_folder: str) -> Dict[str, Worker]:
@@ -354,20 +341,3 @@ class Asyn2fStrategy(Strategy):
 
 
 
-    def _attempt_to_download(self, cloud_storage: ServerStorageBoto3, remote_file_path: str, local_file_path: str) -> bool:
-        LOGGER.info("Downloading new client model............")
-        attemp = 3
-
-        for i in range(attemp):
-            if cloud_storage.download(remote_file_path= remote_file_path, 
-                                            local_file_path= local_file_path, try_time= attemp):
-                return True
-            
-            LOGGER.info(f"{i + 1} attempt: download model failed, retry in 5 seconds.")
-
-            i += 1
-            if i == attemp:
-                LOGGER.info(f"Already try 3 time. Pass this client model: {remote_file_path}")
-            sleep(5)
-
-        return False

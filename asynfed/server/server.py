@@ -323,7 +323,7 @@ class Server(object):
         else:
             LOGGER.info("*" * 20)
             LOGGER.info(f"The framework has not yet support the strategy you choose ({strategy})")
-            LOGGER.info("Please choose either Asyn2F, KAFL, or FedAvg (not case sensitive)")
+            LOGGER.info("Please choose either Asyn2F or KAFL (not case sensitive)")
             LOGGER.info("*" * 20)
             sys.exit(0)
         return strategy_object

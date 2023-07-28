@@ -1,0 +1,77 @@
+{
+    "server_id": "",
+    "ping_period": 300,
+    "save_log": true,
+    
+    
+    "strategy": {
+        "name": "asyn2f",
+        "m": 3,
+        "n": 5
+    },
+    
+    "model_config": {
+        "name": "",
+        "initial_model_path": "initial_model.pkl",
+        "file_extension": "pkl",
+
+        "model_exchange_at": {
+            "performance": 0.8,
+            "epoch": 50
+            
+        },
+        
+        "stop_conditions": {
+            "max_version": 240,
+            "max_performance": 0.9,
+            "min_loss": 0.02
+        }
+    },
+
+    "cloud_storage": {
+        "type": "minio",
+        "bucket_name": "cifar10-10-chunks-overlap-gpu",
+        "region_name": "ap-southeast-2",
+
+        "global_model_root_folder": "global-models",
+        "client_model_root_folder": "clients",
+        
+        "aws_s3": {
+            "access_key": "",
+            "secret_key": ""
+        },
+        "minio": {
+            "access_key": "",
+            "secret_key": "",
+            "client_access_key": "",
+            "client_secret_key": "",
+            "endpoint_url": ""
+        }
+    },
+
+    "cleaning_config": {
+        "clean_storage_period": 240,
+        "global_keep_version_num": 10,
+        "local_keep_version_num": 2
+    },
+
+    "queue_consumer": {
+        "queue_exchange": "",
+        "exchange_type": "topic",
+        "queue_name": "",
+        "routing_key": "server.#"
+    },
+    "queue_producer": {
+        "queue_exchange": "",
+        "exchange_type": "topic",
+        "queue_name": "",
+        "routing_key": "client.#"
+    },
+
+    "influxdb": {
+        "url": "",
+        "token": "",
+        "org": "",
+        "bucket_name": ""
+    }
+}

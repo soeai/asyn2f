@@ -12,15 +12,15 @@ from asynfed.server.storage_connectors.boto3 import ServerStorageBoto3
 import logging
 LOGGER = logging.getLogger(__name__)
 
-# from asynfed.server import Server
+from asynfed.server import Server
 
 class Strategy(ABC):
     """
     This here the Interface of strategy, follow the strategy design pattern.
     Any new strategy will follow this interface. 
     """
-    # def __init__(self, server: Server, model_name: str, file_extension: str = "pkl"):
-    def __init__(self, server, model_name: str, file_extension: str = "pkl"):
+    def __init__(self, server: Server, model_name: str, file_extension: str = "pkl"):
+    # def __init__(self, server, model_name: str, file_extension: str = "pkl"):
         
         self._server = server
 
@@ -81,27 +81,6 @@ class Strategy(ABC):
         pass
 
 
-    def attempt_to_download(self, cloud_storage: ServerStorageBoto3, remote_file_path: str, local_file_path: str, n_attemps: int = 3) -> bool:
-        for i in range(n_attemps):
-            if cloud_storage.download(remote_file_path= remote_file_path, local_file_path= local_file_path, try_time=n_attemps):
-                return True
-            LOGGER.info(f"{i + 1} attempt: download model failed, retry in 5 seconds.")
-            i += 1
-            if i == n_attemps:
-                LOGGER.info(f"Already try {n_attemps} time. Pass this client model: {remote_file_path}")
-            sleep(5)
-
-        return False
-
-    def _get_model_weights(self, file_path):
-        while not os.path.isfile(file_path):
-            sleep(3)
-        with open(file_path, "rb") as f:
-            weights = pickle.load(f)
-        return weights
-    
-    
-
     def extract_model_version(self, folder_path: str) -> int:
         # Use os.path to split the path into components
         _, filename = os.path.split(folder_path)
@@ -116,3 +95,36 @@ class Strategy(ABC):
         
         # If no match was found, return None
         return None
+
+    def _attempt_to_download(self, cloud_storage: ServerStorageBoto3, remote_file_path: str, local_file_path: str) -> bool:
+        LOGGER.info("Downloading new client model............")
+        attemp = 3
+
+        for i in range(attemp):
+            if cloud_storage.download(remote_file_path= remote_file_path, 
+                                            local_file_path= local_file_path, try_time= attemp):
+                return True
+            
+            LOGGER.info(f"{i + 1} attempt: download model failed, retry in 5 seconds.")
+
+            i += 1
+            if i == attemp:
+                LOGGER.info(f"Already try 3 time. Pass this client model: {remote_file_path}")
+            sleep(5)
+
+        return False
+    
+
+    def _get_model_weights(self, file_path):
+        while not os.path.isfile(file_path):
+            LOGGER.info("*" * 20)
+            LOGGER.info("Sleep 5 second when the the download process is not completed, then retry")
+            LOGGER.info(file_path)
+            LOGGER.info("*" * 20)
+            sleep(5)
+
+        with open(file_path, "rb") as f:
+            weights = pickle.load(f)
+            
+        return weights
+    
