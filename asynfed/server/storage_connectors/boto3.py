@@ -53,13 +53,10 @@ class ServerStorageBoto3(Boto3Connector):
  
     def get_newest_global_model(self) -> str:
         # get the newest object in the global folders inside the bucket
-        # print(self._global_model_root_folder)
         folder =  f"{self._global_model_root_folder}/"
         objects = self._s3.list_objects_v2(Bucket=self._bucket_name, Prefix= folder, Delimiter='/')['Contents']
         # Exclude the prefix itself
         objects = [obj for obj in objects if obj['Key'] != folder]
-
-        # print(objects)
 
         # Sort the list of objects by LastModified in descending order
         sorted_objects = sorted(objects, key=lambda x: x['LastModified'], reverse=True)
@@ -97,11 +94,16 @@ class ServerStorageBoto3(Boto3Connector):
     def list_files(self, folder_path):
         """Lists all files in the specified client_id folder within the MinIO bucket"""
         try:
+            folder_path = f"{folder_path}/"
             response = self._s3.list_objects_v2(Bucket=self._bucket_name, Prefix=folder_path, Delimiter='/')
-            files = []
-
             if 'Contents' in response:
-                files += [file['Key'].replace(folder_path, '') for file in response['Contents']]
+                objects = response['Contents']
+                # Exclude the prefix itself
+                objects = [object for object in objects if object['Key'] != folder_path]
+                # sorted_objects[0]['Key']
+                files = [object['Key'] for object in objects]
+            else:
+                files = []
 
             return files
         except Exception as e:

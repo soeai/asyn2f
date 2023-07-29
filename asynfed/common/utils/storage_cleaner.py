@@ -8,17 +8,16 @@ from asynfed.server.storage_connectors import ServerStorageBoto3
 
 def delete_remote_files(cloud_storage: ServerStorageBoto3, folder_path: str, 
                         threshold: int = 0, best_version: int = None):
-
     files = cloud_storage.list_files(folder_path= folder_path)
-
     versions = [extract_model_version(folder_path= file) for file in files]
     delete_list = [file for file, version in zip(files, versions) if version <= threshold and version != best_version]
 
+
     if delete_list:
         logging.info("=" * 20)
-        logging.info(f"Delete {len(delete_list)} files in {folder_path} folder")
+        logging.info(f"Delete {len(delete_list)} files in remote folder: {folder_path}")
         logging.info(f"Threshold: {threshold}, best version: {best_version}")
-        logging.info([extract_model_version(folder_path= file) for file in delete_list])
+        logging.info(f"version: {[extract_model_version(folder_path= file) for file in delete_list]}")
         logging.info("=" * 20)
         cloud_storage.delete_files(delete_list)
 
