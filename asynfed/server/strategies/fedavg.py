@@ -40,9 +40,11 @@ class FedAvgStrategy(Strategy):
     def __init__(self, server, model_name: str, file_extension: str, m: int = 1):
         super().__init__(server = server, model_name= model_name, file_extension= file_extension)
         self.m = m
+        print(f"This is m: {self.m}")
 
     # def start_server(self):
     def handle_aggregating_process(self):
+        sleep(300)
         if not self._server.config.strategy.update_period or self._server.config.strategy.update_period == 0:
             # constantly check for new udpate
             self._server.config.strategy.update_period = 20
@@ -53,11 +55,17 @@ class FedAvgStrategy(Strategy):
                 # close the program
                 sys.exit(0)
 
-            ready = len(self._server.worker_manager.get_completed_workers()) >= self.m
-
+            num_completed_workers = len(self._server.worker_manager.get_completed_workers())
+            ready =  num_completed_workers >= self.m
+            print(num_completed_workers, ready)
             if ready:
+                print("before")
                 self._server.worker_manager.update_worker_connections()
+                print("after")
                 connected_workers_complete = self._server.worker_manager.check_connected_workers_complete_status()
+
+                print(f"Status of connected workers: {connected_workers_complete}")
+
 
                 if not connected_workers_complete:
                     sleep(self._server.config.strategy.update_period)
@@ -78,6 +86,9 @@ class FedAvgStrategy(Strategy):
 
                     except Exception as e:
                         raise e
+            
+            sleep(self._server.config.strategy.update_period)
+
                 
     def _update(self, completed_workers: Dict [str, Worker]):
         LOGGER.info("Aggregating process...")

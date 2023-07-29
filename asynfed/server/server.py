@@ -55,7 +55,7 @@ class Server(object):
 
         """
         super().__init__()
-
+        # self.lock = Lock()
 
         # load config info 
         self.config: ServerConfig = self._load_config_info(config= config)
@@ -82,6 +82,7 @@ class Server(object):
 
         self.cloud_storage = self._set_up_cloud_storage()
         self.worker_manager: WorkerManager = WorkerManager()
+        # self.worker_manager: WorkerManager = WorkerManager(lock= self.lock)
         # self._influxdb: InfluxDB = InfluxDB(self.config['influxdb'])
 
         # queue

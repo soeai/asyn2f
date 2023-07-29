@@ -30,6 +30,7 @@ class FedAvg(object):
         LOGGER.info("=" * 40)
         while True:
             if self._client.state.new_model_flag or self._client.training_process_info.local_epoch == 0:
+                self._client.state.new_model_flag = False
                 # for notifying global version used to server purpose
                 self._client.training_process_info.global_version_used = self._client.global_model_info.version
                 # for tensorflow model, there is some conflict in the dimension of 
