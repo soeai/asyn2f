@@ -88,7 +88,7 @@ class FedAvgStrategy(Strategy):
             worker.update_local_version_used = self.extract_model_version(model_filename)
 
         # pass out a copy of completed worker to aggregating process
-        self.aggregate(completed_workers, self._server.cloud_storage, self._server.local_storage_path)
+        self.aggregate(completed_workers, self._server.local_storage_path)
 
 
     def handle_client_notify_model(self, message):
@@ -123,10 +123,7 @@ class FedAvgStrategy(Strategy):
         return all_clients
     
 
-    def aggregate(self, completed_workers: Dict [str, Worker], cloud_storage: ServerStorageBoto3, 
-                  local_storage_path: LocalStoragePath):
-
-
+    def aggregate(self, completed_workers: Dict [str, Worker], local_storage_path: LocalStoragePath):
         # dealing with a list of NumPy arrays of different shapes (each representing the weights of a different layer of a neural network). 
         # This kind of heterogeneous structure is not conducive to the vectorized operations that make NumPy efficient
         # loop through each layer in the list
