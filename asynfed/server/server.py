@@ -17,7 +17,7 @@ import uuid
 from asynfed.common.config import CloudStoragePath, LocalStoragePath, MessageType
 from asynfed.common.messages.client import ClientInitConnection, ClientModelUpdate, NotifyEvaluation, TesterRequestStop
 from asynfed.common.messages.server import GlobalModel, ServerModelUpdate, PingToClient, ServerRequestStop
-from asynfed.common.messages.server.server_response_to_init import ModelInfo, StorageInfo 
+from asynfed.common.messages.server.server_response_to_init import ModelInfo, StorageInfo, ServerRespondToInit
 from asynfed.common.queue_connectors import AmqpConsumer, AmqpProducer
 
 from asynfed.common.messages import ExchangeMessage
@@ -58,21 +58,21 @@ class Server(object):
 
 
         # load config info 
-        self._config: ServerConfig = self._load_config_info(config= config)
+        self.config: ServerConfig = self._load_config_info(config= config)
         # get local and cloud storage path
         # global_model structure: {global_folder}/{model_name}/{version}.{file_extension}
 
-        global_model_root_folder: str = f"{self._config.cloud_storage.global_model_root_folder}/{self._config.model_config.name}"
-        self._local_storage_path: LocalStoragePath = self._get_local_storage_path()
+        global_model_root_folder: str = f"{self.config.cloud_storage.global_model_root_folder}/{self.config.model_config.name}"
+        self.local_storage_path: LocalStoragePath = self._get_local_storage_path()
         self._cloud_storage_path: CloudStoragePath = CloudStoragePath(global_model_root_folder= global_model_root_folder,
-                                                    client_model_root_folder= self._config.cloud_storage.client_model_root_folder,)
+                                                    client_model_root_folder= self.config.cloud_storage.client_model_root_folder,)
 
         LOGGER.info("All configs on server")
-        message_utils.print_message(self._config.to_dict())
+        message_utils.print_message(self.config.to_dict())
 
 
         # boolean variable to check the exit condition
-        self._stop_condition_is_met: bool = False
+        self.stop_condition_is_met: bool = False
 
         # initialize an object to save best model info
         self._best_model: BestModel = BestModel()
@@ -80,14 +80,14 @@ class Server(object):
         # Initialize dependencies
         self._strategy: Strategy = self._set_up_strategy()
 
-        self._cloud_storage = self._set_up_cloud_storage()
-        self._worker_manager: WorkerManager = WorkerManager()
-        # self._influxdb: InfluxDB = InfluxDB(self._config['influxdb'])
+        self.cloud_storage = self._set_up_cloud_storage()
+        self.worker_manager: WorkerManager = WorkerManager()
+        # self._influxdb: InfluxDB = InfluxDB(self.config['influxdb'])
 
         # queue
         # put self in to handle message from client (on_message_received)
-        self._queue_consumer: AmqpConsumer = AmqpConsumer(self._config.queue_consumer, self)
-        self._queue_producer: AmqpProducer = AmqpProducer(self._config.queue_producer)
+        self._queue_consumer: AmqpConsumer = AmqpConsumer(self.config.queue_consumer, self)
+        self._queue_producer: AmqpProducer = AmqpProducer(self.config.queue_producer)
 
 
         # -------------  Thread --------------
@@ -107,15 +107,15 @@ class Server(object):
 
         # Log out ìno of the server
         LOGGER.info("=" * 40)
-        LOGGER.info(f'Load all config and dependencies complete. Server {self._config.server_id} ready for training process!')
-        LOGGER.info(f'Strategy: {self._config.strategy.name} with m = {self._config.strategy.m}, n = {self._config.strategy.n}')
-        LOGGER.info(f'S3 Bucket: {self._config.cloud_storage.bucket_name}')
+        LOGGER.info(f'Load all config and dependencies complete. Server {self.config.server_id} ready for training process!')
+        LOGGER.info(f'Strategy: {self.config.strategy.name} with m = {self.config.strategy.m}, n = {self.config.strategy.n}')
+        LOGGER.info(f'S3 Bucket: {self.config.cloud_storage.bucket_name}')
         LOGGER.info(f'Model ID: {self._strategy.model_name}')
         LOGGER.info("=" * 40)
         LOGGER.info(f'Consumer Queue')
-        message_utils.print_message(self._config.queue_consumer.to_dict())
+        message_utils.print_message(self.config.queue_consumer.to_dict())
         LOGGER.info(f'Producer Queue')
-        message_utils.print_message(self._config.queue_producer.to_dict()) 
+        message_utils.print_message(self.config.queue_producer.to_dict()) 
 
 
     def _start_threads(self):
@@ -125,7 +125,9 @@ class Server(object):
 
 
     def start(self):
-        self._strategy.start_server()
+        # self._strategy.start_server()
+        self._start_threads()
+        self._strategy.handle_aggregating_process()
 
 
 
@@ -148,22 +150,103 @@ class Server(object):
             self._handle_client_notify_evaluation(msg_received)
         elif msg_type == MessageType.CLIENT_PING_MESSAGE:
             self._handle_client_ping(msg_received)
-            # message_utils.print_message(msg_received)
-            # self._worker_manager.update_worker_last_ping(msg_received['headers']['client_id'])
 
-    # function for queue consumer to call
-    # handling when receiving message
-    def _respond_connection(self, message):
-        self._strategy.respond_connection(message= message)
 
     def _handle_client_notify_model(self, message):
         self._strategy.handle_client_notify_model(message= message)
 
+    # function for queue consumer to call
+    # handling when receiving message
+    def _respond_connection(self, message: dict):
+        message_utils.print_message(message)
+
+        session_id, reconnect = self.check_client_identity_when_joining(message)
+        client_id: str = message['headers']['client_id']
+        access_key, secret_key = self.cloud_storage.get_client_key()
+
+        # notify newest global model to worker
+        model_url = self.cloud_storage.get_newest_global_model()
+
+        # always use forward slash for the cloud storage regardless os
+        model_version = self._strategy.extract_model_version(folder_path= model_url)
+
+        # update the current version for the strategy 
+        # if the server is just on the first round
+        if self._strategy.current_version == None:
+            self._strategy.current_version = model_version
+
+        # model info
+        exchange_at= self.config.model_config.model_exchange_at.to_dict()
+
+        model_info: ModelInfo = ModelInfo(global_folder= self.config.cloud_storage.global_model_root_folder, 
+                                          name= self.config.model_config.name, version=self._strategy.current_version,
+                                          file_extension= self._strategy.file_extension, exchange_at= exchange_at)
+        
+        # check the correctness of message when sending
+        message_utils.print_message(model_info.to_dict())
+
+        client_folder = f"{self._cloud_storage_path.CLIENT_MODEL_ROOT_FOLDER}/{client_id}"
+
+        # storage info
+        storage_info: StorageInfo = StorageInfo(type= self.config.cloud_storage.type,
+                                                access_key= access_key, secret_key= secret_key, 
+                                                bucket_name= self.config.cloud_storage.bucket_name,
+                                                region_name= self.config.cloud_storage.region_name,
+                                                client_upload_folder= client_folder)
+
+        if not self._aws_s3:
+            storage_info.endpoint_url = self.config.cloud_storage.minio.endpoint_url
+
+
+        # send message
+        headers: dict = self._create_headers(message_type= MessageType.SERVER_INIT_RESPONSE)
+        headers['session_id'] = session_id
+        headers['reconnect'] = reconnect
+        headers['client_id'] = client_id
+
+        response_to_init: ServerRespondToInit = ServerRespondToInit(strategy= self.config.strategy.name,
+                                                    epoch_update_frequency= self.config.strategy.n,
+                                                    model_info= model_info.to_dict(),
+                                                    storage_info= storage_info.to_dict())
+        
+
+        message_utils.print_message(response_to_init.to_dict())
+        message= ExchangeMessage(headers= headers, content= response_to_init.to_dict()).to_json()
+        self._queue_producer.send_data(message)
+
+
     def _handle_client_notify_evaluation(self, message):
-        self._strategy.handle_client_notify_evaluation(message= message)
+        message_utils.print_message(message)
+        model_evaluation: NotifyEvaluation = NotifyEvaluation(**message['content'])
+
+        if model_evaluation.performance > self._best_model.performance:
+            self._best_model.update(model_evaluation)
+            self._write_record()
+
+        model_evaluation.version = self._strategy.extract_model_version(model_evaluation.remote_storage_path)
+        model_evaluation_dict = model_evaluation.to_dict()
+
+        if self._check_stop_conditions(model_evaluation_dict):
+            headers: dict = self._create_headers(message_type= MessageType.SERVER_STOP_TRAINING)
+            require_to_stop: ServerRequestStop = ServerRequestStop()
+
+            message = ExchangeMessage(headers= headers, content= require_to_stop.to_dict()).to_json()
+            self._queue_producer.send_data(message)
+            LOGGER.info("=" * 50)
+            LOGGER.info("Stop condition met. Log out best model")
+            LOGGER.info(self._best_model)
+            LOGGER.info("=" * 50)
+
+            self.stop_condition_is_met = True
+
+        else:
+            LOGGER.info(f"Up to testing global epoch {model_evaluation.version}. Best model is:")
+            LOGGER.info(self._best_model)
+
 
     def _handle_client_ping(self, message):
-        self._strategy.handle_client_ping(message= message)
+        message_utils.print_message(message)
+        self.worker_manager.update_worker_last_ping(message['headers']['client_id'])
 
 
     
@@ -193,7 +276,7 @@ class Server(object):
         return ServerConfig(**config)
 
 
-    def _check_client_identity_when_joining(self, msg_received: dict):
+    def check_client_identity_when_joining(self, msg_received: dict):
 
         content: dict = msg_received['content']
         client_init_message: ClientInitConnection = ClientInitConnection(**content)
@@ -201,14 +284,14 @@ class Server(object):
         client_id: str = msg_received['headers']['client_id']
         session_id: str = msg_received['headers']['session_id']
 
-        if session_id in self._worker_manager.list_sessions():
+        if session_id in self.worker_manager.list_sessions():
             reconnect = True
-            worker = self._worker_manager.get_worker_by_id(client_id)
+            worker = self.worker_manager.get_worker_by_id(client_id)
         else:
             session_id = str(uuid.uuid4())
             # new entry
             reconnect = False
-            access_key, secret_key = self._cloud_storage.get_client_key()
+            access_key, secret_key = self.cloud_storage.get_client_key()
             worker = Worker(
                     session_id=session_id,
                     worker_id=client_id,
@@ -219,10 +302,10 @@ class Server(object):
                     )
 
             # add to the worker manager 
-            self._worker_manager.add_worker(worker)
+            self.worker_manager.add_worker(worker)
 
             # create a local folder name to store weight file of worker
-            client_folder_name = os.path.join(self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, worker.worker_id)
+            client_folder_name = os.path.join(self.local_storage_path.LOCAL_MODEL_ROOT_FOLDER, worker.worker_id)
             if not os.path.exists(client_folder_name):
                 os.makedirs(client_folder_name)
 
@@ -235,12 +318,12 @@ class Server(object):
     def _get_local_storage_path(self) -> LocalStoragePath:
         # create local folder for storage
         # get the current folder path, then save all local file within the current folder
-        server_storage_folder_name = f"{self._config.server_id}-record"
+        server_storage_folder_name = f"{self.config.server_id}-record"
         full_path = os.path.join(os.getcwd(), server_storage_folder_name)
-        return LocalStoragePath(root_folder= full_path, save_log= self._config.save_log)
+        return LocalStoragePath(root_folder= full_path, save_log= self.config.save_log)
 
 
-    def _publish_new_global_model(self):
+    def publish_new_global_model(self):
         # increment the current version to 1
         self._strategy.current_version += 1
         LOGGER.info("*" * 20)
@@ -248,13 +331,13 @@ class Server(object):
         LOGGER.info("*" * 20)
 
         current_global_model_filename = self._strategy.get_current_global_model_filename()
-        local_filename = os.path.join(self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, current_global_model_filename)
+        local_filename = os.path.join(self.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, current_global_model_filename)
 
         # for the cloud storage, always use forward slash
         # regardless of os
         remote_filename = f"{self._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER}/{current_global_model_filename}"
 
-        upload_success = self._cloud_storage.upload(local_filename, remote_filename)
+        upload_success = self.cloud_storage.upload(local_filename, remote_filename)
 
         if upload_success:
             headers: dict = self._create_headers(message_type= MessageType.SERVER_NOTIFY_MESSAGE)
@@ -280,20 +363,20 @@ class Server(object):
 
     def _set_up_cloud_storage(self) -> ServerStorageBoto3:
         self._aws_s3 = False
-        if self._config.cloud_storage.type == "aws_s3":
+        if self.config.cloud_storage.type == "aws_s3":
             self._aws_s3 = True
-            cloud_config = self._config.cloud_storage.aws_s3
+            cloud_config = self.config.cloud_storage.aws_s3
 
-        elif self._config.cloud_storage.type == "minio":
-            cloud_config = self._config.cloud_storage.minio
+        elif self.config.cloud_storage.type == "minio":
+            cloud_config = self.config.cloud_storage.minio
 
         else:
             LOGGER.info("There is no cloud storage")
             sys.exit(0)
 
-        cloud_config.storage_type = self._config.cloud_storage.type
-        cloud_config.bucket_name = self._config.cloud_storage.bucket_name
-        cloud_config.region_name = self._config.cloud_storage.region_name
+        cloud_config.storage_type = self.config.cloud_storage.type
+        cloud_config.bucket_name = self.config.cloud_storage.bucket_name
+        cloud_config.region_name = self.config.cloud_storage.region_name
 
         cloud_storage_info: StorageInfo = StorageInfo(**cloud_config.to_dict())
 
@@ -305,21 +388,21 @@ class Server(object):
                                          client_secret_key= cloud_config.client_secret_key)
             
         cloud_storage.load_model_config(global_model_root_folder= self._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER,
-                                        initial_model_path= self._config.model_config.initial_model_path,
-                                        file_extension= self._config.model_config.file_extension
+                                        initial_model_path= self.config.model_config.initial_model_path,
+                                        file_extension= self.config.model_config.file_extension
                                         )
         return cloud_storage
 
     def _set_up_strategy(self) -> Strategy:
-        strategy = self._config.strategy.name.lower()
-        model_name = self._config.model_config.name
+        strategy = self.config.strategy.name.lower()
+        model_name = self.config.model_config.name
         strategy_object: Strategy
         if strategy == "asyn2f":
-            strategy_object = Asyn2fStrategy(server= self, model_name= model_name, file_extension= self._config.model_config.file_extension,
-                                             m = self._config.strategy.m)
+            strategy_object = Asyn2fStrategy(server= self, model_name= model_name, file_extension= self.config.model_config.file_extension,
+                                             m = self.config.strategy.m)
         elif strategy == "kafl":
-            strategy_object = KAFLMStepStrategy(server= self, model_name= model_name, file_extension= self._config.model_config.file_extension,
-                                                m = self._config.strategy.m)
+            strategy_object = KAFLMStepStrategy(server= self, model_name= model_name, file_extension= self.config.model_config.file_extension,
+                                                m = self.config.strategy.m)
         else:
             LOGGER.info("*" * 20)
             LOGGER.info(f"The framework has not yet support the strategy you choose ({strategy})")
@@ -337,28 +420,28 @@ class Server(object):
     def _ping(self):
         LOGGER.info("PING THREAD IS RUNNING")
         while True:
-            for client_id in self._worker_manager.list_connected_workers():
+            for client_id in self.worker_manager.list_connected_workers():
                 LOGGER.info(f'Ping to client {client_id}')
                 headers: dict = self._create_headers(message_type= MessageType.SERVER_PING_TO_CLIENT)
                 pint_to_client: PingToClient = PingToClient(client_id= client_id)
                 message = ExchangeMessage(headers= headers, content= pint_to_client.to_dict()).to_json()
                 self._queue_producer.send_data(message)
-            sleep(self._config.ping_period)
+            sleep(self.config.ping_period)
 
 
 
     def _clean_storage(self):
         LOGGER.info("CLEANING THREAD IS RUNNING!")
         while True:
-            sleep(self._config.cleaning_config.clean_storage_period)
+            sleep(self.config.cleaning_config.clean_storage_period)
             LOGGER.info("CLEANING TIME")
 
             # -------- Global Weight File Cleaning ------------ 
             current_global_version = self._strategy.current_version
-            global_threshold = current_global_version - self._config.cleaning_config.global_keep_version_num
+            global_threshold = current_global_version - self.config.cleaning_config.global_keep_version_num
 
-            if self._best_model.model_name != "":
-                best_model_name = self._best_model.model_name
+            if self.best_model.model_name != "":
+                best_model_name = self.best_model.model_name
                 best_global_model_version = self._strategy.extract_model_version(best_model_name)
             else:
                 best_global_model_version = None
@@ -369,19 +452,19 @@ class Server(object):
                                     threshold= global_threshold, best_version= best_global_model_version)
             
             # delete local files
-            storage_cleaner.delete_local_files(folder_path= self._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
+            storage_cleaner.delete_local_files(folder_path= self.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
                                                threshold= global_threshold, best_version= best_global_model_version)
             
             # -------- Global Weight File Cleaning ------------ 
 
 
             # -------- Client weight files cleaning -----------
-            current_workers = self._worker_manager.get_all_worker()
+            current_workers = self.worker_manager.get_all_worker()
             # get a deep copy of the list of current worker in the framework
             workers = copy.deepcopy(current_workers)
             
             for w_id, worker in workers.items():
-                client_threshold = worker.update_local_version_used - self._config.cleaning_config.local_keep_version_num
+                client_threshold = worker.update_local_version_used - self.config.cleaning_config.local_keep_version_num
 
                 # delete remote files
                 # self._delete_remote_files(directory= w_id, threshold= client_threshold)
@@ -390,7 +473,7 @@ class Server(object):
                                                     threshold= client_threshold)
 
                 # delete local files
-                local_directory = os.path.join(self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER, w_id)
+                local_directory = os.path.join(self.local_storage_path.LOCAL_MODEL_ROOT_FOLDER, w_id)
                 storage_cleaner.delete_local_files(folder_path= local_directory, threshold= client_threshold)
             # -------- Client weight files cleaning -----------
 
@@ -398,37 +481,37 @@ class Server(object):
 
     def _check_stop_conditions(self, info: dict):
         for k, v in info.items():
-            if k == "loss" and self._config.model_config.stop_conditions.min_loss is not None:
-                if v <= self._config.model_config.stop_conditions.min_loss:
-                    LOGGER.info(f"Stop condition: loss {v} <= {self._config.model_config.stop_conditions.min_loss}")
+            if k == "loss" and self.config.model_config.stop_conditions.min_loss is not None:
+                if v <= self.config.model_config.stop_conditions.min_loss:
+                    LOGGER.info(f"Stop condition: loss {v} <= {self.config.model_config.stop_conditions.min_loss}")
                     return True
-            elif k == "performance" and self._config.model_config.stop_conditions.max_performance is not None:
-                if v >= self._config.model_config.stop_conditions.max_performance:
-                    LOGGER.info(f"Stop condition: performance {v} >= {self._config.model_config.stop_conditions.max_performance}")
+            elif k == "performance" and self.config.model_config.stop_conditions.max_performance is not None:
+                if v >= self.config.model_config.stop_conditions.max_performance:
+                    LOGGER.info(f"Stop condition: performance {v} >= {self.config.model_config.stop_conditions.max_performance}")
                     return True
                 
-            elif k == "version" and self._config.model_config.stop_conditions.max_version is not None:
-                if v >= self._config.model_config.stop_conditions.max_version:
-                    LOGGER.info(f"Stop condition: version {v} >= {self._config.model_configstop_conditions.max_version}")
+            elif k == "version" and self.config.model_config.stop_conditions.max_version is not None:
+                if v >= self.config.model_config.stop_conditions.max_version:
+                    LOGGER.info(f"Stop condition: version {v} >= {self.config.model_configstop_conditions.max_version}")
                     return True
 
 
 
     def _write_record(self):
-        folder_name = f"{self._config.server_id}-record/best_model"
+        folder_name = f"{self.config.server_id}-record/best_model"
         if not os.path.exists(folder_name):
             os.makedirs(folder_name)
         # write the record of best model
         data = {
-            "filename": self._best_model.model_name,
-            "performance": self._best_model.performance,
-            "loss": self._best_model.loss
+            "filename": self.best_model.model_name,
+            "performance": self.best_model.performance,
+            "loss": self.best_model.loss
         }
-        with open(f"{folder_name}/{self._config.server_id}.json", "w") as file:
+        with open(f"{folder_name}/{self.config.server_id}.json", "w") as file:
             json.dump(data, file)
 
 
     def _create_headers(self, message_type: str) -> dict:
-        headers = {'timestamp': time_utils.time_now(), 'message_type': message_type, 'server_id': self._config.server_id}
+        headers = {'timestamp': time_utils.time_now(), 'message_type': message_type, 'server_id': self.config.server_id}
         return headers
 

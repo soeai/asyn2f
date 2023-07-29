@@ -1,25 +1,15 @@
 from time import sleep
 from typing import Dict, List
-import os.path
+import os
 
 import numpy as np
 import pickle
-
-
-from asynfed.server.objects import Worker
-from asynfed.server.storage_connectors.boto3 import ServerStorageBoto3
-from asynfed.common.config import LocalStoragePath
-
-from .strategy import Strategy
 
 import sys
 
 from threading import Lock
 lock = Lock()
 
-
-import logging
-LOGGER = logging.getLogger(__name__)
 
 
 from threading import Lock
@@ -31,14 +21,18 @@ import shutil
 import sys
 from typing import Dict
 
-# Third party imports
-from asynfed.common.config import MessageType
-from asynfed.common.messages import ExchangeMessage
-from asynfed.common.messages.client import ClientModelUpdate, NotifyEvaluation, TesterRequestStop
-from asynfed.common.messages.server import ServerRequestStop
-from asynfed.common.messages.server.server_response_to_init import ServerRespondToInit, ModelInfo, StorageInfo
+from asynfed.common.messages.client import ClientModelUpdate
 import asynfed.common.messages as message_utils
 
+from asynfed.server.objects import Worker
+from asynfed.server.storage_connectors.boto3 import ServerStorageBoto3
+from asynfed.common.config import LocalStoragePath
+
+
+from .strategy import Strategy
+
+import logging
+LOGGER = logging.getLogger(__name__)
 
 class Asyn2fStrategy(Strategy):
 
@@ -48,30 +42,28 @@ class Asyn2fStrategy(Strategy):
         self.m = m
 
 
-    def start_server(self):
-        if not self._server._config.strategy.update_period or self._server._config.strategy.update_period == 0:
+    def handle_aggregating_process(self):
+        if not self._server.config.strategy.update_period or self._server.config.strategy.update_period == 0:
             # constantly check for new udpate
-            self._server._config.strategy.update_period = 2
-
-        self._server._start_threads()
+            self._server.config.strategy.update_period = 2
 
         while True:
-            if self._server._stop_condition_is_met:
+            if self._server.stop_condition_is_met:
                 LOGGER.info('Stop condition is reached! Shortly the training process will be close.')
                 # close the program
                 sys.exit(0)
 
             with lock:
-                n_local_updates = len(self._server._worker_manager.get_completed_workers())
+                n_local_updates = len(self._server.worker_manager.get_completed_workers())
 
             if n_local_updates < self.m:
-                sleep(self._server._config.strategy.update_period)
+                sleep(self._server.config.strategy.update_period)
 
             else:
                 try:
                     LOGGER.info(f'Update condition is met. Start update global model with {n_local_updates} local updates')
                     self._update(n_local_updates)
-                    self._server._publish_new_global_model()
+                    self._server.publish_new_global_model()
 
                 except Exception as e:
                     raise e
@@ -79,12 +71,12 @@ class Asyn2fStrategy(Strategy):
     def _update(self, n_local_updates: int):
         if n_local_updates == 1:
             LOGGER.info("Only one update from client, passing the model to all other client in the network...")
-            completed_worker: dict[str, Worker] = self._server._worker_manager.get_completed_workers()
+            completed_worker: dict[str, Worker] = self._server.worker_manager.get_completed_workers()
             self._pass_one_local_model(completed_worker)
 
         else:
             LOGGER.info("Aggregating process...")
-            completed_workers: dict[str, Worker] = self._server._worker_manager.get_completed_workers()
+            completed_workers: dict[str, Worker] = self._server.worker_manager.get_completed_workers()
             
             # reset the state of worker in completed workers list
             for w_id, worker in completed_workers.items():
@@ -95,7 +87,7 @@ class Asyn2fStrategy(Strategy):
 
             # pass out a copy of completed worker to aggregating process
             worker_list = copy.deepcopy(completed_workers)
-            self.aggregate(worker_list, self._server._cloud_storage, self._server._local_storage_path)
+            self.aggregate(worker_list, self._server.cloud_storage, self._server.local_storage_path)
 
 
     def _pass_one_local_model(self, completed_worker: Dict [str, Worker]):
@@ -108,78 +100,17 @@ class Asyn2fStrategy(Strategy):
 
             # download worker weight file
             remote_weight_file = worker.get_remote_weight_file_path()
-            local_weight_file = worker.get_local_weight_file_path(local_model_root_folder= self._local_storage_path.LOCAL_MODEL_ROOT_FOLDER)
-            self._cloud_storage.download(remote_file_path= remote_weight_file, 
+            local_weight_file = worker.get_local_weight_file_path(local_model_root_folder= self._server.local_storage_path.LOCAL_MODEL_ROOT_FOLDER)
+            self._server.cloud_storage.download(remote_file_path= remote_weight_file, 
                                         local_file_path= local_weight_file)
 
             # keep track of the latest local version of worker used for cleaning task
-            model_filename = local_weight_file.split(os.path.sep)[-1]
-            worker.update_local_version_used = self.extract_model_version(model_filename)
+            # model_filename = local_weight_file.split(os.path.sep)[-1]
+            worker.update_local_version_used = self.extract_model_version(local_weight_file)
 
         # copy the worker model weight to the global model folder
-        save_location = os.path.join(self._server._local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self.get_new_global_model_filename())
+        save_location = os.path.join(self._server.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self.get_new_global_model_filename())
         shutil.copy(local_weight_file, save_location)
-
-
-
-
-    def respond_connection(self, message: dict):
-        message_utils.print_message(message)
-
-        session_id, reconnect = self._server._check_client_identity_when_joining(message)
-        client_id: str = message['headers']['client_id']
-        access_key, secret_key = self._server._cloud_storage.get_client_key()
-
-
-        # notify newest global model to worker
-        model_url = self._server._cloud_storage.get_newest_global_model()
-
-        # always use forward slash for the cloud storage regardless os
-        model_version = self.extract_model_version(folder_path= model_url)
-
-        # update the current version for the strategy 
-        # if the server is just on the first round
-        if self.current_version == None:
-            self.current_version = model_version
-
-
-        # model info
-        exchange_at= self._server._config.model_config.model_exchange_at.to_dict()
-
-
-        model_info: ModelInfo = ModelInfo(global_folder= self._server._config.cloud_storage.global_model_root_folder, 
-                                          name= self._server._config.model_config.name, version=self.current_version,
-                                          file_extension= self.file_extension, exchange_at= exchange_at)
-        
-        # check the correctness of message when sending
-        message_utils.print_message(model_info.to_dict())
-
-        client_folder = f"{self._server._cloud_storage_path.CLIENT_MODEL_ROOT_FOLDER}/{client_id}"
-        # storage info
-        storage_info: StorageInfo = StorageInfo(type= self._server._config.cloud_storage.type,
-                                                access_key= access_key, secret_key= secret_key, 
-                                                bucket_name= self._server._config.cloud_storage.bucket_name,
-                                                region_name= self._server._config.cloud_storage.region_name,
-                                                client_upload_folder= client_folder)
-        if not self._server._aws_s3:
-            storage_info.endpoint_url = self._server._config.cloud_storage.minio.endpoint_url
-
-
-        # send message
-        headers: dict = self._server._create_headers(message_type= MessageType.SERVER_INIT_RESPONSE)
-        headers['session_id'] = session_id
-        headers['reconnect'] = reconnect
-        headers['client_id'] = client_id
-
-        response_to_init: ServerRespondToInit = ServerRespondToInit(strategy= self._server._config.strategy.name,
-                                                    epoch_update_frequency= self._server._config.strategy.n,
-                                                    model_info= model_info.to_dict(),
-                                                    storage_info= storage_info.to_dict())
-        
-
-        message_utils.print_message(response_to_init.to_dict())
-        message= ExchangeMessage(headers= headers, content= response_to_init.to_dict()).to_json()
-        self._server._queue_producer.send_data(message)
 
 
 
@@ -190,52 +121,18 @@ class Asyn2fStrategy(Strategy):
         client_model_update: ClientModelUpdate = ClientModelUpdate(**message['content'])
 
         # only update the remote local weight path, not download to the device
-        self._server._worker_manager.add_local_update(client_id, client_model_update)
+        self._server.worker_manager.add_local_update(client_id, client_model_update)
 
         # write to influx db
         # self._influxdb.write_training_process_data(timestamp, client_id, client_model_update)
 
-
-    def handle_client_notify_evaluation(self, message):
-        message_utils.print_message(message)
-        model_evaluation: NotifyEvaluation = NotifyEvaluation(**message['content'])
-
-
-        if model_evaluation.performance > self._server._best_model.performance:
-            self._server._best_model.update(model_evaluation)
-            self._server._write_record()
-
-        model_evaluation.version = self.extract_model_version(model_evaluation.remote_storage_path)
-        model_evaluation_dict = model_evaluation.to_dict()
-
-        if self._server._check_stop_conditions(model_evaluation_dict):
-            headers: dict = self._server._create_headers(message_type= MessageType.SERVER_STOP_TRAINING)
-            require_to_stop: ServerRequestStop = ServerRequestStop()
-
-            message = ExchangeMessage(headers= headers, content= require_to_stop.to_dict()).to_json()
-            self._server._queue_producer.send_data(message)
-            LOGGER.info("=" * 50)
-            LOGGER.info("Stop condition met. Log out best model")
-            LOGGER.info(self._server._best_model)
-            LOGGER.info("=" * 50)
-
-            self._server._stop_condition_is_met = True
-
-        else:
-            LOGGER.info(f"Up to testing global epoch {model_evaluation.version}. Best model is:")
-            LOGGER.info(self._server._best_model)
-
-
-    def handle_client_ping(self, message):
-        message_utils.print_message(message)
-        self._server._worker_manager.update_worker_last_ping(message['headers']['client_id'])
 
 
     def select_client(self, all_clients) -> List [str]:
         return all_clients
     
 
-    def compute_alpha(self, worker: Worker) -> float:
+    def _compute_alpha(self, worker: Worker) -> float:
         # avoid division by zero
         alpha  = worker.qod * worker.data_size / (worker.loss + 1e-7)
         alpha /= (self.update_version - worker.global_version_used)
@@ -276,7 +173,7 @@ class Asyn2fStrategy(Strategy):
             LOGGER.info(f"worker id {worker.worker_id} with global version used {worker.global_version_used}")
             LOGGER.info(f"substract: {self.update_version - worker.global_version_used}")
             
-            worker.alpha = self.compute_alpha(worker)
+            worker.alpha = self._compute_alpha(worker)
             sum_alpha += worker.alpha
         LOGGER.info("*" * 20)
 

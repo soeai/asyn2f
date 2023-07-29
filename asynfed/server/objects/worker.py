@@ -55,16 +55,17 @@ class Worker:
     def get_remote_weight_file_path(self):
         return self.remote_file_path
 
-    # def reset(self):
-    #     """
-    #     reset all properties 
-    #     """
-    #     self.n_update = 0
-    #     self.current_version = 0
-    #     self.alpha = 0.0
-    #     self.performance = 0.0
-    #     self.loss = 0.0
-    #     self.is_completed = False
+    def reset(self):
+        """
+        reset all properties 
+        """
+        self.n_update = 0
+        self.current_version = 0
+        self.alpha = 0.0
+        self.performance = 0.0
+        self.loss = 0.0
+        self.is_completed = False
+        self.weight_array = None
 
 
     def __str__(self):

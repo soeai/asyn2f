@@ -83,12 +83,36 @@ class WorkerManager:
         return [worker_id for worker_id in self.worker_pool.keys() if self.worker_pool[worker_id].is_connected == True]
 
 
+    def get_num_connected_workers(self) -> int:
+        return len(self.list_connected_workers())
+
+
+    def get_connected_workers(self) -> Dict[str, Worker]:
+        """
+        Return a list of connected worker_id
+        """
+        return {worker_id: self.worker_pool[worker_id] for worker_id in self.worker_pool if self.worker_pool[worker_id].is_connected == True}
+    
+
+    # for fedavg to manage the connection state of worker
+    def check_connected_workers_complete_status(self) -> bool:
+        connected_workers = self.get_connected_workers()
+        for w_id, worker in connected_workers.items():
+            if not worker.is_completed:
+                return False
+        return True
+    
+
+    def reset_all_workers_training_state(self):
+        for w_id, worker in self.worker_pool.items():
+            worker.reset()
+            
     def update_worker_connections(self) -> None:
         """
         Update worker connections
         """
         for worker_id in self.worker_pool.keys():
-            if time_utils.time_diff(time_utils.time_now(), self.worker_pool[worker_id].last_ping) < 300:
+            if time_utils.time_diff(time_utils.time_now(), self.worker_pool[worker_id].last_ping) < 60:
                 self.worker_pool[worker_id].is_connected = True
             else:
                 self.worker_pool[worker_id].is_connected = False
