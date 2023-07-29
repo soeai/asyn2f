@@ -245,19 +245,20 @@ class KAFLMStepStrategy(Strategy):
         local_path = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, filename)
         if not os.path.exists(local_path):
             cloud_storage.download(remote_file_path=remote_path, local_file_path=local_path)
+
         w_g = np.array(self._get_model_weights(local_path), dtype=object)
-
+        w_new = None
         # Execute global update 
-        ## Calculate w_new(t)
-        w_new = 0
-        w_tmp = []
-        for i, worker in enumerate(workers):
-            w_i = np.array(worker.weight_array, dtype=object)
-            w_tmp.append(w_i)
-            w_new += (w_tmp[i] * worker.data_size)
-
+        # Calculate w_new(t)
         total_num_samples = sum([worker.data_size for worker in workers])
-        w_new /= total_num_samples
+        for worker in workers:
+            worker_array = np.array(worker.weight_array, dtype=object)
+            if not w_new:
+                w_new = np.zeros(worker_array.shape, dtype=object)
+
+            worker_weighted = worker.data_size / total_num_samples
+
+            w_new += (worker_array * worker_weighted)
 
         ## Calculate w_g(t+1)
         w_g_new = w_g * (1-self.agg_hyperparam) + w_new * self.agg_hyperparam
