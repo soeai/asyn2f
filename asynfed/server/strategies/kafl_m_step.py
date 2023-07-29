@@ -135,32 +135,51 @@ class KAFLMStepStrategy(Strategy):
     def aggregate(self, workers: List [Worker], cloud_storage: ServerStorageBoto3,
                   local_storage_path: LocalStoragePath):
 
-        remote_path = cloud_storage.get_newest_global_model()
-        filename = remote_path.split(os.path.sep)[-1]
-        local_path = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, filename)
-        if not os.path.exists(local_path):
-            cloud_storage.download(remote_file_path=remote_path, local_file_path=local_path)
 
+        if self.current_version == 1:
+            local_path = self._server.config.model_config.initial_model_path
+        else:
+            local_path = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self.get_current_global_model_filename())
 
         # dealing with a list of NumPy arrays of different shapes (each representing the weights of a different layer of a neural network). 
         # This kind of heterogeneous structure is not conducive to the vectorized operations that make NumPy efficient
         # loop through each layer in the list
         # more efficient than converting the entire list into a single 'object'-dtype NumPy array
-        previous_global_weight = self._get_model_weights(local_path)
-        aggregate_global_weight = [np.zeros(layer.shape, dtype=np.float32) for layer in previous_global_weight]
-        total_data_size = sum([worker.data_size for worker in workers])
+        # previous_global_weight = self._get_model_weights(local_path)
+
+        # aggregate_global_weight = [np.zeros(layer.shape, dtype=np.float32) for layer in previous_global_weight]
+        # total_data_size = sum([worker.data_size for worker in workers])
+
+        # for worker in workers:
+        #     LOGGER.info(f"{worker.worker_id}: {worker.data_size}, {worker.get_remote_weight_file_path()}")
+        #     for aggregate_global_layer, worker_layer, previous_global_layer in zip(aggregate_global_weight, worker.weight_array, previous_global_weight):
+        #         current_round_contribution = np.zeros(worker_layer.shape, dtype= np.float32)
+        #         current_round_contribution += worker_layer * ( worker.data_size / total_data_size )
+        #         aggregate_global_layer += current_round_contribution * self.agg_hyperparam + previous_global_layer * (1 - self.agg_hyperparam)
+
+        # # save weight file.
+        # save_location = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self.get_new_global_model_filename())
+
+        # with open(save_location, "wb") as f:
+        #     pickle.dump(aggregate_global_weight, f)
+
+        total_num_samples = sum([worker.data_size for worker in workers])
+        w_g = np.array(self._get_model_weights(local_path), dtype=object)
+        w_new = np.array([np.zeros(layer.shape) for layer in w_g], dtype=object)
 
         for worker in workers:
             LOGGER.info(f"{worker.worker_id}: {worker.data_size}, {worker.get_remote_weight_file_path()}")
-            for aggregate_global_layer, worker_layer, previous_global_layer in zip(aggregate_global_weight, worker.weight_array, previous_global_weight):
-                current_round_contribution = (worker.data_size / total_data_size * worker_layer)
-                aggregate_global_layer +=  self.agg_hyperparam * current_round_contribution + (1 - self.agg_hyperparam) * previous_global_layer
+            worker_array = np.array(worker.weight_array, dtype=object)
+            worker_weighted = worker.data_size / total_num_samples
+            w_new += (worker_array * worker_weighted)
 
-        # save weight file.
+        ## Calculate w_g(t+1)
+        w_g_new = w_g * (1-self.agg_hyperparam) + w_new * self.agg_hyperparam
+
         save_location = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self.get_new_global_model_filename())
 
         with open(save_location, "wb") as f:
-            pickle.dump(aggregate_global_weight, f)
+            pickle.dump(w_g_new, f)
 
         LOGGER.info('=' * 20)
         LOGGER.info(save_location)

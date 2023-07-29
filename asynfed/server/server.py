@@ -30,7 +30,7 @@ from .config_structure import ServerConfig
 from .objects import BestModel, Worker
 
 from .monitor.influxdb import InfluxDB
-from .strategies import Strategy, Asyn2fStrategy, KAFLMStepStrategy
+from .strategies import Strategy, Asyn2fStrategy, KAFLMStepStrategy, FedAvgStrategy
 from .worker_manager import WorkerManager
 from .storage_connectors import ServerStorageBoto3, ServerStorageAWS, ServerStorageMinio
 
@@ -403,6 +403,9 @@ class Server(object):
         elif strategy == "kafl":
             strategy_object = KAFLMStepStrategy(server= self, model_name= model_name, file_extension= self.config.model_config.file_extension,
                                                 m = self.config.strategy.m)
+        elif strategy == "fedavg":
+            strategy_object = FedAvgStrategy(server= self, model_name= model_name, file_extension= self.config.model_config.file_extension,
+                                                m = self.config.strategy.m)
         else:
             LOGGER.info("*" * 20)
             LOGGER.info(f"The framework has not yet support the strategy you choose ({strategy})")
@@ -440,14 +443,14 @@ class Server(object):
             current_global_version = self._strategy.current_version
             global_threshold = current_global_version - self.config.cleaning_config.global_keep_version_num
 
-            if self.best_model.model_name != "":
-                best_model_name = self.best_model.model_name
+            if self._best_model.model_name != "":
+                best_model_name = self._best_model.model_name
                 best_global_model_version = self._strategy.extract_model_version(best_model_name)
             else:
                 best_global_model_version = None
             
             # delete remote files
-            storage_cleaner.delete_remote_files(cloud_storage= self._cloud_storage,
+            storage_cleaner.delete_remote_files(cloud_storage= self.cloud_storage,
                                     folder_path= self._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER,
                                     threshold= global_threshold, best_version= best_global_model_version)
             
@@ -469,7 +472,7 @@ class Server(object):
                 # delete remote files
                 # self._delete_remote_files(directory= w_id, threshold= client_threshold)
                 client_folder = f"{self._cloud_storage_path.CLIENT_MODEL_ROOT_FOLDER}/{w_id}"
-                storage_cleaner.delete_remote_files(cloud_storage= self._cloud_storage, folder_path= client_folder,
+                storage_cleaner.delete_remote_files(cloud_storage= self.cloud_storage, folder_path= client_folder,
                                                     threshold= client_threshold)
 
                 # delete local files
@@ -492,7 +495,7 @@ class Server(object):
                 
             elif k == "version" and self.config.model_config.stop_conditions.max_version is not None:
                 if v >= self.config.model_config.stop_conditions.max_version:
-                    LOGGER.info(f"Stop condition: version {v} >= {self.config.model_configstop_conditions.max_version}")
+                    LOGGER.info(f"Stop condition: version {v} >= {self.config.model_config.stop_conditions.max_version}")
                     return True
 
 
@@ -503,9 +506,9 @@ class Server(object):
             os.makedirs(folder_name)
         # write the record of best model
         data = {
-            "filename": self.best_model.model_name,
-            "performance": self.best_model.performance,
-            "loss": self.best_model.loss
+            "filename": self._best_model.model_name,
+            "performance": self._best_model.performance,
+            "loss": self._best_model.loss
         }
         with open(f"{folder_name}/{self.config.server_id}.json", "w") as file:
             json.dump(data, file)

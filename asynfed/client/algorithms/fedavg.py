@@ -25,41 +25,38 @@ class FedAvg(object):
 
 
     def train(self):
-        # for notifying global version used to server purpose
-        self._client.training_process_info.global_version_used = self._client.global_model_info.version
+        LOGGER.info("=" * 40)
+        LOGGER.info("ClientModel Start Training")
+        LOGGER.info("=" * 40)
+        while True:
+            if self._client.state.new_model_flag or self._client.training_process_info.local_epoch == 0:
+                # for notifying global version used to server purpose
+                self._client.training_process_info.global_version_used = self._client.global_model_info.version
+                # for tensorflow model, there is some conflict in the dimension of 
+                # an initialized model and al already trained one
+                # fixed this problem
+                # by training the model before loading the global weights
+                current_global_model_file_name = self._client.global_model_info.get_file_name()
+                file_exist, current_global_weights = self._client.load_weights_from_file(self._client.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
+                                                                                file_name= current_global_model_file_name)
+                if file_exist:
+                    LOGGER.info("Receive new global model --> Set to be the weight of the local model")
+                    try:
+                        self._client.model.set_weights(current_global_weights)
+                    except Exception as e:
+                        LOGGER.info("=" * 20)
+                        LOGGER.info(e)
+                        LOGGER.info("=" * 20)
+                        self._client.get_model_dim_ready()
+                        self._client.model.set_weights(current_global_weights)
 
-        # for tensorflow model, there is some conflict in the dimension of 
-        # an initialized model and al already trained one
-        # fixed this problem
-        # by training the model before loading the global weights
-        current_global_model_file_name = self._client.global_model_info.get_file_name()
-        file_exist, current_global_weights = self._client.load_weights_from_file(self._client.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
-                                                                          file_name= current_global_model_file_name)
-
-        if file_exist:
-            try:
-                self._client.model.set_weights(current_global_weights)
-            except Exception as e:
-                LOGGER.info("=" * 20)
-                LOGGER.info(e)
-                LOGGER.info("=" * 20)
-                self._client.get_model_dim_ready()
-                self._client.model.set_weights(current_global_weights)
-
-            # officially start the training process
-            # quit after a number of epoch
-            LOGGER.info("=" * 40)
-            LOGGER.info("ClientModel Start Training")
-            LOGGER.info("=" * 40)
-
-            while True:
-                if self._client.state.new_model_flag:
-                    self._client.state.new_model_flag == False
                     self._training()
-                sleep(5)
+
+            sleep(5)
 
     
     def _training(self):
+        print(self._client.training_process_info.local_epoch + 1)
         for _ in range(self._client.server_training_config.epoch_update_frequency):
                             # record some info of the training process
             self._client.training_process_info.local_epoch += 1

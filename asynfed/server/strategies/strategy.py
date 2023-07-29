@@ -52,19 +52,7 @@ class Strategy(ABC):
         pass
 
     @abstractmethod
-    def respond_connection(self, message):
-        pass
-
-    @abstractmethod
     def handle_client_notify_model(self, message):
-        pass
-
-    @abstractmethod
-    def handle_client_notify_evaluation(self, message):
-        pass
-
-    @abstractmethod
-    def handle_client_ping(self, message):
         pass
 
 

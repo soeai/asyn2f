@@ -98,8 +98,9 @@ class WorkerManager:
     def check_connected_workers_complete_status(self) -> bool:
         connected_workers = self.get_connected_workers()
         for w_id, worker in connected_workers.items():
-            if not worker.is_completed:
-                return False
+            if "tester" not in w_id:
+                if not worker.is_completed:
+                    return False
         return True
     
 

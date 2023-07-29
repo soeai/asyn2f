@@ -27,7 +27,7 @@ import asynfed.common.messages as message_utils
 from .objects import ModelWrapper, LocalModelUploadInfo, ServerTrainingConfig
 from .config_structure import ClientConfig
 from .components import ClientComponents
-from .algorithms import Asyn2f, KaflMStep
+from .algorithms import Asyn2f, KaflMStep, FedAvg
 
 import concurrent.futures
 thread_pool_ref = concurrent.futures.ThreadPoolExecutor
@@ -287,6 +287,8 @@ class Client(object):
             self._algorithm = Asyn2f(client= self)
         elif self.server_training_config.strategy == "kafl":
             self._algorithm = KaflMStep(client= self)
+        elif self.server_training_config.strategy == "fedavg":
+            self._algorithm = FedAvg(client= self)
         else:
             LOGGER.info("*" * 40)
             LOGGER.info(f"The algorithm {self.server_training_config.strategy} server choose is not supported yet in client. About to exit the program...")

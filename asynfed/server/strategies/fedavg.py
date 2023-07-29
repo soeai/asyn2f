@@ -4,14 +4,14 @@ import os.path
 
 import numpy as np
 import pickle
-
+from typing import Dict
 
 from asynfed.server.objects import Worker
 from asynfed.server.storage_connectors.boto3 import ServerStorageBoto3
 from asynfed.common.config import LocalStoragePath
 
 from .strategy import Strategy
-
+import copy
 import sys
 
 from threading import Lock
@@ -45,39 +45,47 @@ class FedAvgStrategy(Strategy):
     def handle_aggregating_process(self):
         if not self._server.config.strategy.update_period or self._server.config.strategy.update_period == 0:
             # constantly check for new udpate
-            self._server.config.strategy.update_period = 2
+            self._server.config.strategy.update_period = 20
 
         while True:
             if self._server.stop_condition_is_met:
                 LOGGER.info('Stop condition is reached! Shortly the training process will be close.')
                 # close the program
                 sys.exit(0)
-
             with lock:
-                self._server.worker_manager.update_worker_connections()
-                connected_workers_complete = self._server.worker_manager.check_connected_workers_complete_status()
+                clone_manager = copy.deepcopy(self._server.worker_manager)
+                ready = len(clone_manager.get_completed_workers()) >= self.m
 
-            if not connected_workers_complete:
-                sleep(self._server.config.strategy.update_period)
+            if ready:
+                with lock:
+                    self._server.worker_manager.update_worker_connections()
+                    clone_manager = copy.deepcopy(self._server.worker_manager)
+                    connected_workers_complete = clone_manager.check_connected_workers_complete_status()
 
-            else:
-                try:
-                    completed_workers = dict[str, Worker] = self._server.worker_manager.get_completed_workers()
-                    LOGGER.info(f'Update condition is met. Start update global model with {len(completed_workers)} local updates')
-                    self._update(completed_workers)
-                    # wait until m worker connected to the network to begin new training epoch
-                    while True:
-                        self._server.worker_manager.update_worker_connections()
-                        if self._server.worker_manager.get_num_connected_workers() >= self.m:
-                            self._server.worker_manager.reset_all_workers_training_state()
-                            self._server.publish_new_global_model()
-                            break
-                        sleep(self._server.config.strategy.update_period)
+                if not connected_workers_complete:
+                    sleep(self._server.config.strategy.update_period)
 
-                except Exception as e:
-                    raise e
+                else:
+                    try:
+                        completed_workers: Dict [str, Worker] = self._server.worker_manager.get_completed_workers()
+                        clone_completed_workers = copy.deepcopy(completed_workers)
+                        LOGGER.info(f'Update condition is met. Start update global model with {len(clone_completed_workers)} local updates')
+                        self._update(clone_completed_workers)
+                        # wait until m worker connected to the network to begin new training epoch
+                        while True:
+                            self._server.worker_manager.update_worker_connections()
+                            clone_manager = copy.deepcopy(self._server.worker_manager)
+                            if clone_manager.get_num_connected_workers() >= self.m:
+                                with lock:
+                                    self._server.worker_manager.reset_all_workers_training_state()
+                                self._server.publish_new_global_model()
+                                break
+                            sleep(self._server.config.strategy.update_period)
+
+                    except Exception as e:
+                        raise e
                 
-    def _update(self, completed_workers: dict [str, Worker]):
+    def _update(self, completed_workers: Dict [str, Worker]):
         LOGGER.info("Aggregating process...")
         
         # reset the state of worker in completed workers list
@@ -133,15 +141,16 @@ class FedAvgStrategy(Strategy):
 
         merged_weights = None
         for w_id, worker in completed_workers.items():
-            LOGGER.info(f"{w_id}: {worker.data_size}, {worker.get_remote_weight_file_path()}")
-            # initialized zero array if merged weight is None
-            if merged_weights is None:
-                # choose dtype = float 32 to reduce the size of the weight file
-                merged_weights = [np.zeros(layer.shape, dtype=np.float32) for layer in worker.weight_array]
+            if worker.weight_array is not None:
+                LOGGER.info(f"{w_id}: {worker.data_size}, {worker.get_remote_weight_file_path()}")
+                # initialized zero array if merged weight is None
+                if merged_weights is None:
+                    # choose dtype = float 32 to reduce the size of the weight file
+                    merged_weights = [np.zeros(layer.shape, dtype=np.float32) for layer in worker.weight_array]
 
-            # merging
-            for merged_layer, worker_layer in zip(merged_weights, worker.weight_array):
-                merged_layer += worker.data_size / total_data_size * worker_layer
+                # merging
+                for merged_layer, worker_layer in zip(merged_weights, worker.weight_array):
+                    merged_layer += worker.data_size / total_data_size * worker_layer
 
 
         # save weight file.
