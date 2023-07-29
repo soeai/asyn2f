@@ -52,15 +52,12 @@ class FedAvgStrategy(Strategy):
                 LOGGER.info('Stop condition is reached! Shortly the training process will be close.')
                 # close the program
                 sys.exit(0)
-            with lock:
-                clone_manager = copy.deepcopy(self._server.worker_manager)
-                ready = len(clone_manager.get_completed_workers()) >= self.m
+
+            ready = len(self._server.worker_manager.get_completed_workers()) >= self.m
 
             if ready:
-                with lock:
-                    self._server.worker_manager.update_worker_connections()
-                    clone_manager = copy.deepcopy(self._server.worker_manager)
-                    connected_workers_complete = clone_manager.check_connected_workers_complete_status()
+                self._server.worker_manager.update_worker_connections()
+                connected_workers_complete = self._server.worker_manager.check_connected_workers_complete_status()
 
                 if not connected_workers_complete:
                     sleep(self._server.config.strategy.update_period)
@@ -68,16 +65,13 @@ class FedAvgStrategy(Strategy):
                 else:
                     try:
                         completed_workers: Dict [str, Worker] = self._server.worker_manager.get_completed_workers()
-                        clone_completed_workers = copy.deepcopy(completed_workers)
-                        LOGGER.info(f'Update condition is met. Start update global model with {len(clone_completed_workers)} local updates')
-                        self._update(clone_completed_workers)
+                        LOGGER.info(f'Update condition is met. Start update global model with {len(completed_workers)} local updates')
+                        self._update(completed_workers)
                         # wait until m worker connected to the network to begin new training epoch
                         while True:
                             self._server.worker_manager.update_worker_connections()
-                            clone_manager = copy.deepcopy(self._server.worker_manager)
-                            if clone_manager.get_num_connected_workers() >= self.m:
-                                with lock:
-                                    self._server.worker_manager.reset_all_workers_training_state()
+                            if self._server.worker_manager.get_num_connected_workers() >= self.m:
+                                self._server.worker_manager.reset_all_workers_training_state()
                                 self._server.publish_new_global_model()
                                 break
                             sleep(self._server.config.strategy.update_period)
