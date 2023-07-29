@@ -42,7 +42,6 @@ import asynfed.common.messages as message_utils
 
 # from asynfed.server import Server
 class KAFLMStepStrategy(Strategy):
-
     # def __init__(self, server: Server, model_name: str, file_extension: str, m: int = 3, agg_hyperparam: float = 0.8):
     def __init__(self, server, model_name: str, file_extension: str, m: int = 3, agg_hyperparam: float = 0.8):
         """
@@ -78,7 +77,10 @@ class KAFLMStepStrategy(Strategy):
 
             else:
                 try:
+                    LOGGER.info("*" * 20)
+                    LOGGER.info(f'In the attempt to aggregate new global version {self.current_version}, the number of models in the queue is {total_local_models}')
                     LOGGER.info(f'Update condition is met. Start update global model with {self.m} local updates')
+                    LOGGER.info("*" * 20)
                     self._update()
                     self._server._publish_new_global_model()
 
@@ -243,16 +245,18 @@ class KAFLMStepStrategy(Strategy):
         local_path = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, filename)
         if not os.path.exists(local_path):
             cloud_storage.download(remote_file_path=remote_path, local_file_path=local_path)
-        w_g = np.array(self._get_model_weights(local_path))
+        w_g = np.array(self._get_model_weights(local_path), dtype=object)
+
         # Execute global update 
         ## Calculate w_new(t)
         w_new = 0
         w_tmp = []
-        for i in range(len(workers)):
-            w_i = np.array(self._get_model_weights(workers[i].get_local_weight_file_path(local_model_root_folder=local_storage_path.LOCAL_MODEL_ROOT_FOLDER)))
+        for i, worker in enumerate(workers):
+            w_i = np.array(worker.weight_array, dtype=object)
             w_tmp.append(w_i)
-            w_new += (w_tmp[i]* workers[i].data_size)
-        total_num_samples = sum([workers[i].data_size for i in range(len(workers))])
+            w_new += (w_tmp[i] * worker.data_size)
+
+        total_num_samples = sum([worker.data_size for worker in workers])
         w_new /= total_num_samples
 
         ## Calculate w_g(t+1)

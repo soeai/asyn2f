@@ -50,7 +50,7 @@
     },
 
     "cleaning_config": {
-        "clean_storage_period": 240,
+        "clean_storage_period": 120,
         "global_keep_version_num": 10,
         "local_keep_version_num": 2
     },

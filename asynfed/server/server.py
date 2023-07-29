@@ -331,9 +331,11 @@ class Server(object):
 
     def _start_consumer(self):
         self._queue_consumer.start()
+        LOGGER.info("CONSUMER THREAD IS RUNNING")
 
 
     def _ping(self):
+        LOGGER.info("PING THREAD IS RUNNING")
         while True:
             for client_id in self._worker_manager.list_connected_workers():
                 LOGGER.info(f'Ping to client {client_id}')
@@ -346,6 +348,7 @@ class Server(object):
 
 
     def _clean_storage(self):
+        LOGGER.info("CLEANING THREAD IS RUNNING!")
         while True:
             sleep(self._config.cleaning_config.clean_storage_period)
             LOGGER.info("CLEANING TIME")

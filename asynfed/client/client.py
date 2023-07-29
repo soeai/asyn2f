@@ -178,15 +178,16 @@ class Client(object):
 
 
     def _start_consumer(self):
+        # LOGGER.info()
+        LOGGER.info("CONSUMER THREAD IS RUNNING")
         self._components.queue_consumer.start()
 
     def _start_training_thread(self):
-        LOGGER.info("Start training thread.")
         self.state.training_thread_is_running = True
         training_thread = Thread(target= self._train, name= "client_training_thread")
         training_thread.daemon = True
-
         training_thread.start()
+        LOGGER.info("TRAINING THREAD IS RUNNING")
 
 
     def _clean_storage(self):
@@ -446,15 +447,14 @@ class Client(object):
 
 
     def _start_publish_new_local_update_thread(self):
-        LOGGER.info("*" * 40)
-        LOGGER.info("Publish New Local Model Thread is Runnning!")
-        LOGGER.info("*" * 40)
         self.state.publish_new_local_update_is_running = True
 
         publish_new_local_update_thread = Thread(target= self._publish_new_local_update, name= "client_publish_new_local_update_thread")
         publish_new_local_update_thread.daemon = True
-
         publish_new_local_update_thread.start()
+        LOGGER.info("*" * 40)
+        LOGGER.info("PUBLISH LOCAL MODEL THREAD IS RUNNING!")
+        LOGGER.info("*" * 40)
 
 
     def _publish_new_local_update(self):
