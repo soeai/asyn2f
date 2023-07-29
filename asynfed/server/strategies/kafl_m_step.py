@@ -246,29 +246,26 @@ class KAFLMStepStrategy(Strategy):
         if not os.path.exists(local_path):
             cloud_storage.download(remote_file_path=remote_path, local_file_path=local_path)
 
-        w_g = np.array(self._get_model_weights(local_path), dtype=object)
-        w_new = None
-        # Execute global update 
-        # Calculate w_new(t)
-        total_num_samples = sum([worker.data_size for worker in workers])
+
+        # dealing with a list of NumPy arrays of different shapes (each representing the weights of a different layer of a neural network). 
+        # This kind of heterogeneous structure is not conducive to the vectorized operations that make NumPy efficient
+        # loop through each layer in the list
+        # more efficient than converting the entire list into a single 'object'-dtype NumPy array
+        previous_global_weight = self._get_model_weights(local_path)
+        aggregate_global_weight = [np.zeros(layer.shape, dtype=np.float32) for layer in previous_global_weight]
+        total_data_size = sum([worker.data_size for worker in workers])
+
         for worker in workers:
-            worker_array = np.array(worker.weight_array, dtype=object)
-            if not w_new:
-                w_new = np.zeros(worker_array.shape, dtype=object)
-
-            worker_weighted = worker.data_size / total_num_samples
-
-            w_new += (worker_array * worker_weighted)
-
-        ## Calculate w_g(t+1)
-        w_g_new = w_g * (1-self.agg_hyperparam) + w_new * self.agg_hyperparam
-        
+            for aggregate_global_layer, worker_layer, previous_global_layer in zip(aggregate_global_weight, worker.weight_array, previous_global_weight):
+                current_round_contribution = (worker.data_size / total_data_size * worker_layer)
+                aggregate_global_layer +=  self.agg_hyperparam * current_round_contribution + (1 - self.agg_hyperparam) * previous_global_layer
 
         # save weight file.
         save_location = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self.get_new_global_model_filename())
 
         with open(save_location, "wb") as f:
-            pickle.dump(w_g_new, f)
+            pickle.dump(aggregate_global_weight, f)
+
         LOGGER.info('=' * 20)
         LOGGER.info(save_location)
         LOGGER.info('=' * 20)

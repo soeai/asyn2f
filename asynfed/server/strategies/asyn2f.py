@@ -288,6 +288,10 @@ class Asyn2fStrategy(Strategy):
         LOGGER.info("*" * 20)
 
 
+        # dealing with a list of NumPy arrays of different shapes (each representing the weights of a different layer of a neural network). 
+        # This kind of heterogeneous structure is not conducive to the vectorized operations that make NumPy efficient
+        # loop through each layer in the list
+        # more efficient than converting the entire list into a single 'object'-dtype NumPy array
         # aggregating to get the new global weights
         merged_weights = None
         for w_id, worker in completed_workers.items():
