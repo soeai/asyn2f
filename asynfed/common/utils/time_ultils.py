@@ -1,6 +1,6 @@
 
 from datetime import datetime
-
+import numpy as np
 
 def time_diff(time_str_1: str, time_str_2: str) -> float:
     """Calculate the time difference between two time strings in seconds.
@@ -24,7 +24,8 @@ def time_diff(time_str_1: str, time_str_2: str) -> float:
     t1 = datetime.strptime(time_str_1, time_format)
     t2 = datetime.strptime(time_str_2, time_format)
 
-    return (t2 - t1).total_seconds()
+    t_diff = (t2 - t1).total_seconds()
+    return np.abs(t_diff)
 
 
 def time_now() -> str:
