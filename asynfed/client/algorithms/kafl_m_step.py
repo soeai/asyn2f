@@ -92,8 +92,10 @@ class KaflMStep(object):
                                                                                             current_global_model_file_name)
                     
                     if file_exist:
+                        LOGGER.info("*" * 20)
                         LOGGER.info(f"New model ? - {self._client.state.new_model_flag}")
                         LOGGER.info(f"Set global weight to the local model")    
+                        LOGGER.info("*" * 20)
                         self._client.model.set_weights(global_weights)
                         
                     # if not file_exist, also changing the flag status
@@ -121,16 +123,16 @@ class KaflMStep(object):
                 # instead of notifying the server every epoch
                 # reduce the communication by notifying every n epoch
                 # n set by server as epoch_update_frequency param
-                if self._client.training_process_info.local_epoch % self._client.server_training_config.epoch_update_frequency == 0:
-                    self._client.update_new_local_model_info()
-          
                 # if self._client.training_process_info.local_epoch % self._client.server_training_config.epoch_update_frequency == 0:
-                #     min_acc = self._client.server_training_config.exchange_at.performance
-                #     min_epoch = self._client.server_training_config.exchange_at.epoch
-                #     if (min_acc <= self._client.training_process_info.train_acc) or (min_epoch <= self._client.training_process_info.local_epoch):
-                #         self._client.update_new_local_model_info()
-                #     else:
-                #         LOGGER.info("*" * 20)
-                #         LOGGER.info(f"At epoch {self._client.training_process_info.local_epoch}, current train acc is {self._client.training_process_info.train_acc:.4f}, which does not meet either the min acc {min_acc} or min epoch {min_epoch} to notify model to server")
-                #         LOGGER.info("*" * 20)
+                #     self._client.update_new_local_model_info()
+          
+                if self._client.training_process_info.local_epoch % self._client.server_training_config.epoch_update_frequency == 0:
+                    min_acc = self._client.server_training_config.exchange_at.performance
+                    min_epoch = self._client.server_training_config.exchange_at.epoch
+                    if (min_acc <= self._client.training_process_info.train_acc) or (min_epoch <= self._client.training_process_info.local_epoch):
+                        self._client.update_new_local_model_info()
+                    else:
+                        LOGGER.info("*" * 20)
+                        LOGGER.info(f"At epoch {self._client.training_process_info.local_epoch}, current train acc is {self._client.training_process_info.train_acc:.4f}, which does not meet either the min acc {min_acc} or min epoch {min_epoch} to notify model to server")
+                        LOGGER.info("*" * 20)
 

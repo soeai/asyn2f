@@ -147,6 +147,7 @@ class Client(object):
         while not self.state.is_stop_condition:
             # check the stop condition every 300 seconds
             sleep(300)
+        LOGGER.info("Received stop message from server. Shortly the program will be close...")
         sys.exit(0)
 
 
