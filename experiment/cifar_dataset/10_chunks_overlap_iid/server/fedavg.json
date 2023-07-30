@@ -6,8 +6,8 @@
     
     "strategy": {
         "name": "fedavg",
-        "m": 2,
-        "n": 1
+        "m": 3,
+        "n": 5
     },
     
     "model_config": {
@@ -50,7 +50,7 @@
     },
 
     "cleaning_config": {
-        "clean_storage_period": 120,
+        "clean_storage_period": 600,
         "global_keep_version_num": 10,
         "local_keep_version_num": 2
     },

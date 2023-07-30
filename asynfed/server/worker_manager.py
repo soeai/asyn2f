@@ -32,39 +32,40 @@ class WorkerManager:
         worker.loss = client_model_update.loss
 
     def get_completed_workers(self) -> Dict:
-        return {worker_id: self.worker_pool[worker_id] for worker_id in self.worker_pool if self.worker_pool[worker_id].is_completed == True}
+        return {worker_id: self.worker_pool[worker_id] for worker_id in list(self.worker_pool.keys()) if self.worker_pool[worker_id].is_completed == True}
 
     def get_worker_by_id(self, worker_id: str) -> Worker:
         return self.worker_pool[worker_id]
 
     def list_sessions(self) -> List:
-        return [self.worker_pool[worker_id].session_id for worker_id in self.worker_pool.keys()]
+        return [self.worker_pool[worker_id].session_id for worker_id in list(self.worker_pool.keys())]
 
     def list_connected_workers(self) -> List[str]:
-        return [worker_id for worker_id in self.worker_pool.keys() if self.worker_pool[worker_id].is_connected == True]
+        return [worker_id for worker_id in list(self.worker_pool.keys()) if self.worker_pool[worker_id].is_connected == True]
 
     def get_num_connected_workers(self) -> int:
         return len(self.list_connected_workers())
 
     def get_connected_workers(self) -> Dict[str, Worker]:
-        return {worker_id: self.worker_pool[worker_id] for worker_id in self.worker_pool if self.worker_pool[worker_id].is_connected == True}
+        self.update_worker_connections()
+        return {worker_id: self.worker_pool[worker_id] for worker_id in list(self.worker_pool.keys()) if self.worker_pool[worker_id].is_connected == True}
 
     def check_connected_workers_complete_status(self) -> bool:
         connected_workers = self.get_connected_workers()
-        for w_id, worker in connected_workers.items():
+        for w_id in list(connected_workers.keys()):
+            worker = connected_workers[w_id]
             if "tester" not in w_id:
                 if not worker.is_completed:
                     return False
-            # else:
-                # print("this is tester")
         return True
 
     def reset_all_workers_training_state(self):
-        for w_id, worker in self.worker_pool.items():
+        for w_id in list(self.worker_pool.keys()):
+            worker = self.worker_pool[w_id]
             worker.reset()
 
     def update_worker_connections(self) -> None:
-        for worker_id in self.worker_pool.keys():
+        for worker_id in list(self.worker_pool.keys()):
             if time_utils.time_diff(time_utils.time_now(), self.worker_pool[worker_id].last_ping) < 60:
                 self.worker_pool[worker_id].is_connected = True
             else:
@@ -72,5 +73,3 @@ class WorkerManager:
 
     def update_worker_last_ping(self, worker_id):
         self.worker_pool[worker_id].last_ping = time_utils.time_now()
-
-
