@@ -45,7 +45,7 @@ class FedAvgStrategy(Strategy):
 
     # def start_server(self):
     def handle_aggregating_process(self):
-        sleep(150)
+        sleep(240)
         if not self._server.config.strategy.update_period or self._server.config.strategy.update_period == 0:
             # constantly check for new udpate
             self._server.config.strategy.update_period = 20
