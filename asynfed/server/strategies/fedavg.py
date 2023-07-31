@@ -39,6 +39,7 @@ class FedAvgStrategy(Strategy):
     # def __init__(self, server: Server, model_name: str, file_extension: str, m: int = 3):
     def __init__(self, server, model_name: str, file_extension: str, m: int = 1):
         super().__init__(server = server, model_name= model_name, file_extension= file_extension)
+        self.first_aggregating_time = True
         self.m = m
         print(f"This is m: {self.m}")
 
@@ -66,10 +67,8 @@ class FedAvgStrategy(Strategy):
                 print(f"Status of connected workers: {connected_workers_complete}")
 
 
-                if not connected_workers_complete:
-                    sleep(self._server.config.strategy.update_period)
-
-                else:
+                if connected_workers_complete or self.first_aggregating_time:
+                    self.first_aggregating_time = False
                     try:
                         completed_workers: Dict [str, Worker] = self._server.worker_manager.get_completed_workers()
                         LOGGER.info(f'Update condition is met. Start update global model with {len(completed_workers)} local updates')
@@ -85,6 +84,9 @@ class FedAvgStrategy(Strategy):
 
                     except Exception as e:
                         raise e
+                else:
+                    sleep(self._server.config.strategy.update_period)
+
             
             sleep(self._server.config.strategy.update_period)
 
