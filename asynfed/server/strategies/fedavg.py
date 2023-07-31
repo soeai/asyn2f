@@ -45,7 +45,7 @@ class FedAvgStrategy(Strategy):
 
     # def start_server(self):
     def handle_aggregating_process(self):
-        sleep(300)
+        sleep(150)
         if not self._server.config.strategy.update_period or self._server.config.strategy.update_period == 0:
             # constantly check for new udpate
             self._server.config.strategy.update_period = 20
@@ -61,13 +61,14 @@ class FedAvgStrategy(Strategy):
             print(num_completed_workers, ready)
             if ready:
                 self._server.worker_manager.update_worker_connections()
-                print(f"This is the number of connected worker: {len(self._server.worker_manager.list_connected_workers)}")
+                print(f"This is the number of connected worker: {len(self._server.worker_manager.list_connected_workers())}")
                 connected_workers_complete = self._server.worker_manager.check_connected_workers_complete_status()
 
                 print(f"Status of connected workers: {connected_workers_complete}")
 
 
                 if connected_workers_complete or self.first_aggregating_time:
+                    print(f"This is the number of worker expected to join this round: {num_completed_workers}")
                     self.first_aggregating_time = False
                     try:
                         completed_workers: Dict [str, Worker] = self._server.worker_manager.get_completed_workers()
@@ -77,8 +78,11 @@ class FedAvgStrategy(Strategy):
                         while True:
                             self._server.worker_manager.update_worker_connections()
                             if self._server.worker_manager.get_num_connected_workers() >= self.m:
-                                self._server.worker_manager.reset_all_workers_training_state()
+                                print("About to publish new global model")
                                 self._server.publish_new_global_model()
+                                print("After publishing new global model")
+                                self._server.worker_manager.reset_all_workers_training_state()
+                                print("After reset state of worker")
                                 break
                             sleep(self._server.config.strategy.update_period)
 

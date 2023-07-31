@@ -40,6 +40,7 @@ class FedAvg(object):
                 min_epoch = self._client.server_training_config.exchange_at.epoch
                 if (min_acc <= self._client.training_process_info.train_acc) or (min_epoch <= self._client.training_process_info.local_epoch):
                     self._client.update_new_local_model_info()
+                    break
                 # in the first training epoch
                 # break when receive new model from server 
                 # (the exhange at of some worker is met)
