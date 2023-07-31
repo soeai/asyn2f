@@ -49,7 +49,7 @@ class Asyn2fStrategy(Strategy):
 
         while True:
             if self._server.stop_condition_is_met:
-                LOGGER.info('Stop condition is reached! Shortly the training process will be close.')
+                LOGGER.info('Stop condition is reached! The program will be close now..')
                 # close the program
                 sys.exit(0)
 

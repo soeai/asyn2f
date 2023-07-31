@@ -51,7 +51,7 @@ class FedAvgStrategy(Strategy):
 
         while True:
             if self._server.stop_condition_is_met:
-                LOGGER.info('Stop condition is reached! Shortly the training process will be close.')
+                LOGGER.info('Stop condition is reached! The program will be close now..')
                 # close the program
                 sys.exit(0)
 
@@ -59,9 +59,8 @@ class FedAvgStrategy(Strategy):
             ready =  num_completed_workers >= self.m
             print(num_completed_workers, ready)
             if ready:
-                print("before")
                 self._server.worker_manager.update_worker_connections()
-                print("after")
+                print(f"This is the number of connected worker: {len(self._server.worker_manager.list_connected_workers)}")
                 connected_workers_complete = self._server.worker_manager.check_connected_workers_complete_status()
 
                 print(f"Status of connected workers: {connected_workers_complete}")

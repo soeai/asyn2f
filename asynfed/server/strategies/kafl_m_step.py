@@ -60,7 +60,7 @@ class KAFLMStepStrategy(Strategy):
 
         while True:
             if self._server.stop_condition_is_met:
-                LOGGER.info('Stop condition is reached! Shortly the training process will be close.')
+                LOGGER.info('Stop condition is reached! The program will be close now..')
                 # close the program
                 sys.exit(0)
 
@@ -135,11 +135,17 @@ class KAFLMStepStrategy(Strategy):
     def aggregate(self, workers: List [Worker], cloud_storage: ServerStorageBoto3,
                   local_storage_path: LocalStoragePath):
 
-
+        # print(self.current_version)
         if self.current_version == 1:
             local_path = self._server.config.model_config.initial_model_path
         else:
             local_path = os.path.join(local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, self.get_current_global_model_filename())
+            if not os.path.isfile(local_path):
+                remote_path = f"{self._server._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER}/{self.get_current_global_model_filename()}"
+                LOGGER.info("*" * 10)
+                LOGGER.info(f"global model does not exist in the remote storage, shortly begin to download: {remote_path}")
+                LOGGER.info("*" * 10)
+                cloud_storage.download(remote_file_path= remote_path, local_file_path= local_path)
 
         # dealing with a list of NumPy arrays of different shapes (each representing the weights of a different layer of a neural network). 
         # This kind of heterogeneous structure is not conducive to the vectorized operations that make NumPy efficient

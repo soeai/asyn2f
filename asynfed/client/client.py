@@ -117,9 +117,14 @@ class Client(object):
 
 
         # thread
-        self._thread_consumer = Thread(target= self._start_consumer, name= "client_consumer_thread")
+        self._consumer_thread = Thread(target= self._start_consumer, name= "client_consumer_thread")
+        self._consumer_thread.daemon = True
+
         self._clean_storage_thread = Thread(target= self._clean_storage, name= "client_clean_storage_thread")
         self._clean_storage_thread.daemon = True
+
+        self._training_thread = Thread(target= self._train, name= "client_training_thread")
+        self._training_thread.daemon = True
         # only start training thread when receiving response from server
 
 
@@ -142,14 +147,22 @@ class Client(object):
     # Run the client
     def start(self):
         LOGGER.info("CLIENT STARTS")
-        self._thread_consumer.start()
+        self._consumer_thread.start()
         self._clean_storage_thread.start()
 
         while not self.state.is_stop_condition:
             # check the stop condition every 600 seconds to ensure the tester will close
-            sleep(300)
-        LOGGER.info("Received stop message from server (from tester). Shortly the program will be close...")
-        sys.exit(0)
+            sleep(60)
+
+        if self.config.role == "trainer":
+            LOGGER.info("Received stop message from server. Shortly the program will be close...")
+            LOGGER.info("Close the program now")
+            sys.exit(0)
+        else:
+            LOGGER.info("Tester received stop message from server. Shortly the program will be close...")
+            sleep(600)
+            LOGGER.info("Close the program now")
+            sys.exit(0)
 
 
     # consumer queue callback
@@ -180,10 +193,10 @@ class Client(object):
             # sys.exit(0)
             # if self.config.role == "tester":
             #     self._tester_handle_stop_message_from_server()
-            if self.config.role != "tester":
-                LOGGER.info("Received stop message from server. Shortly the program will be close...")
-                sys.exit(0)
             self.state.is_stop_condition = True
+            # if self.config.role == "trainer":
+            #     LOGGER.info("Received stop message from server. Shortly the program will be close...")
+
 
             
 
@@ -199,9 +212,7 @@ class Client(object):
 
     def _start_training_thread(self):
         self.state.training_thread_is_running = True
-        training_thread = Thread(target= self._train, name= "client_training_thread")
-        training_thread.daemon = True
-        training_thread.start()
+        self._training_thread.start()
         LOGGER.info("TRAINING THREAD IS RUNNING")
 
 

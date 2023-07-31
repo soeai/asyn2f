@@ -238,6 +238,9 @@ class Server(object):
 
         # check whether it is first client to begin timing
         if self._is_first_client:
+            LOGGER.info("*" * 50)
+            LOGGER.info("First client join. About to set first join time to keep track of ")
+            LOGGER.info("*" * 50)
             self._is_first_client = False
             self.manage_training_time.begin_timing()
 
@@ -365,7 +368,13 @@ class Server(object):
 
     def _handle_when_max_time_is_reached(self):
         # to sifnify that when receiving notifying the last global model acc from tester
-        self.config.model_config.stop_conditions.max_version == self._strategy.current_version
+        LOGGER.info("*" * 60)
+        LOGGER.info("Set max version to be the current version of global model")
+        previous_version_setting = self.config.model_config.stop_conditions.max_version
+        self.config.model_config.stop_conditions.max_version = self._strategy.current_version
+        LOGGER.info(f"current max version setting: {previous_version_setting}, new current version: {self.config.model_config.stop_conditions.max_version}")
+        LOGGER.info("*" * 60)
+        
         # send stop message for trainer to stop training
         headers: dict = self._create_headers(message_type= MessageType.SERVER_STOP_TRAINING)
         require_to_stop: ServerRequestStop = ServerRequestStop()
@@ -558,10 +567,10 @@ class Server(object):
                     LOGGER.info(f"Stop condition: version {v} >= {self.config.model_config.stop_conditions.max_version}")
                     return True
 
-            if k == "loss" and self.config.model_config.stop_conditions.min_loss is not None:
-                if v <= self.config.model_config.stop_conditions.min_loss:
-                    LOGGER.info(f"Stop condition: loss {v} <= {self.config.model_config.stop_conditions.min_loss}")
-                    return True
+            # if k == "loss" and self.config.model_config.stop_conditions.min_loss is not None:
+            #     if v <= self.config.model_config.stop_conditions.min_loss:
+            #         LOGGER.info(f"Stop condition: loss {v} <= {self.config.model_config.stop_conditions.min_loss}")
+            #         return True
 
         return False
 
