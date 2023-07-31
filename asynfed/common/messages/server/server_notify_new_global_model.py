@@ -13,7 +13,8 @@ class GlobalModel(MessageObject):
         self.avg_loss = avg_loss
 
 class ServerModelUpdate(MessageObject):
-    def __init__(self, worker_id: list, global_model: dict):
+    def __init__(self, worker_id: list, global_model: dict, learning_rate: float = None):
         self.worker_id = worker_id
         self.global_model = GlobalModel(**global_model)
+        self.learning_rate = learning_rate
 

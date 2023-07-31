@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from tensorflow.keras import Model
+import tensorflow as tf
 
 '''
 - This abstract class is intended to help user on
@@ -13,7 +13,7 @@ from tensorflow.keras import Model
 '''
 
 
-class TensorflowSequentialModel(Model):
+class TensorflowSequentialModel(tf.keras.Model):
     def __init__(self, input_features, output_features, learning_rate_fn = None):
         super().__init__()
         self.create_model(input_features, output_features)
@@ -30,7 +30,7 @@ class TensorflowSequentialModel(Model):
     def create_model(self, input_features, output_features):
         '''
         - a sequential tensorflow model consists of multiple layers 
-            each layer is an instance of class tensorflow.keras.layers.Layer
+            each layer is an instance of class tf.keras.layers.Layer
         - it can be the already defined layer as Dense, Flatten, Conv2D
             or a custom layered defined by user
         - input_features variable is the input for the first layer
@@ -109,5 +109,18 @@ class TensorflowSequentialModel(Model):
     def get_test_loss(self):
         # return a float number
         pass
+
+    @abstractmethod
+    def get_optimizer(self):
+        pass
+
+    @abstractmethod
+    def get_learning_rate(self):
+        pass
+    
+    @abstractmethod
+    def set_learning_rate(self, lr):
+        pass
+
 
 

@@ -7,7 +7,6 @@ sys.path.append(root)
 import tensorflow as tf
 from resnet18 import Resnet18
 
-from tensorflow.keras import datasets
 import numpy as np
 
 tf.config.set_visible_devices(tf.config.list_physical_devices('GPU')[0], 'GPU')
@@ -22,7 +21,7 @@ def normalize(images, mean, std):
     """Normalize data with mean and std."""
     return (images - mean) / std
 
-(x_train, y_train), (x_test, y_test) = datasets.cifar10.load_data()
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
 data_size = len(x_train)
 
 mean, std = get_mean_and_std(x_train)

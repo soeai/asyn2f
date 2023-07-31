@@ -355,6 +355,7 @@ class Client(object):
         self.global_model_info = GlobalModelInfo(remote_folder_path= remote_global_folder, 
                                                 name = server_init_response.model_info.name, 
                                                 version= server_init_response.model_info.version, 
+                                                learning_rate= server_init_response.model_info.learning_rate,
                                                 file_extension= server_init_response.model_info.file_extension)
         
         if file_exists:

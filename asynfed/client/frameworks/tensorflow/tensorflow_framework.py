@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tensorflow.keras import Model
 from asynfed.client.objects import ModelWrapper
 
 '''
@@ -14,10 +13,10 @@ from asynfed.client.objects import ModelWrapper
 '''
 
 class TensorflowFramework(ModelWrapper):
-    # Tensorflow Model must be an inheritant of class tensorflow.keras.Model
+    # Tensorflow Model must be an inheritant of class tf.keras.Model
     # model, data_size, train_ds is required
     # test_ds is optional
-    def __init__(self, model: Model, data_size: int, train_ds = None, test_ds = None, config: dict = {}):
+    def __init__(self, model: tf.keras.Model, data_size: int, train_ds = None, test_ds = None, config: dict = {}):
         super().__init__()
         '''
         - model must have an optimizer, a loss object, and trainining metric 
@@ -81,7 +80,16 @@ class TensorflowFramework(ModelWrapper):
     
     def reset_test_performance(self):
         self.model.test_performance.reset_states()
-   
+
+    def get_optimizer(self):
+        return self.model.get_optimizer()
+    
+    def set_learning_rate(self, lr):
+        return self.model.set_learning_rate(lr)
+    
+    def get_learning_rate(self) -> float:
+        return self.model.get_learning_rate()
+        
     @tf.function
     def train_step(self, images, labels):
         with tf.GradientTape() as tape:

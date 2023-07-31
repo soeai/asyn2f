@@ -7,7 +7,6 @@ Some helper functions for TensorFlow2.0, including:
     - progress_bar(): progress bar mimic xlua.progress.
 """
 import tensorflow as tf
-from tensorflow.keras import datasets
 
 import numpy as np
 
@@ -18,7 +17,7 @@ target_size = image_size + padding * 2
 
 def get_dataset():
     """Download, parse and process a dataset to unit scale and one-hot labels."""
-    (train_images, train_labels), (test_images, test_labels) = datasets.cifar10.load_data()
+    (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.cifar10.load_data()
 
     # Normalize pixel values to be between 0 and 1
     train_images, test_images = train_images / 255.0, test_images / 255.0

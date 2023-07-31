@@ -48,3 +48,15 @@ class ModelWrapper(ABC):
     @abstractmethod
     def reset_test_performance(self):
         pass
+
+    @abstractmethod
+    def get_optimizer(self):
+        pass
+
+    @abstractmethod
+    def get_learning_rate(self) -> float:
+        pass
+
+    @abstractmethod
+    def set_learning_rate(self, lr):
+        pass

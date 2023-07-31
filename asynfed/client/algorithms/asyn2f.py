@@ -5,7 +5,7 @@ from threading import Lock
 from time import sleep 
 
 
-# from asynfed.client import Client
+from asynfed.client import Client
 
 
 
@@ -19,8 +19,8 @@ lock = Lock()
 # More algorithms can be found at other files in this directory 
 class Asyn2f(object):
 
-    # def __init__(self, client: Client):
-    def __init__(self, client):
+    def __init__(self, client: Client):
+    # def __init__(self, client):
         self._client = client
         self._client.tracking_period = self._client.config.tracking_point
 
@@ -52,6 +52,14 @@ class Asyn2f(object):
             LOGGER.info("=" * 40)
             LOGGER.info("ClientModel Start Training")
             LOGGER.info("=" * 40)
+
+            # set learning rate if there is any params from server
+            if self._client.global_model_info.learning_rate is not None:
+                LOGGER.info("*" * 20)
+                self._client.model.set_learning_rate(lr= self._client.global_model_info.learning_rate)
+                LOGGER.info(f"At the begining, server set learning rate = {self._client.global_model_info.learning_rate}")
+                LOGGER.info(f"Double check whether lr is set properly: lr of model right now is {self._client.model.get_learning_rate()}")
+                LOGGER.info("*" * 20)
 
             for _ in range(self._client.model.epoch):
                 # record some info of the training process
@@ -201,6 +209,15 @@ class Asyn2f(object):
 
         # set the merged_weights to be the current weights of the model
         self._client.model.set_weights(self._client.model.merged_weights)
+
+        # set learning rate if there is any params from server
+        if self._client.global_model_info.learning_rate is not None:
+            LOGGER.info("*" * 20)
+            self._client.model.set_learning_rate(lr= self._client.global_model_info.learning_rate)
+            LOGGER.info(f"At local epoch {self._client.training_process_info.local_epoch}, learning is set to be: {self._client.global_model_info.learning_rate}")
+            LOGGER.info(f"Double check whether lr is set properly: lr of model right now is {self._client.model.get_learning_rate()}")
+            LOGGER.info("*" * 20)
+
             
 
 

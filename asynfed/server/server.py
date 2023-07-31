@@ -200,7 +200,9 @@ class Server(object):
         # model info
         exchange_at= self.config.model_config.model_exchange_at.to_dict()
 
+
         model_info: ModelInfo = ModelInfo(global_folder= self.config.cloud_storage.global_model_root_folder, 
+                                          learning_rate= self._strategy.get_learning_rate(),
                                           name= self.config.model_config.name, version=self._strategy.current_version,
                                           file_extension= self._strategy.file_extension, exchange_at= exchange_at)
         
@@ -413,9 +415,12 @@ class Server(object):
             global_model = GlobalModel(version= self._strategy.current_version,
                                        total_data_size= self._strategy.global_model_update_data_size,
                                        avg_loss= self._strategy.avg_loss, avg_qod= self._strategy.avg_qod)
+            
 
+            learning_rate = self._strategy.get_learning_rate()
 
-            server_model_update: ServerModelUpdate = ServerModelUpdate(worker_id=[], global_model= global_model.to_dict())
+            server_model_update: ServerModelUpdate = ServerModelUpdate(worker_id=[], global_model= global_model.to_dict(),
+                                                                       learning_rate= learning_rate)
             
 
             message = ExchangeMessage(headers= headers, content= server_model_update).to_json()
@@ -467,13 +472,13 @@ class Server(object):
         strategy_object: Strategy
         if strategy == "asyn2f":
             strategy_object = Asyn2fStrategy(server= self, model_name= model_name, file_extension= self.config.model_config.file_extension,
-                                             m = self.config.strategy.m)
+                                             m = self.config.strategy.m, total_update_times= self.config.model_config.total_update_times)
         elif strategy == "kafl":
             strategy_object = KAFLMStepStrategy(server= self, model_name= model_name, file_extension= self.config.model_config.file_extension,
-                                                m = self.config.strategy.m)
+                                                m = self.config.strategy.m, total_update_times= self.config.model_config.total_update_times)
         elif strategy == "fedavg":
             strategy_object = FedAvgStrategy(server= self, model_name= model_name, file_extension= self.config.model_config.file_extension,
-                                                m = self.config.strategy.m)
+                                                m = self.config.strategy.m, total_update_times= self.config.model_config.total_update_times)
         else:
             LOGGER.info("*" * 20)
             LOGGER.info(f"The framework has not yet support the strategy you choose ({strategy})")

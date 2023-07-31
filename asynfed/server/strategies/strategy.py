@@ -8,6 +8,7 @@ import pickle
 from typing import Dict
 from asynfed.server.objects import Worker
 from asynfed.server.storage_connectors.boto3 import ServerStorageBoto3
+import tensorflow as tf
 
 import logging
 LOGGER = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ class Strategy(ABC):
     Any new strategy will follow this interface. 
     """
     # def __init__(self, server: Server, model_name: str, file_extension: str = "pkl"):
-    def __init__(self, server, model_name: str, file_extension: str = "pkl"):
+    def __init__(self, server, model_name: str, total_update_times: int = None, file_extension: str = "pkl"):
         
         self._server = server
 
@@ -32,6 +33,12 @@ class Strategy(ABC):
         self.avg_loss = 0.0
         self.avg_qod = 0.0
 
+        # now the lr scheduler is just support consine schedule
+        if total_update_times:
+            LOGGER.info(f"Synchronous learning rate is turn on. Total update time to create a consine lr scheduler: {total_update_times}")
+            self.lr_scheduler = self.get_cosine_lr_scheduler(total_update_times)
+        else:
+            self.lr_scheduler = None
 
     def get_current_global_model_filename(self) -> str:
         # return f"{self.model_name}_v{self.current_version}.pkl"
@@ -61,6 +68,19 @@ class Strategy(ABC):
         """ Implement the client selection logic by
         """
         pass
+
+    def get_cosine_lr_scheduler(self, initial_lr, total_update_times):
+        lr_scheduler = tf.keras.experimental.CosineDecay(initial_learning_rate= initial_lr, 
+                                                        decay_steps= total_update_times)
+        return lr_scheduler
+    
+    def get_learning_rate(self) -> float:
+        if self.lr_scheduler is not None:
+            lr = self.lr_scheduler(self.current_version - 1)
+        else: 
+            lr = None
+        return lr
+
 
     @abstractmethod
     def aggregate(self, completed_workers, cloud_storage, local_storage_path):

@@ -37,8 +37,9 @@ LOGGER = logging.getLogger(__name__)
 class Asyn2fStrategy(Strategy):
 
     # def __init__(self, server: Server, model_name: str, file_extension: str, m: int = 3):
-    def __init__(self, server, model_name: str, file_extension: str, m: int = 1):
-        super().__init__(server = server, model_name= model_name, file_extension= file_extension)
+    def __init__(self, server, total_update_times, model_name: str, file_extension: str, m: int = 1):
+        super().__init__(server = server, total_update_times= total_update_times,
+                         model_name= model_name, file_extension= file_extension)
         self.m = m
 
 

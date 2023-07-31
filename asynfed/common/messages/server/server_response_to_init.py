@@ -11,13 +11,15 @@ class ExchangeAt(MessageObject):
 
 
 class ModelInfo(MessageObject):
-    def __init__(self, global_folder: str, name: str, version: str, file_extension: str, exchange_at: dict = None):
+    def __init__(self, global_folder: str, name: str, version: str, file_extension: str, 
+                 learning_rate: float = None, exchange_at: dict = None):
         # url = "{global_folder}/{name}/{version}.{file_extension}"
         self.global_folder = global_folder
         self.name = name
         self.version = version
         self.file_extension = file_extension
         self.exchange_at = ExchangeAt(**(exchange_at or {}))
+        self.learning_rate = learning_rate
 
 
 
