@@ -22,7 +22,7 @@
         },
         
         "stop_conditions": {
-            "max_version": 1000,
+            "max_version": 10000,
             "max_performance": 0.96,
             "max_time": 180
         }

@@ -392,7 +392,7 @@ class Server(object):
             if self.manage_training_time.is_max_time_reach(time_utils.time_now()):
                 LOGGER.info("Max training time is reached. Shortly the program will be close after receiving the accuracy of the last global model from tester.")
                 self._handle_when_max_time_is_reached()
-                self.stop_condition_is_met = True
+                # self.stop_condition_is_met = True
 
         LOGGER.info("*" * 20)
         LOGGER.info(f"CURRENT GLOBAL MODEL VERSION TO BE PUBLISHED: {self._strategy.current_version}")
@@ -486,11 +486,6 @@ class Server(object):
     def _start_consumer(self):
         self._queue_consumer.start()
         LOGGER.info("CONSUMER THREAD IS RUNNING")
-        # while True:
-        #     if self.stop_condition_is_met:
-        #         sleep(600)
-        #         LOGGER.info("D")
-        #         sys.exit(0)
 
 
     def _ping(self):
