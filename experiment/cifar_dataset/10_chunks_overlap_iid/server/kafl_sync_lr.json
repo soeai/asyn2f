@@ -16,7 +16,7 @@
         "file_extension": "pkl",
         "synchronous_learning_rate":
             {
-                "total_update_time": 550,
+                "total_update_times": 550,
                 "initial_learning_rate": 0.1
             },
 

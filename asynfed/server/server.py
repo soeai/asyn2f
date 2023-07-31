@@ -472,13 +472,19 @@ class Server(object):
         strategy_object: Strategy
         if strategy == "asyn2f":
             strategy_object = Asyn2fStrategy(server= self, model_name= model_name, file_extension= self.config.model_config.file_extension,
-                                             m = self.config.strategy.m, total_update_times= self.config.model_config.total_update_times)
+                                             m = self.config.strategy.m, 
+                                             initial_learning_rate= self.config.model_config.synchronous_learning_rate.initial_learning_rate,
+                                             total_update_times= self.config.model_config.synchronous_learning_rate.total_update_times)
         elif strategy == "kafl":
             strategy_object = KAFLMStepStrategy(server= self, model_name= model_name, file_extension= self.config.model_config.file_extension,
-                                                m = self.config.strategy.m, total_update_times= self.config.model_config.total_update_times)
+                                                m = self.config.strategy.m, 
+                                                initial_learning_rate= self.config.model_config.synchronous_learning_rate.initial_learning_rate,
+                                                total_update_times= self.config.model_config.synchronous_learning_rate.total_update_times)
         elif strategy == "fedavg":
             strategy_object = FedAvgStrategy(server= self, model_name= model_name, file_extension= self.config.model_config.file_extension,
-                                                m = self.config.strategy.m, total_update_times= self.config.model_config.total_update_times)
+                                                m = self.config.strategy.m, 
+                                                initial_learning_rate= self.config.model_config.synchronous_learning_rate.initial_learning_rate,
+                                                total_update_times= self.config.model_config.synchronous_learning_rate.total_update_times)
         else:
             LOGGER.info("*" * 20)
             LOGGER.info(f"The framework has not yet support the strategy you choose ({strategy})")

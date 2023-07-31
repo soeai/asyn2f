@@ -71,8 +71,8 @@ class Strategy(ABC):
         """
         pass
 
-    def get_cosine_lr_scheduler(self, total_update_times: int, initial_lr: float = 0.1):
-        lr_scheduler = tf.keras.experimental.CosineDecay(initial_learning_rate= initial_lr, 
+    def get_cosine_lr_scheduler(self, total_update_times: int, initial_learning_rate: float = 0.1):
+        lr_scheduler = tf.keras.experimental.CosineDecay(initial_learning_rate= initial_learning_rate, 
                                                         decay_steps= total_update_times)
         return lr_scheduler
     
