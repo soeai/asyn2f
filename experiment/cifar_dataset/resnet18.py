@@ -55,6 +55,9 @@ class Resnet18(TensorflowSequentialModel):
     def set_learning_rate(self, lr):
         return self.optimizer.lr.assign(lr)
 
+    def get_learning_rate(self):
+        return self.optimizer.lr.numpy()
+
 
     def create_model(self, input_features, output_features):
         self.in_channels = 64

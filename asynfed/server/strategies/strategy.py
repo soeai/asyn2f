@@ -79,6 +79,7 @@ class Strategy(ABC):
     def get_learning_rate(self) -> float:
         if self.lr_scheduler is not None:
             lr = self.lr_scheduler(self.current_version - 1)
+            lr = float(lr)
         else: 
             lr = None
         return lr
