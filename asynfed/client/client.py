@@ -442,7 +442,7 @@ class Client(object):
             if download_success:
                 # Only update info when download is success
                 # update local version (the latest global model that the client have)
-                self.global_model_info.update(**server_model_udpate.global_model.to_dict())
+                self.global_model_info.update(**server_model_udpate.global_model.to_dict(), learning_rate = learning_rate)
 
 
                 LOGGER.info(f"Successfully downloaded new global model {self.global_model_info.name}, version {self.global_model_info.version}")
