@@ -10,7 +10,7 @@ import sys
 from threading import Lock
 lock = Lock()
 
-
+import asynfed.common.utils.time_ultils as time_utils
 
 from threading import Lock
 from time import sleep
@@ -88,6 +88,7 @@ class Asyn2fStrategy(Strategy):
             # pass out a copy of completed worker to aggregating process
             worker_list = copy.deepcopy(completed_workers)
             self.aggregate(worker_list, self._server.cloud_storage, self._server.local_storage_path)
+
 
 
     def _pass_one_local_model(self, completed_worker: Dict [str, Worker]):

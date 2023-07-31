@@ -43,6 +43,22 @@ LOGGER = logging.getLogger(__name__)
 logging.getLogger("pika").setLevel(logging.WARNING)
 LOGGER.setLevel(logging.INFO)
 
+class ManageTrainingTime(object):
+    def __init__(self, max_time: int):
+        self.max_time = max_time
+        self.start_time = None
+        self.max_time_is_reach = False
+
+    def begin_timing(self):
+        self.start_time = time_utils.time_now()
+
+    def is_max_time_reach(self, timing):
+        t_diff = time_utils.time_diff(timing, self.start_time)
+        if t_diff >= self.max_time:
+            return True
+        return False
+
+
 # class Server(ABC):
 class Server(object):
     """
@@ -59,6 +75,11 @@ class Server(object):
 
         # load config info 
         self.config: ServerConfig = self._load_config_info(config= config)
+
+        if self.config.model_config.stop_conditions.max_time:
+            self._is_first_client = True
+            self.manage_training_time = ManageTrainingTime(max_time= self.config.model_config.stop_conditions.max_time)
+
         # get local and cloud storage path
         # global_model structure: {global_folder}/{model_name}/{version}.{file_extension}
 
@@ -215,6 +236,11 @@ class Server(object):
         message= ExchangeMessage(headers= headers, content= response_to_init.to_dict()).to_json()
         self._queue_producer.send_data(message)
 
+        # check whether it is first client to begin timing
+        if self._is_first_client:
+            self._is_first_client = False
+            self.manage_training_time.begin_timing()
+
 
     def _handle_client_notify_evaluation(self, message):
         message_utils.print_message(message)
@@ -324,9 +350,41 @@ class Server(object):
         return LocalStoragePath(root_folder= full_path, save_log= self.config.save_log)
 
 
+    # def _check_max_time_is_reached(self):
+    #     if self.manage_training_time.is_max_time_reach(time_utils.time_now()):
+            # headers: dict = self._create_headers(message_type= MessageType.SERVER_STOP_TRAINING)
+            # require_to_stop: ServerRequestStop = ServerRequestStop()
+
+            # message = ExchangeMessage(headers= headers, content= require_to_stop.to_dict()).to_json()
+            # self._queue_producer.send_data(message)
+            # LOGGER.info("=" * 50)
+            # LOGGER.info("Stop condition met. Log out best model")
+            # LOGGER.info(self._best_model)
+            # LOGGER.info("=" * 50)
+
+
+    def _handle_when_max_time_is_reached(self):
+        # to sifnify that when receiving notifying the last global model acc from tester
+        self.config.model_config.stop_conditions.max_version == self._strategy.current_version
+        # send stop message for trainer to stop training
+        headers: dict = self._create_headers(message_type= MessageType.SERVER_STOP_TRAINING)
+        require_to_stop: ServerRequestStop = ServerRequestStop()
+        message = ExchangeMessage(headers= headers, content= require_to_stop.to_dict()).to_json()
+        self._queue_producer.send_data(message)
+
+
+
     def publish_new_global_model(self):
         # increment the current version to 1
         self._strategy.current_version += 1
+
+        # check whether max time is reach
+        if self.manage_training_time:
+            if self.manage_training_time.is_max_time_reach(time_utils.time_now()):
+                LOGGER.info("Max training time is reached. Shortly the program will be close after receiving the accuracy of the last global model from tester.")
+                self._handle_when_max_time_is_reached()
+                self.stop_condition_is_met = True
+
         LOGGER.info("*" * 20)
         LOGGER.info(f"CURRENT GLOBAL MODEL VERSION TO BE PUBLISHED: {self._strategy.current_version}")
         LOGGER.info("*" * 20)
@@ -419,6 +477,11 @@ class Server(object):
     def _start_consumer(self):
         self._queue_consumer.start()
         LOGGER.info("CONSUMER THREAD IS RUNNING")
+        # while True:
+        #     if self.stop_condition_is_met:
+        #         sleep(600)
+        #         LOGGER.info("D")
+        #         sys.exit(0)
 
 
     def _ping(self):
@@ -485,20 +548,22 @@ class Server(object):
 
     def _check_stop_conditions(self, info: dict):
         for k, v in info.items():
-            if k == "loss" and self.config.model_config.stop_conditions.min_loss is not None:
-                if v <= self.config.model_config.stop_conditions.min_loss:
-                    LOGGER.info(f"Stop condition: loss {v} <= {self.config.model_config.stop_conditions.min_loss}")
-                    return True
-            elif k == "performance" and self.config.model_config.stop_conditions.max_performance is not None:
+            if k == "performance" and self.config.model_config.stop_conditions.max_performance is not None:
                 if v >= self.config.model_config.stop_conditions.max_performance:
                     LOGGER.info(f"Stop condition: performance {v} >= {self.config.model_config.stop_conditions.max_performance}")
                     return True
                 
-            elif k == "version" and self.config.model_config.stop_conditions.max_version is not None:
+            if k == "version" and self.config.model_config.stop_conditions.max_version is not None:
                 if v >= self.config.model_config.stop_conditions.max_version:
                     LOGGER.info(f"Stop condition: version {v} >= {self.config.model_config.stop_conditions.max_version}")
                     return True
 
+            if k == "loss" and self.config.model_config.stop_conditions.min_loss is not None:
+                if v <= self.config.model_config.stop_conditions.min_loss:
+                    LOGGER.info(f"Stop condition: loss {v} <= {self.config.model_config.stop_conditions.min_loss}")
+                    return True
+
+        return False
 
 
     def _write_record(self):

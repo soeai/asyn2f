@@ -84,6 +84,7 @@ class Client(object):
         self.state = ClientState()
         self.training_process_info = TrainingProcessInfo()
 
+        self._is_tester_stop = False
 
         # --------- info get from server ------------
         # just initialize these property when receiving respone from server for the first time
@@ -145,9 +146,9 @@ class Client(object):
         self._clean_storage_thread.start()
 
         while not self.state.is_stop_condition:
-            # check the stop condition every 300 seconds
+            # check the stop condition every 600 seconds to ensure the tester will close
             sleep(300)
-        LOGGER.info("Received stop message from server. Shortly the program will be close...")
+        LOGGER.info("Received stop message from server (from tester). Shortly the program will be close...")
         sys.exit(0)
 
 
@@ -172,10 +173,23 @@ class Client(object):
 
         elif message_type == MessageType.SERVER_STOP_TRAINING: 
             message_utils.print_message(msg_received)
+            # while not self.state.is_stop_condition:
+            #     # check the stop condition every 300 seconds
+            #     sleep(300)
+            # LOGGER.info("Received stop message from server. Shortly the program will be close...")
+            # sys.exit(0)
+            # if self.config.role == "tester":
+            #     self._tester_handle_stop_message_from_server()
+            if self.config.role != "tester":
+                LOGGER.info("Received stop message from server. Shortly the program will be close...")
+                sys.exit(0)
             self.state.is_stop_condition = True
-            sys.exit(0)
 
+            
 
+    # process all message from the queue and send the final messagae to server
+    def _tester_handle_stop_message_from_server(self):
+        pass
 
 
     def _start_consumer(self):

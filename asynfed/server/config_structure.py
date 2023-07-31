@@ -64,10 +64,12 @@ class Strategy(MessageObject):
 
 
 class StopConditions(MessageObject):
-    def __init__(self, max_version: int = 300, max_performance: float = 0.95, min_loss: float = 0.01):
+    def __init__(self, max_version: int = 300, max_performance: float = 0.95, max_time: int = 180):
         self.max_version = max_version
         self.max_performance = max_performance
-        self.min_loss = min_loss
+        # max time is define in minute
+        # need to convert to second
+        self.max_time = max_time * 60
 
 
 class ModelConfig(MessageObject):
