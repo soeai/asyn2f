@@ -38,14 +38,14 @@ import asynfed.common.messages as message_utils
 # from asynfed.server import Server
 class KAFLMStepStrategy(Strategy):
     # def __init__(self, server: Server, model_name: str, file_extension: str, m: int = 3, agg_hyperparam: float = 0.8):
-    def __init__(self, server, model_name: str, file_extension: str, 
+    def __init__(self, server, model_name: str, file_extension: str, initial_learning_rate: float = None,
                   total_update_times: int = None, m: int = 3, agg_hyperparam: float = 0.8):
         """
         Args:
             m (int, optional): Number of workers to aggregate. Defaults to 3.
             agg_hyperparam (float, optional): Aggregation hyperparameter. Defaults to 0.8.
         """
-        super().__init__(server = server, total_update_times= total_update_times,
+        super().__init__(server = server, total_update_times= total_update_times, initial_learning_rate= initial_learning_rate,
                          model_name= model_name, file_extension= file_extension)
         self.m = m
         self.agg_hyperparam = agg_hyperparam

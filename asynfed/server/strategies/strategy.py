@@ -21,7 +21,8 @@ class Strategy(ABC):
     Any new strategy will follow this interface. 
     """
     # def __init__(self, server: Server, model_name: str, file_extension: str = "pkl"):
-    def __init__(self, server, model_name: str, total_update_times: int = None, file_extension: str = "pkl"):
+    def __init__(self, server, model_name: str, total_update_times: int = None, 
+                file_extension: str = "pkl", initial_learning_rate: float = None):
         
         self._server = server
 
@@ -36,7 +37,8 @@ class Strategy(ABC):
         # now the lr scheduler is just support consine schedule
         if total_update_times:
             LOGGER.info(f"Synchronous learning rate is turn on. Total update time to create a consine lr scheduler: {total_update_times}")
-            self.lr_scheduler = self.get_cosine_lr_scheduler(total_update_times)
+            self.lr_scheduler = self.get_cosine_lr_scheduler(total_update_times= total_update_times, 
+                                                            initial_learning_rate= initial_learning_rate)
         else:
             self.lr_scheduler = None
 
@@ -69,7 +71,7 @@ class Strategy(ABC):
         """
         pass
 
-    def get_cosine_lr_scheduler(self, initial_lr, total_update_times):
+    def get_cosine_lr_scheduler(self, total_update_times: int, initial_lr: float = 0.1):
         lr_scheduler = tf.keras.experimental.CosineDecay(initial_learning_rate= initial_lr, 
                                                         decay_steps= total_update_times)
         return lr_scheduler

@@ -71,23 +71,28 @@ class StopConditions(MessageObject):
         # need to convert to second
         self.max_time = max_time * 60
 
+class SynchronousLearningRate(MessageObject):
+    def __init__(self, initial_learning_rate: float = None, total_update_times: int = None)
+        self.initial_learning_rate = initial_learning_rate
+        self.total_update_times = total_update_times
 
 class ModelConfig(MessageObject):
     def __init__(self, name: str = "", initial_model_path: str = "initial_model.pkl", 
                  file_extension: str = "pkl", stop_conditions: dict = None,
-                 total_update_times: int = None,
+                 synchrnous_learning_rate: dict = None,
                  model_exchange_at: dict = None):
         self.name = name
         self.initial_model_path = initial_model_path
         self.file_extension = file_extension
-        self.total_update_times = total_update_times
 
         # these 2 objects support default values
 
         stop_conditions = stop_conditions or {}
         model_exchange_at = model_exchange_at or {}
+        synchrnous_learning_rate = synchrnous_learning_rate or {}
         self.model_exchange_at = ExchangeAt(**model_exchange_at)
         self.stop_conditions = StopConditions(**stop_conditions)
+        self.synchrnous_learning_rate = SynchronousLearningRate(**synchrnous_learning_rate)
 
 
 class ServerConfig(MessageObject):

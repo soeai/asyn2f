@@ -5,7 +5,7 @@ from threading import Lock
 from time import sleep 
 
 
-from asynfed.client import Client
+# from asynfed.client import Client
 
 
 
@@ -19,8 +19,8 @@ lock = Lock()
 # More algorithms can be found at other files in this directory 
 class Asyn2f(object):
 
-    def __init__(self, client: Client):
-    # def __init__(self, client):
+    # def __init__(self, client: Client):
+    def __init__(self, client):
         self._client = client
         self._client.tracking_period = self._client.config.tracking_point
 

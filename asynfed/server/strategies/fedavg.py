@@ -37,11 +37,12 @@ import asynfed.common.messages as message_utils
 class FedAvgStrategy(Strategy):
 
     # def __init__(self, server: Server, model_name: str, file_extension: str, m: int = 3):
-    def __init__(self, server, model_name: str, file_extension: str, 
-                 total_update_times: int = None, m: int = 1):
-        super().__init__(server = server, total_update_times= total_update_times,
+    def __init__(self, server, total_update_times: int, initial_learning_rate: float,
+                    model_name: str, file_extension: str, m: int = 1):
+        super().__init__(server = server, total_update_times= total_update_times, initial_learning_rate= initial_learning_rate,
                          model_name= model_name, file_extension= file_extension)
-        
+        self.m = m
+
         self.first_aggregating_time = True
         self.m = m
         print(f"This is m: {self.m}")
