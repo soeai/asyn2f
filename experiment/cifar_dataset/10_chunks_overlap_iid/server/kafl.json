@@ -22,9 +22,9 @@
         },
         
         "stop_conditions": {
-            "max_version": 240,
-            "max_performance": 0.9,
-            "min_loss": 0.02
+            "max_version": 1000,
+            "max_performance": 0.95,
+            "max_time": 180
         }
     },
 

@@ -89,9 +89,6 @@ class Asyn2f(object):
                     # merging when receiving a new global model
                     if self._client.state.new_model_flag:
                         
-                        # update some tracking info
-                        self._client.training_process_info.previous_global_version_used = self._client.training_process_info.global_version_used
-                        self._client.training_process_info.global_version_used = self._client.global_model_info.version
 
                         # before the merging process happens, need to retrieve current weights and global weights
                         # previous, current and global weights are used in the merged process
@@ -104,6 +101,9 @@ class Asyn2f(object):
                         
                         if file_exist:
                             LOGGER.info(f"New model ? - {self._client.state.new_model_flag}")
+                            # update some tracking info
+                            self._client.training_process_info.previous_global_version_used = self._client.training_process_info.global_version_used
+                            self._client.training_process_info.global_version_used = self._client.global_model_info.version
                             LOGGER.info(
                         f"Merging process happens at epoch {self._client.training_process_info.local_epoch}, batch {batch_num} when receiving the global version {self._client.training_process_info.global_version_used}, current global version {self._client.training_process_info.previous_global_version_used}")
                                 

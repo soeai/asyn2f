@@ -96,6 +96,7 @@ class KaflMStep(object):
                         LOGGER.info(f"New model ? - {self._client.state.new_model_flag}")
                         LOGGER.info(f"Set global weight to the local model")    
                         LOGGER.info("*" * 20)
+                        self._client.training_process_info.global_version_used = self._client.global_model_info.version
                         self._client.model.set_weights(global_weights)
                         
                     # if not file_exist, also changing the flag status

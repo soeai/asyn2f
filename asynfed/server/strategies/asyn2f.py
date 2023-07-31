@@ -170,7 +170,8 @@ class Asyn2fStrategy(Strategy):
         LOGGER.info("*" * 20)
         for w_id, worker in completed_workers.items():
             LOGGER.info(f"Update global version: {self.update_version}")
-            LOGGER.info(f"worker id {worker.worker_id} with global version used {worker.global_version_used}")
+            LOGGER.info(f"{worker.worker_id}: global version used: {worker.global_version_used}, qod: {worker.qod}, loss: {worker.loss}, datasize : {worker.data_size}")
+            # LOGGER.info(f"worker id {worker.worker_id} with global version used {worker.global_version_used}")
             LOGGER.info(f"substract: {self.update_version - worker.global_version_used}")
             
             worker.alpha = self._compute_alpha(worker)

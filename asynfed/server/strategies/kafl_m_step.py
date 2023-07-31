@@ -167,8 +167,9 @@ class KAFLMStepStrategy(Strategy):
         w_g = np.array(self._get_model_weights(local_path), dtype=object)
         w_new = np.array([np.zeros(layer.shape) for layer in w_g], dtype=object)
 
+        LOGGER.info(f"Update global version: {self.current_version}")
         for worker in workers:
-            LOGGER.info(f"{worker.worker_id}: {worker.data_size}, {worker.get_remote_weight_file_path()}")
+            LOGGER.info(f"{worker.worker_id}: global version used: {worker.global_version_used}, datasize: {worker.data_size}, weight file: {worker.get_remote_weight_file_path()}")
             worker_array = np.array(worker.weight_array, dtype=object)
             worker_weighted = worker.data_size / total_num_samples
             w_new += (worker_array * worker_weighted)
