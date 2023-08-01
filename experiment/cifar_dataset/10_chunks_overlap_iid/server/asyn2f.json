@@ -18,7 +18,6 @@
         "model_exchange_at": {
             "performance": 0.8,
             "epoch": 100
-            
         },
         
         "stop_conditions": {

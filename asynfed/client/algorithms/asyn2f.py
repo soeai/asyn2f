@@ -66,7 +66,7 @@ class Asyn2f(object):
                 self._client.training_process_info.local_epoch += 1
                 batch_num = 0
                 # training per several epoch
-                LOGGER.info(f"Enter epoch {self._client.training_process_info.local_epoch}")
+                LOGGER.info(f"Enter epoch {self._client.training_process_info.local_epoch}, learning rate = {self._client.model.get_learning_rate()}")
 
                 # reset loss and per after each epoch
                 self._client.model.reset_train_loss()

@@ -38,15 +38,22 @@ class BasicBlock(tf.keras.Model):
 
 
 class Resnet18(TensorflowSequentialModel):
-    def __init__(self, input_features = (32, 32, 3), output_features = 10, lr = None, decay_steps = 0):
+    def __init__(self, input_features = (32, 32, 3), output_features = 10, lr = 0.1, decay_steps = 50000):
+        lr_scheduler = tf.keras.experimental.CosineDecay(initial_learning_rate= lr,
+                                                         decay_steps= decay_steps)
+        print(f"learning rate: {lr}, decay steps: {decay_steps}")
+        
         # if lr is not None:
         #     super().__init__(input_features=input_features, output_features=output_features,
         #                     learning_rate_fn= tf.keras.experimental.CosineDecay(lr, decay_steps= decay_steps))
         # else:
         #     super().__init__(input_features=input_features, output_features=output_features,
         #                     learning_rate_fn= None)
+        # super().__init__(input_features=input_features, output_features=output_features,
+        #                 learning_rate_fn= None)
+
         super().__init__(input_features=input_features, output_features=output_features,
-                        learning_rate_fn= None)
+                        learning_rate_fn= lr_scheduler)
         
     def get_optimizer(self):
         return self.optimizer
@@ -89,6 +96,8 @@ class Resnet18(TensorflowSequentialModel):
         return tf.keras.losses.CategoricalCrossentropy()
 
     def create_optimizer(self, learning_rate_fn):
+        optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
+
         # optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
         # if learning_rate_fn is not None :
         # # if learning_rate_fn:
@@ -96,7 +105,7 @@ class Resnet18(TensorflowSequentialModel):
         # else: 
         #     optimizer = tf.keras.optimizers.SGD()
         
-        optimizer = tf.keras.optimizers.SGD(learning_rate= 0.01, momentum= 0.9)
+        # optimizer = tf.keras.optimizers.SGD(learning_rate= 0.01, momentum= 0.9)
 
         return optimizer
 
