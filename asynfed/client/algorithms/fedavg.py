@@ -34,6 +34,14 @@ class FedAvg(object):
         # training until met training exchange conditions to send model
         # or when receive new global model notify from server
         if self._load_new_model_weight():
+            # set learning rate if there is any params from server
+            if self._client.global_model_info.learning_rate is not None:
+                LOGGER.info("*" * 20)
+                self._client.model.set_learning_rate(lr= self._client.global_model_info.learning_rate)
+                LOGGER.info(f"At the begining, server set learning rate = {self._client.global_model_info.learning_rate}")
+                LOGGER.info(f"Double check whether lr is set properly: lr of model right now is {self._client.model.get_learning_rate()}")
+                LOGGER.info("*" * 20)
+
             while True:
                 self._training()
                 min_acc = self._client.server_training_config.exchange_at.performance
@@ -56,8 +64,16 @@ class FedAvg(object):
                 LOGGER.info("*" * 20)
                 self._client.state.new_model_flag = False
                 if self._load_new_model_weight():
-                        self._training()
-                        self._client.update_new_local_model_info()
+                # set learning rate if there is any params from server
+                    if self._client.global_model_info.learning_rate is not None:
+                        LOGGER.info("*" * 20)
+                        self._client.model.set_learning_rate(lr= self._client.global_model_info.learning_rate)
+                        LOGGER.info(f"At local epoch {self._client.training_process_info.local_epoch}, learning rate is set to be: {self._client.global_model_info.learning_rate}")
+                        LOGGER.info(f"Double check whether lr is set properly: lr of model right now is {self._client.model.get_learning_rate()}")
+                        LOGGER.info("*" * 20)
+
+                    self._training()
+                    self._client.update_new_local_model_info()
             sleep(5)
 
     def _load_new_model_weight(self) -> bool:

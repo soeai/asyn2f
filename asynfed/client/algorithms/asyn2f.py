@@ -214,7 +214,7 @@ class Asyn2f(object):
         if self._client.global_model_info.learning_rate is not None:
             LOGGER.info("*" * 20)
             self._client.model.set_learning_rate(lr= self._client.global_model_info.learning_rate)
-            LOGGER.info(f"At local epoch {self._client.training_process_info.local_epoch}, learning is set to be: {self._client.global_model_info.learning_rate}")
+            LOGGER.info(f"At local epoch {self._client.training_process_info.local_epoch}, learning rate is set to be: {self._client.global_model_info.learning_rate}")
             LOGGER.info(f"Double check whether lr is set properly: lr of model right now is {self._client.model.get_learning_rate()}")
             LOGGER.info("*" * 20)
 

@@ -52,6 +52,14 @@ class KaflMStep(object):
             LOGGER.info("ClientModel Start Training")
             LOGGER.info("=" * 40)
 
+            # set learning rate if there is any params from server
+            if self._client.global_model_info.learning_rate is not None:
+                LOGGER.info("*" * 20)
+                self._client.model.set_learning_rate(lr= self._client.global_model_info.learning_rate)
+                LOGGER.info(f"At the begining, server set learning rate = {self._client.global_model_info.learning_rate}")
+                LOGGER.info(f"Double check whether lr is set properly: lr of model right now is {self._client.model.get_learning_rate()}")
+                LOGGER.info("*" * 20)
+
             for _ in range(self._client.model.epoch):
                 # record some info of the training process
                 self._client.training_process_info.local_epoch += 1
@@ -99,6 +107,14 @@ class KaflMStep(object):
                         self._client.training_process_info.global_version_used = self._client.global_model_info.version
                         self._client.model.set_weights(global_weights)
                         
+                        # set learning rate if there is any params from server
+                        if self._client.global_model_info.learning_rate is not None:
+                            LOGGER.info("*" * 20)
+                            self._client.model.set_learning_rate(lr= self._client.global_model_info.learning_rate)
+                            LOGGER.info(f"At local epoch {self._client.training_process_info.local_epoch}, learning rate is set to be: {self._client.global_model_info.learning_rate}")
+                            LOGGER.info(f"Double check whether lr is set properly: lr of model right now is {self._client.model.get_learning_rate()}")
+                            LOGGER.info("*" * 20)
+                            
                     # if not file_exist, also changing the flag status
                     self._client.state.new_model_flag = False
 
