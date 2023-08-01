@@ -171,7 +171,7 @@ class KAFLMStepStrategy(Strategy):
         # with open(save_location, "wb") as f:
         #     pickle.dump(aggregate_global_weight, f)
 
-        total_num_samples = sum([worker.data_size for worker in workers])
+        self.global_model_update_data_size = sum([worker.data_size for worker in workers])
         w_g = np.array(self._get_model_weights(local_path), dtype=object)
         w_new = np.array([np.zeros(layer.shape) for layer in w_g], dtype=object)
 
@@ -179,7 +179,7 @@ class KAFLMStepStrategy(Strategy):
         for worker in workers:
             LOGGER.info(f"{worker.worker_id}: global version used: {worker.global_version_used}, datasize: {worker.data_size}, weight file: {worker.get_remote_weight_file_path()}")
             worker_array = np.array(worker.weight_array, dtype=object)
-            worker_weighted = worker.data_size / total_num_samples
+            worker_weighted = worker.data_size / self.global_model_update_data_size
             w_new += (worker_array * worker_weighted)
 
         ## Calculate w_g(t+1)

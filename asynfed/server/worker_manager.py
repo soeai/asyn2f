@@ -64,9 +64,11 @@ class WorkerManager:
             worker = self.worker_pool[w_id]
             worker.reset()
 
+    # now is temporarily use only for fedavg
+    # modify later
     def update_worker_connections(self) -> None:
         for worker_id in list(self.worker_pool.keys()):
-            if time_utils.time_diff(time_utils.time_now(), self.worker_pool[worker_id].last_ping) < 60:
+            if time_utils.time_diff(time_utils.time_now(), self.worker_pool[worker_id].last_ping) < 120:
                 self.worker_pool[worker_id].is_connected = True
             else:
                 self.worker_pool[worker_id].is_connected = False

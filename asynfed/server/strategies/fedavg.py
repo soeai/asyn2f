@@ -151,12 +151,12 @@ class FedAvgStrategy(Strategy):
         # loop through each layer in the list
         # more efficient than converting the entire list into a single 'object'-dtype NumPy array
         # aggregating to get the new global weights
-        total_data_size = sum([worker.data_size for w_id, worker in completed_workers.items()])
+        self.global_model_update_data_size = sum([worker.data_size for w_id, worker in completed_workers.items()])
 
         merged_weights = None
         for w_id, worker in completed_workers.items():
             if worker.weight_array is not None:
-                LOGGER.info(f"{w_id}: {worker.data_size}, {worker.get_remote_weight_file_path()}")
+                LOGGER.info(f"{w_id}: {worker.data_size}, {worker.get_remote_weight_file_path()}, global version used: {worker.global_version_used}")
                 # initialized zero array if merged weight is None
                 if merged_weights is None:
                     # choose dtype = float 32 to reduce the size of the weight file
@@ -164,7 +164,7 @@ class FedAvgStrategy(Strategy):
 
                 # merging
                 for merged_layer, worker_layer in zip(merged_weights, worker.weight_array):
-                    merged_layer += worker.data_size / total_data_size * worker_layer
+                    merged_layer += worker.data_size / self.global_model_update_data_size * worker_layer
 
 
         # save weight file.

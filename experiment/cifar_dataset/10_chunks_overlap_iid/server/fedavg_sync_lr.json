@@ -1,11 +1,11 @@
 {
     "server_id": "",
-    "ping_period": 300,
+    "ping_period": 60,
     "save_log": true,
     
     
     "strategy": {
-        "name": "asyn2f",
+        "name": "fedavg",
         "m": 3,
         "n": 5
     },
@@ -14,9 +14,10 @@
         "name": "",
         "initial_model_path": "initial_model.pkl",
         "file_extension": "pkl",
+
         "synchronous_learning_rate":
             {
-                "total_update_times": 380,
+                "total_update_times": 27,
                 "initial_learning_rate": 0.1
             },
         "model_exchange_at": {
@@ -26,7 +27,7 @@
         },
         
         "stop_conditions": {
-            "max_version": 10000,
+            "max_version": 2400,
             "max_performance": 0.96,
             "max_time": 180
         }
@@ -54,7 +55,7 @@
     },
 
     "cleaning_config": {
-        "clean_storage_period": 240,
+        "clean_storage_period": 600,
         "global_keep_version_num": 10,
         "local_keep_version_num": 2
     },

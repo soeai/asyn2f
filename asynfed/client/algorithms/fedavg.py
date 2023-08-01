@@ -51,6 +51,9 @@ class FedAvg(object):
         # notify new local model to server every n epoch
         while True:
             if self._client.state.new_model_flag:
+                LOGGER.info("*" * 20)
+                LOGGER.info(f"Current weight file name of the new local training round: {self._client.global_model_info.get_file_name()}")
+                LOGGER.info("*" * 20)
                 self._client.state.new_model_flag = False
                 if self._load_new_model_weight():
                         self._training()
@@ -68,7 +71,10 @@ class FedAvg(object):
         file_exist, current_global_weights = self._client.load_weights_from_file(self._client.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
                                                                         file_name= current_global_model_file_name)
         if file_exist:
+            LOGGER.info("*" * 20)
             LOGGER.info("Receive new global model --> Set to be the weight of the local model")
+            LOGGER.info(f"Model file name: {current_global_model_file_name}")
+            LOGGER.info("*" * 20)
             try:
                 self._client.model.set_weights(current_global_weights)
             except Exception as e:
