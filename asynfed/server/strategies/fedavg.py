@@ -38,13 +38,16 @@ class FedAvgStrategy(Strategy):
 
     # def __init__(self, server: Server, model_name: str, file_extension: str, m: int = 3):
     def __init__(self, server, total_update_times: int, initial_learning_rate: float,
-                    model_name: str, file_extension: str, m: int = 1):
+                    model_name: str, file_extension: str, m: int = 1, use_loss: bool = False):
         super().__init__(server = server, total_update_times= total_update_times, initial_learning_rate= initial_learning_rate,
                          model_name= model_name, file_extension= file_extension)
         self.m = m
 
         self.first_aggregating_time = True
         self.m = m
+
+        self.use_loss = use_loss
+
         print(f"This is m: {self.m}")
 
     # def start_server(self):
@@ -154,6 +157,7 @@ class FedAvgStrategy(Strategy):
         self.global_model_update_data_size = sum([worker.data_size for w_id, worker in completed_workers.items()])
 
         merged_weights = None
+
         for w_id, worker in completed_workers.items():
             if worker.weight_array is not None:
                 LOGGER.info(f"{w_id}: {worker.data_size}, {worker.get_remote_weight_file_path()}, global version used: {worker.global_version_used}")
@@ -162,6 +166,7 @@ class FedAvgStrategy(Strategy):
                     # choose dtype = float 32 to reduce the size of the weight file
                     merged_weights = [np.zeros(layer.shape, dtype=np.float32) for layer in worker.weight_array]
 
+                # self.com
                 # merging
                 for merged_layer, worker_layer in zip(merged_weights, worker.weight_array):
                     merged_layer += worker.data_size / self.global_model_update_data_size * worker_layer

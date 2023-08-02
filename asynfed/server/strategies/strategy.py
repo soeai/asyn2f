@@ -8,7 +8,6 @@ import pickle
 from typing import Dict
 from asynfed.server.objects import Worker
 from asynfed.server.storage_connectors.boto3 import ServerStorageBoto3
-import tensorflow as tf
 
 import logging
 LOGGER = logging.getLogger(__name__)
@@ -72,6 +71,7 @@ class Strategy(ABC):
         pass
 
     def get_cosine_lr_scheduler(self, total_update_times: int, initial_learning_rate: float = 0.1):
+        import tensorflow as tf
         lr_scheduler = tf.keras.experimental.CosineDecay(initial_learning_rate= initial_learning_rate, 
                                                         decay_steps= total_update_times)
         return lr_scheduler
