@@ -7,7 +7,9 @@
     "strategy": {
         "name": "fedavg",
         "m": 3,
-        "n": 5
+        "n": 5,
+        "use_loss": null,
+        "beta": null
     },
     
     "model_config": {

@@ -56,8 +56,12 @@ class InfluxdbConfig(MessageObject):
         self.bucket_name = bucket_name
 
 class Strategy(MessageObject):
-    def __init__(self, name: str, m: int, n: int, update_period: int = None):
+    def __init__(self, name: str, m: int, n: int, update_period: int = None,
+                 use_loss: bool = False, beta: float = 0.5):
         self.name = name
+        self.use_loss = use_loss
+        self.beta = beta
+        
         self.m = m
         self.n = n
         self.update_period = update_period

@@ -19,6 +19,8 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--config_file', dest='config_file', type=str, default= "asyn2f.json",
                      help='specify the config file for running')
+parser.add_argument('--use_loss', dest='use_loss', type=bool, default= False,
+                     help='specify whether to use loss to compute weighted for fedavg')
 
 # Parse the arguments
 args = parser.parse_args()
@@ -47,8 +49,9 @@ config['influxdb']['bucket_name'] = os.getenv("INFLUXDB_BUCKET")
 config['queue_consumer']['endpoint'] = os.getenv("queue_consumer_endpoint")
 config['queue_producer']['endpoint'] = os.getenv("queue_producer_endpoint")
 
+use_loss = config['strategy']['use_loss'] or args.use_loss
 
-
+config['strategy']['use_loss'] = use_loss
 
 server = Server(config= config)
 

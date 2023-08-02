@@ -38,15 +38,25 @@ class FedAvgStrategy(Strategy):
 
     # def __init__(self, server: Server, model_name: str, file_extension: str, m: int = 3):
     def __init__(self, server, total_update_times: int, initial_learning_rate: float,
-                    model_name: str, file_extension: str, m: int = 1, use_loss: bool = False):
+                    model_name: str, file_extension: str, m: int = 1, 
+                    use_loss: bool = False, beta: float = 0.5):
         super().__init__(server = server, total_update_times= total_update_times, initial_learning_rate= initial_learning_rate,
                          model_name= model_name, file_extension= file_extension)
+        
         self.m = m
 
         self.first_aggregating_time = True
         self.m = m
 
         self.use_loss = use_loss
+        self.beta = beta
+        LOGGER.info("=" * 50)
+        if self.use_loss:
+            LOGGER.info("For FedAvg, Server choose to use both loss and data size to compute weighted for aggregating process")
+        else:
+            LOGGER.info("For FedAvg, Server choose to use only data size to compute weighted for aggregating process")
+        LOGGER.info("=" * 50)
+
 
         print(f"This is m: {self.m}")
 
@@ -147,6 +157,18 @@ class FedAvgStrategy(Strategy):
     def select_client(self, all_clients) -> List [str]:
         return all_clients
     
+    def _compute_alpha(self, worker: Worker) -> float:
+        if self.use_loss:
+            # avoid division by zero
+            data_depend  = worker.data_size / self.global_model_update_data_size 
+            loss_depend = worker.loss / self.total_loss
+
+
+            alpha = data_depend * (1 - self.beta) + loss_depend * self.beta
+        else:
+            alpha = data_depend
+
+        return alpha
 
     def aggregate(self, completed_workers: Dict [str, Worker], local_storage_path: LocalStoragePath):
         # dealing with a list of NumPy arrays of different shapes (each representing the weights of a different layer of a neural network). 
@@ -155,10 +177,14 @@ class FedAvgStrategy(Strategy):
         # more efficient than converting the entire list into a single 'object'-dtype NumPy array
         # aggregating to get the new global weights
         self.global_model_update_data_size = sum([worker.data_size for w_id, worker in completed_workers.items()])
+        self.total_loss = sum([worker.loss for w_id, worker in completed_workers.items()])
 
         merged_weights = None
 
         for w_id, worker in completed_workers.items():
+            worker.alpha = self._compute_alpha(worker)
+            LOGGER.info(f"{w_id}, alpha: {worker.alpha}, data_size: {worker.data_size}, loss: {worker.loss}")
+
             if worker.weight_array is not None:
                 LOGGER.info(f"{w_id}: {worker.data_size}, {worker.get_remote_weight_file_path()}, global version used: {worker.global_version_used}")
                 # initialized zero array if merged weight is None
@@ -169,7 +195,7 @@ class FedAvgStrategy(Strategy):
                 # self.com
                 # merging
                 for merged_layer, worker_layer in zip(merged_weights, worker.weight_array):
-                    merged_layer += worker.data_size / self.global_model_update_data_size * worker_layer
+                    merged_layer += worker.alpha * worker_layer
 
 
         # save weight file.
