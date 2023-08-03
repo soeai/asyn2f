@@ -25,7 +25,7 @@ scheduler = BackgroundScheduler()
 # Create an argument parser
 parser = argparse.ArgumentParser()
 # Add arguments
-parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-overlap-gpu", help='specify the queue exchange')
+parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-non-overlap-gpu", help='specify the queue exchange')
 
 args = parser.parse_args()
 

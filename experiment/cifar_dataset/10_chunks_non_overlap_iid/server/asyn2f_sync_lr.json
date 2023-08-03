@@ -16,7 +16,7 @@
         "file_extension": "pkl",
         "synchronous_learning_rate":
             {
-                "total_update_times": 380,
+                "total_update_times": 390,
                 "initial_learning_rate": 0.1
             },
         "model_exchange_at": {
@@ -26,7 +26,7 @@
         },
         
         "stop_conditions": {
-            "max_version": 10000,
+            "max_version": 300,
             "max_performance": 0.96,
             "max_time": 180
         }
@@ -34,7 +34,7 @@
 
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "cifar10-10-chunks-overlap-gpu",
+        "bucket_name": "cifar10-10-chunks-non-overlap-gpu",
         "region_name": "ap-southeast-2",
 
         "global_model_root_folder": "global-models",

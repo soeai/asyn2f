@@ -29,7 +29,7 @@ scheduler = BackgroundScheduler()
 parser = argparse.ArgumentParser()
 # Add arguments
 parser.add_argument('--config_file', dest='config_file', type=str, help='specify the config file for running')
-parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-overlap-gpu", help='specify the queue exchange')
+parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-non-overlap-gpu", help='specify the queue exchange')
 # parser.add_argument('--strategy', dest='strategy', type=str, default="asyn2f",
 #                     choices=['kafl', 'asyn2f'],
 #                     help='specify the strategy')
@@ -66,7 +66,7 @@ data_folder_path = os.path.join(root, "experiment", "data", "cifar_data")
 testset_filename = "test_set.pickle"
 default_testing_dataset_path = os.path.join(data_folder_path, testset_filename)
 
-chunk_folder = os.path.join("10_chunks_overlap", "iid")
+chunk_folder = os.path.join("10_chunks", "iid")
 chunk_filename = f"chunk_{config['dataset']['chunk_index']}.pickle"
 training_dataset_path = os.path.join(data_folder_path, chunk_folder, chunk_filename)
 

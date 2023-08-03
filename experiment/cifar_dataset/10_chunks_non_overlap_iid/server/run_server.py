@@ -49,9 +49,9 @@ config['influxdb']['bucket_name'] = os.getenv("INFLUXDB_BUCKET")
 config['queue_consumer']['endpoint'] = os.getenv("queue_consumer_endpoint")
 config['queue_producer']['endpoint'] = os.getenv("queue_producer_endpoint")
 
-use_loss = config['strategy']['use_loss'] or args.use_loss
-
-config['strategy']['use_loss'] = use_loss
+if config['strategy'] == "fedavg":
+    use_loss = config['strategy']['use_loss'] or args.use_loss
+    config['strategy']['use_loss'] = use_loss
 
 server = Server(config= config)
 
