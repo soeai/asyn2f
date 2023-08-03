@@ -514,12 +514,18 @@ class Server(object):
 
     def _clean_storage(self):
         LOGGER.info("CLEANING THREAD IS RUNNING!")
+
+        print(f"{self._cloud_storage_path.GLOBAL_MODEL_ROOT_FOLDER}")
+        print(f"{self._cloud_storage_path.CLIENT_MODEL_ROOT_FOLDER}")
+        print(f"{self.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER}")
+        print(f"{self.local_storage_path.LOCAL_MODEL_ROOT_FOLDER}")
+
         while True:
             sleep(self.config.cleaning_config.clean_storage_period)
-            LOGGER.info("CLEANING TIME")
 
+            LOGGER.info("CLEANING TIME")
             # -------- Global Weight File Cleaning ------------ 
-            current_global_version = self._strategy.current_version
+            current_global_version = self._strategy.current_version or 1
             global_threshold = current_global_version - self.config.cleaning_config.global_keep_version_num
 
             if self._best_model.model_name != "":
@@ -558,6 +564,7 @@ class Server(object):
                 local_directory = os.path.join(self.local_storage_path.LOCAL_MODEL_ROOT_FOLDER, w_id)
                 storage_cleaner.delete_local_files(folder_path= local_directory, threshold= client_threshold)
             # -------- Client weight files cleaning -----------
+
 
 
 

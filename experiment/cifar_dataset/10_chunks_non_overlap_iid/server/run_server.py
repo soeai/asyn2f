@@ -17,7 +17,7 @@ load_dotenv()
 parser = argparse.ArgumentParser()
 # Add arguments
 
-parser.add_argument('--config_file', dest='config_file', type=str, default= "asyn2f.json",
+parser.add_argument('--config_file', dest='config_file', type=str, default= "asyn2f_sync_lr.json",
                      help='specify the config file for running')
 parser.add_argument('--use_loss', dest='use_loss', type=bool, default= False,
                      help='specify whether to use loss to compute weighted for fedavg')
