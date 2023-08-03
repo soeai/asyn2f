@@ -19,20 +19,30 @@ class CleaningConfig(MessageObject):
         self.global_keep_version_num = global_keep_version_num
         self.local_keep_version_num = local_keep_version_num 
 
+class LearningRateConfig(MessageObject):
+    def __init__(self, fix_lr: bool = True, lr: float = 0.01, decay_steps: int = None):
+        # fix lr
+        # independent decays lr 
+        self.fix_lr = fix_lr
+        self.lr = lr
+        self.decay_steps = decay_steps
+
 
 class TrainingParams(MessageObject):
     def __init__(self, epoch: int = 10000, batch_size: int = 128,
                  regularization: str = "l2", lambda_value: float = 0.0005,
-                 learning_rate: float = 0.1, beta: float = 0.6, decay_period: int = 200
+                 learning_rate_config: dict = None, beta: float = 0.6
                  ):
         
         self.epoch = epoch
         self.batch_size = batch_size
         self.regularization = regularization
         self.lambda_value = lambda_value
-        self.learning_rate = learning_rate
+
+        learning_rate_config = learning_rate_config or {}
+        self.learning_rate_config = LearningRateConfig(**learning_rate_config)
+
         self.beta = beta
-        self.decay_period = decay_period
 
 class StopConditions(MessageObject):
     def __init__(self, expected_performance: float = 0.95, expected_loss: float = 0.01):

@@ -30,6 +30,9 @@ parser = argparse.ArgumentParser()
 # Add arguments
 parser.add_argument('--config_file', dest='config_file', type=str, help='specify the config file for running')
 parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-non-overlap-gpu", help='specify the queue exchange')
+parser.add_argument('--fix_lr', dest='fix_lr', type=bool, default=True, help='specify the type of learning rate used')
+parser.add_argument('--lr', dest='lr', type=float, default=0.01, help='specify the learning rate')
+parser.add_argument('--decay_steps', dest='decay_steps', type=int, default=None, help='specify the decay step for decay learning rate')
 # parser.add_argument('--strategy', dest='strategy', type=str, default="asyn2f",
 #                     choices=['kafl', 'asyn2f'],
 #                     help='specify the strategy')
@@ -79,6 +82,16 @@ test_ds, _ = preprocess_dataset(default_testing_dataset_path, batch_size= config
 
 config['dataset']['data_size'] = data_size
 
+learning_rate_config = config.get('training_params').get('learning_rate_config', {}) 
+if learning_rate_config == {}:
+    learning_rate_config['fix_lr'] = args.fix_lr
+    learning_rate_config['lr'] = args.lr
+    learning_rate_config['decay_steps'] = args.decay_steps
+
+config['training_params']['learning_rate_config'] = learning_rate_config
+
+print("Config in the run file")
+print(config['training_params']['learning_rate_config'])
 
 print("-" * 20)
 print("-" * 20)
@@ -88,10 +101,7 @@ print("-" * 20)
 
 # Define model
 model = Resnet18(input_features= (32, 32, 3), 
-                 output_features= 10,
-                 lr=config['training_params']['learning_rate'],
-                 decay_steps=50000)
-
+                 output_features= 10, lr_config= config['training_params']['learning_rate_config'])
 
 # Define framework
 tensorflow_framework = TensorflowFramework(model=model, 

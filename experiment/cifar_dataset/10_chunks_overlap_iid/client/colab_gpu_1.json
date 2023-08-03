@@ -3,7 +3,7 @@
     "role": "trainer",
     "gpu_index": 0,
     "save_log": false,
-    "tracking_point": 5000,
+    "tracking_point": 1500,
     "download_attempt": 10,
 
     "queue_consumer": {
@@ -30,9 +30,7 @@
         "batch_size": 128,
         "regularization": "l2",
         "lambda_value": 0.0005,
-        "learning_rate": 0.1,
-        "beta": 0.6,
-        "decay_period": 200
+        "beta": 0.6
     },
     "cleaning_config": {
         "clean_storage_period": 600,

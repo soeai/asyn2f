@@ -9,7 +9,7 @@ Reference:
 import tensorflow as tf
 
 from asynfed.client.frameworks.tensorflow import TensorflowSequentialModel
-
+from asynfed.client.config_structure import LearningRateConfig
 
 class BasicBlock(tf.keras.Model):
     expansion = 1
@@ -38,23 +38,16 @@ class BasicBlock(tf.keras.Model):
 
 
 class Resnet18(TensorflowSequentialModel):
-    def __init__(self, input_features = (32, 32, 3), output_features = 10, lr = 0.1, decay_steps = 50000):
-        lr_scheduler = tf.keras.experimental.CosineDecay(initial_learning_rate= lr,
-                                                         decay_steps= decay_steps)
-        print(f"learning rate: {lr}, decay steps: {decay_steps}")
-        
-        # if lr is not None:
-        #     super().__init__(input_features=input_features, output_features=output_features,
-        #                     learning_rate_fn= tf.keras.experimental.CosineDecay(lr, decay_steps= decay_steps))
-        # else:
-        #     super().__init__(input_features=input_features, output_features=output_features,
-        #                     learning_rate_fn= None)
-        # super().__init__(input_features=input_features, output_features=output_features,
-        #                 learning_rate_fn= None)
+    def __init__(self, input_features = (32, 32, 3), output_features = 10, lr_config: dict = None):
+        lr_config = lr_config or {}
+        self.lr_config = LearningRateConfig(**lr_config)
+        print("Config in the resnet model")
+        print(self.lr_config.to_dict())
+        super().__init__(input_features=input_features, output_features=output_features)
 
-        super().__init__(input_features=input_features, output_features=output_features,
-                        learning_rate_fn= lr_scheduler)
-        
+        print(f"Learning rate right now is: {self.get_learning_rate()}")
+
+
     def get_optimizer(self):
         return self.optimizer
     
@@ -95,19 +88,18 @@ class Resnet18(TensorflowSequentialModel):
     def create_loss_object(self):
         return tf.keras.losses.CategoricalCrossentropy()
 
-    def create_optimizer(self, learning_rate_fn):
-        optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
-
-        # optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
-        # if learning_rate_fn is not None :
-        # # if learning_rate_fn:
-        #     optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
-        # else: 
-        #     optimizer = tf.keras.optimizers.SGD()
-        
-        # optimizer = tf.keras.optimizers.SGD(learning_rate= 0.01, momentum= 0.9)
+    def create_optimizer(self):
+        if self.lr_config.fix_lr:
+            optimizer = tf.keras.optimizers.SGD(learning_rate= self.lr_config.lr, momentum= 0.9)
+            print(f"Create optimizer with fix learning rate: {optimizer.lr.numpy()}")
+        else:
+            lr_scheduler = tf.keras.experimental.CosineDecay(initial_learning_rate= self.lr_config.lr,
+                                                         decay_steps= self.lr_config.decay_steps)
+            optimizer = tf.keras.optimizers.SGD(learning_rate=lr_scheduler, momentum=0.9)
+            print(f"Create optimizer with decay learning rate: {optimizer.lr.numpy()}")
 
         return optimizer
+
 
     def create_train_metric(self):
         return tf.keras.metrics.CategoricalAccuracy(name='train_accuracy'), tf.keras.metrics.Mean(

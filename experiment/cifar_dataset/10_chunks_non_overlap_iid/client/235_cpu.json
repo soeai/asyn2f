@@ -29,9 +29,7 @@
         "batch_size": 128,
         "regularization": "l2",
         "lambda_value": 0.0005,
-        "learning_rate": 0.1,
-        "beta": 0.6,
-        "decay_period": 200
+        "beta": 0.6
     },
     
     "cleaning_config": {

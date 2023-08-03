@@ -14,13 +14,13 @@ import tensorflow as tf
 
 
 class TensorflowSequentialModel(tf.keras.Model):
-    def __init__(self, input_features, output_features, learning_rate_fn = None):
+    def __init__(self, input_features, output_features):
         super().__init__()
         self.create_model(input_features, output_features)
         # loss
         self.loss_object = self.create_loss_object()
         # optimizer
-        self.optimizer = self.create_optimizer(learning_rate_fn)
+        self.optimizer = self.create_optimizer()
         # metric
         self.train_performance, self.train_loss = self.create_train_metric()
         self.test_performance, self.test_loss = self.create_test_metric()
@@ -61,7 +61,7 @@ class TensorflowSequentialModel(tf.keras.Model):
         pass 
     
     @abstractmethod
-    def create_optimizer(self, learning_rate_fn):
+    def create_optimizer(self):
         '''
         - must return an optimizer object
         - optimizers in tf.keras.optimizers
