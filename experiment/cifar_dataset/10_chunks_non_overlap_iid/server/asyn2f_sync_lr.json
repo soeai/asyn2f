@@ -16,7 +16,7 @@
         "file_extension": "pkl",
         "synchronous_learning_rate":
             {
-                "total_update_times": 300,
+                "total_update_times": 600,
                 "initial_learning_rate": 0.1
             },
         "model_exchange_at": {
@@ -26,7 +26,7 @@
         },
         
         "stop_conditions": {
-            "max_version": 300,
+            "max_version": 600,
             "max_performance": 0.96,
             "max_time": 180
         }

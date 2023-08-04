@@ -29,7 +29,7 @@ scheduler = BackgroundScheduler()
 parser = argparse.ArgumentParser()
 # Add arguments
 parser.add_argument('--config_file', dest='config_file', type=str, help='specify the config file for running')
-parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-non-overlap-gpu", help='specify the queue exchange')
+parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-overlap-gpu", help='specify the queue exchange')
 parser.add_argument('--fix_lr', dest='fix_lr', type=bool, default=True, help='specify the type of learning rate used')
 parser.add_argument('--lr', dest='lr', type=float, default=0.01, help='specify the learning rate')
 parser.add_argument('--decay_steps', dest='decay_steps', type=int, default=None, help='specify the decay step for decay learning rate')

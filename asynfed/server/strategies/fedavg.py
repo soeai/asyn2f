@@ -51,6 +51,8 @@ class FedAvgStrategy(Strategy):
         self.use_loss = use_loss
         self.beta = beta
         LOGGER.info("=" * 50)
+
+        print(f"inside strategy: {self.use_loss}")
         if self.use_loss:
             LOGGER.info("For FedAvg, Server choose to use both loss and data size to compute weighted for aggregating process")
         else:
