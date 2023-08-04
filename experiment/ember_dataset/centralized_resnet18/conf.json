@@ -1,0 +1,20 @@
+{
+    "client_id": "centralized-training",
+    "role": "trainer",
+    "gpu_index": 0,
+    "tracking_point": 10000,
+
+    "dataset": {
+        "chunk_index": 1,
+        "qod": 0.85
+    },
+    "training_params": {
+        "epoch": 200,
+        "batch_size": 128,
+        "regularization": "l2",
+        "lambda_value": 0.0005,
+        "learning_rate": 0.1,
+        "beta": 0.6,
+        "decay_period": 200
+    }
+}
