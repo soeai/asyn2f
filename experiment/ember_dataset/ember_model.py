@@ -6,7 +6,7 @@ from asynfed.client.config_structure import LearningRateConfig
 
 
 class EmberModel(TensorflowSequentialModel):
-    def __init__(self, input_features = (32, 32, 3), output_features = 10, lr_config: dict = None):
+    def __init__(self, input_features = (2**10), output_features = 1, lr_config: dict = None):
         lr_config = lr_config or {}
         self.lr_config = LearningRateConfig(**lr_config)
         print("Config in the resnet model")
@@ -17,42 +17,39 @@ class EmberModel(TensorflowSequentialModel):
 
     def get_optimizer(self):
         return self.optimizer
-    
-    
+
     def set_learning_rate(self, lr):
         return self.optimizer.lr.assign(lr)
 
     def get_learning_rate(self):
         return self.optimizer.lr.numpy()
 
-
     def create_model(self, input_features, output_features):
         input_dim= 257
-        maxlen= 2381 
+        maxlen= 2**20
         embedding_size=8
 
-        self.input_dim = input_dim
-        self.maxlen = maxlen
-        self.embedding_size = embedding_size
+        # self.input_dim = input_dim
+        # self.maxlen = maxlen
+        # self.embedding_size = embedding_size
 
-        self.inp = tf.keras.layers.Input(shape=(self.maxlen,))
-        self.emb = tf.keras.layers.Embedding(self.input_dim, self.embedding_size)(self.inp)
-        self.filt = tf.keras.layers.Conv1D(filters=128, kernel_size=500, strides=500, use_bias=True, activation='relu', padding='valid')(self.emb)
-        self.attn = tf.keras.layers.Conv1D(filters=128, kernel_size=500, strides=500, use_bias=True, activation='sigmoid', padding='valid')(self.emb)
-        self.gated = tf.keras.layers.Multiply()([self.filt, self.attn])
-        self.feat = tf.keras.layers.GlobalMaxPooling1D()(self.gated)
-        self.dense = tf.keras.layers.Dense(128, activation='relu')(self.feat)
-        self.outp = tf.keras.layers.Dense(1, activation='sigmoid')(self.dense)
+        inp = tf.keras.layers.Input(shape=(maxlen,))
+        emb = tf.keras.layers.Embedding(input_dim, embedding_size)(inp)
+        filt = tf.keras.layers.Conv1D(filters=128, kernel_size=500, strides=500, use_bias=True, activation='relu', padding='valid')(emb)
+        attn = tf.keras.layers.Conv1D(filters=128, kernel_size=500, strides=500, use_bias=True, activation='sigmoid', padding='valid')(emb)
+        gated = tf.keras.layers.Multiply()([filt, attn])
+        feat = tf.keras.layers.GlobalMaxPooling1D()(gated)
+        dense = tf.keras.layers.Dense(128, activation='relu')(feat)
+        outp = tf.keras.layers.Dense(1, activation='sigmoid')(dense)
 
-        self.model = tf.keras.models.Model(self.inp, self.outp)
+        self.model = tf.keras.models.Model(inp, outp)
         self.model.summary()
-        
 
     def call(self, x):
         return self.model(x)
 
     def create_loss_object(self):
-        return tf.keras.losses.CategoricalCrossentropy()
+        return tf.keras.losses.BinaryCrossentropy()
 
     def create_optimizer(self):
         if self.lr_config.fix_lr:
@@ -83,13 +80,5 @@ class EmberModel(TensorflowSequentialModel):
 
     def get_test_loss(self):
         return float(self.test_loss.result())
-
-    def _make_layer(self, block, out_channels, num_blocks, strides):
-        stride = [strides] + [1] * (num_blocks - 1)
-        layer = []
-        for s in stride:
-            layer += [block(self.in_channels, out_channels, s)]
-            self.in_channels = out_channels * block.expansion
-        return tf.keras.Sequential(layer)
 
 
