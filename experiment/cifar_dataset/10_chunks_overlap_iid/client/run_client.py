@@ -86,8 +86,10 @@ learning_rate_config = config.get('training_params').get('learning_rate_config',
 if learning_rate_config == {}:
     learning_rate_config['fix_lr'] = args.fix_lr
     learning_rate_config['lr'] = args.lr
-    learning_rate_config['decay_steps'] = args.decay_steps
+    # decay step = total_epoch × data_size / batch size
+    learning_rate_config['decay_steps'] = config['training_params']['epoch'] * data_size // config['training_params']['batch_size']
 
+print(learning_rate_config['decay_steps'])
 config['training_params']['learning_rate_config'] = learning_rate_config
 
 print("Config in the run file")
