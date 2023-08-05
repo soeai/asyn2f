@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser()
 # Add arguments
 parser.add_argument('--config_file', dest='config_file', type=str, help='specify the config file for running')
 parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-overlap-gpu", help='specify the queue exchange')
-parser.add_argument('--fix_lr', dest='fix_lr', type=bool, default=True, help='specify the type of learning rate used')
+parser.add_argument('--is_fix_lr', dest='is_fix_lr', type=int, default=1, help='specify the type of learning rate used ', choices=[0, 1])
 parser.add_argument('--lr', dest='lr', type=float, default=0.01, help='specify the learning rate')
 parser.add_argument('--decay_steps', dest='decay_steps', type=int, default=None, help='specify the decay step for decay learning rate')
 # parser.add_argument('--strategy', dest='strategy', type=str, default="asyn2f",
@@ -84,12 +84,15 @@ config['dataset']['data_size'] = data_size
 
 learning_rate_config = config.get('training_params').get('learning_rate_config', {}) 
 if learning_rate_config == {}:
-    learning_rate_config['fix_lr'] = args.fix_lr
     learning_rate_config['lr'] = args.lr
-    # decay step = total_epoch × data_size / batch size
-    learning_rate_config['decay_steps'] = 400 * data_size // config['training_params']['batch_size']
+    learning_rate_config['fix_lr'] = args.is_fix_lr # this is not working, always True
+    if args.is_fix_lr == 0:
+        learning_rate_config['fix_lr'] = False
+        # decay step = total_epoch × data_size / batch size
+        learning_rate_config['decay_steps'] = 400 * data_size // config['training_params']['batch_size']
+    else:
+        learning_rate_config['fix_lr'] = True
 
-print(learning_rate_config['decay_steps'])
 config['training_params']['learning_rate_config'] = learning_rate_config
 
 print("Config in the run file")
@@ -100,21 +103,21 @@ print("-" * 20)
 print(f"Begin training proceess with data size of {data_size}")
 print("-" * 20)
 print("-" * 20)
-
-# Define model
-model = Resnet18(input_features= (32, 32, 3), 
-                 output_features= 10, lr_config= config['training_params']['learning_rate_config'])
-
-# Define framework
-tensorflow_framework = TensorflowFramework(model=model, 
-                                           data_size= data_size, 
-                                           train_ds= train_ds, 
-                                           test_ds= test_ds, 
-                                           config=config)
-
-
-client = Client(model= tensorflow_framework, config= config)
-
-client.start()
-scheduler.start()
-pause.days(1) # or it can anything as per your need
+#
+# # Define model
+# model = Resnet18(input_features= (32, 32, 3), 
+#                  output_features= 10, lr_config= config['training_params']['learning_rate_config'])
+#
+# # Define framework
+# tensorflow_framework = TensorflowFramework(model=model, 
+#                                            data_size= data_size, 
+#                                            train_ds= train_ds, 
+#                                            test_ds= test_ds, 
+#                                            config=config)
+#
+#
+# client = Client(model= tensorflow_framework, config= config)
+#
+# client.start()
+# scheduler.start()
+# pause.days(1) # or it can anything as per your need
