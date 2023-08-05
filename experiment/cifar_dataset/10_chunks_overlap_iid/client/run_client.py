@@ -104,20 +104,20 @@ print(f"Begin training proceess with data size of {data_size}")
 print("-" * 20)
 print("-" * 20)
 #
-# # Define model
-# model = Resnet18(input_features= (32, 32, 3), 
-#                  output_features= 10, lr_config= config['training_params']['learning_rate_config'])
-#
-# # Define framework
-# tensorflow_framework = TensorflowFramework(model=model, 
-#                                            data_size= data_size, 
-#                                            train_ds= train_ds, 
-#                                            test_ds= test_ds, 
-#                                            config=config)
-#
-#
-# client = Client(model= tensorflow_framework, config= config)
-#
-# client.start()
-# scheduler.start()
-# pause.days(1) # or it can anything as per your need
+# Define model
+model = Resnet18(input_features= (32, 32, 3), 
+                 output_features= 10, lr_config= config['training_params']['learning_rate_config'])
+
+# Define framework
+tensorflow_framework = TensorflowFramework(model=model, 
+                                           data_size= data_size, 
+                                           train_ds= train_ds, 
+                                           test_ds= test_ds, 
+                                           config=config)
+
+
+client = Client(model= tensorflow_framework, config= config)
+
+client.start()
+scheduler.start()
+pause.days(1) # or it can anything as per your need
