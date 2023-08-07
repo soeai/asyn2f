@@ -100,13 +100,14 @@ class ModelConfig(MessageObject):
 
 
 class ServerConfig(MessageObject):
-    def __init__(self, server_id: str, ping_period: int = 300, save_log: bool = True, 
+    def __init__(self, server_id: str, min_clients: int = 1, ping_period: int = 300, save_log: bool = True, 
                  model_config: dict = None, cleaning_config: dict = None, 
                  cloud_storage: dict = None, queue_consumer: dict = None,
                  queue_producer: dict = None, influxdb: dict = None, strategy: dict = None
                  ):
 
         # these property provide default values
+        self.min_clients = min_clients
         self.ping_period = ping_period
         self.save_log = save_log
 

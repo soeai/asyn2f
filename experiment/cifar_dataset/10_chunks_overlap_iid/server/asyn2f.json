@@ -2,6 +2,7 @@
     "server_id": "",
     "ping_period": 300,
     "save_log": true,
+    "min_clients": 2,
     
     
     "strategy": {

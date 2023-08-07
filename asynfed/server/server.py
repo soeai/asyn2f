@@ -75,6 +75,11 @@ class Server(object):
 
         # load config info 
         self.config: ServerConfig = self._load_config_info(config= config)
+        self.wait_for_other_clients = False
+
+        if self.config.min_clients > 1:
+            self.wait_for_other_clients = True
+            self.init_messages = {}
 
         if self.config.model_config.stop_conditions.max_time:
             self._is_first_client = True
@@ -236,7 +241,19 @@ class Server(object):
 
         message_utils.print_message(response_to_init.to_dict())
         message= ExchangeMessage(headers= headers, content= response_to_init.to_dict()).to_json()
-        self._queue_producer.send_data(message)
+
+        if not self.wait_for_other_clients:
+            self._queue_producer.send_data(message)
+        else:
+            self.init_messages[client_id] = message
+            connected_workers = self.worker_manager.list_connected_workers()
+            if len(connected_workers) == self.config.min_clients:
+                self.wait_for_other_clients = False
+                print("All clients have joined. About to send init message to all clients")
+                print(connected_workers)
+                for worker_id in connected_workers:
+                    self._queue_producer.send_data(self.init_messages[worker_id])
+
 
         # check whether it is first client to begin timing
         if self._is_first_client:
@@ -287,6 +304,7 @@ class Server(object):
         strategy = config['strategy']['name']
         config['server_id'] = config.get("server_id") or f"server-{bucket_name}"
         config['server_id'] = f"{strategy}-{config['server_id']}"
+        config['min_clients'] = config.get('min_clients') or 1
         
         config['model_config']['name'] = config['model_config']['name'] or config['server_id']
 
