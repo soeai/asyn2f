@@ -218,12 +218,13 @@ class Client(object):
 
     def _clean_storage(self):
         LOGGER.info("CLEANING STORAGE THREAD IS RUNNING")
+        # self.global_model_info.version = self.global_model_info.version or 0
         while True:
             sleep(self.config.cleaning_config.clean_storage_period)
             LOGGER.info("CLEANING TIME")
-
             # -------- Global Weight File Cleaning ------------ 
-            global_threshold = self.global_model_info.version - self.config.cleaning_config.global_keep_version_num
+            current_global_version = self.global_model_info.version or 1
+            global_threshold = current_global_version - self.config.cleaning_config.global_keep_version_num
             self._components.storage_cleaner.delete_local_files(is_global_folder= True, threshold= global_threshold)
 
             # -------- Client weight files cleaning -----------

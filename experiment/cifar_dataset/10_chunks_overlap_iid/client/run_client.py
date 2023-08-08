@@ -32,7 +32,7 @@ parser.add_argument('--config_file', dest='config_file', type=str, help='specify
 parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-overlap-gpu", help='specify the queue exchange')
 parser.add_argument('--is_fix_lr', dest='is_fix_lr', type=int, default=1, help='specify the type of learning rate used ', choices=[0, 1])
 parser.add_argument('--lr', dest='lr', type=float, default=0.01, help='specify the learning rate')
-parser.add_argument('--decay_steps', dest='decay_steps', type=int, default=None, help='specify the decay step for decay learning rate')
+# parser.add_argument('--decay_steps', dest='decay_steps', type=int, default=None, help='specify the decay step for decay learning rate')
 # parser.add_argument('--strategy', dest='strategy', type=str, default="asyn2f",
 #                     choices=['kafl', 'asyn2f'],
 #                     help='specify the strategy')
@@ -85,7 +85,7 @@ config['dataset']['data_size'] = data_size
 learning_rate_config = config.get('training_params').get('learning_rate_config', {}) 
 if learning_rate_config == {}:
     learning_rate_config['lr'] = args.lr
-    learning_rate_config['fix_lr'] = args.is_fix_lr # this is not working, always True
+    # learning_rate_config['fix_lr'] = args.is_fix_lr # this is not working, always True
     if args.is_fix_lr == 0:
         learning_rate_config['fix_lr'] = False
         # decay step = total_epoch × data_size / batch size

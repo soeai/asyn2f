@@ -3,7 +3,7 @@
     "role": "trainer",
     "gpu_index": 0,
     "save_log": false,
-    "tracking_point": 1500,
+    "tracking_point": 5000,
     "download_attempt": 10,
     
     "queue_consumer": {
