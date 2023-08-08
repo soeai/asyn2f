@@ -54,6 +54,7 @@ class ManageTrainingTime(object):
 
     def begin_timing(self):
         self.start_time = time_utils.time_now()
+        LOGGER.info(f"THIS IS THE START TIME: {self.start_time}")
 
     def is_max_time_reach(self, timing):
         t_diff = time_utils.time_diff(timing, self.start_time)
@@ -63,12 +64,15 @@ class ManageTrainingTime(object):
 
     def add_timestampt(self, version):
         self.time_dict[version] = time_utils.time_now()
+        LOGGER.info("*" * 20)
+        LOGGER.info(f"Complete aggregate global version {version} at {self.time_dict[version]}")
+        LOGGER.info("*" * 20)
 
     def calc_total_training_time(self, version):
         version_timestampt = self.time_dict[version]
         total_training_time = time_utils.time_diff(version_timestampt, self.start_time)
         LOGGER.info("=" * 50)
-        LOGGER.info(f"Stop condition is met. This is the total training time: {total_training_time}")
+        LOGGER.info(f"Stop condition is met at global version {version}. This is the total training time: {total_training_time}")
         LOGGER.info("=" * 50)
         return total_training_time
 
