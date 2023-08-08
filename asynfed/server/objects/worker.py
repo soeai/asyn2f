@@ -73,3 +73,15 @@ class Worker:
         Implement toString function here!
         """
         return f"Worker: {self.worker_id} | latest global version used {self.global_version_used} | qod: {self.qod} | datasize: {self.data_size} | performance: {self.performance} | loss: {self.loss}"
+
+    def to_dict(self) -> dict:
+        """
+        Convert the Worker object to a dictionary.
+        """
+        return {
+            'worker_id': self.worker_id,
+            'remote_file_path': self.remote_file_path,
+            'global_version_used': self.global_version_used,
+            'qod': self.qod,
+            'datasize': self.data_size,
+        }

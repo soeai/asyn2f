@@ -75,3 +75,9 @@ class WorkerManager:
 
     def update_worker_last_ping(self, worker_id):
         self.worker_pool[worker_id].last_ping = time_utils.time_now()
+
+    def to_dict(self) -> Dict[str, Dict]:
+        """
+        Convert the WorkerManager's worker pool to a dictionary.
+        """
+        return {worker_id: worker.to_dict() for worker_id, worker in self.worker_pool.items()}

@@ -74,6 +74,9 @@ class ManageTrainingTime(object):
         LOGGER.info("=" * 50)
         LOGGER.info(f"Stop condition is met at global version {version}. This is the total training time: {total_training_time}")
         LOGGER.info("=" * 50)
+        # Logout the worker manager info now
+        message_utils.print_message(self.worker_manager.to_dict())
+
         return total_training_time
 
 
@@ -283,6 +286,7 @@ class Server(object):
                 LOGGER.info("*" * 50)
                 self.manage_training_time.begin_timing()
 
+
                 print(connected_workers)
                 for worker_id in connected_workers:
                     self._queue_producer.send_data(self.init_messages[worker_id])
@@ -403,6 +407,7 @@ class Server(object):
         LOGGER.info("*" * 20)
         LOGGER.info(worker)
         LOGGER.info("*" * 20)
+
         return session_id, reconnect
 
 
@@ -413,18 +418,6 @@ class Server(object):
         full_path = os.path.join(os.getcwd(), server_storage_folder_name)
         return LocalStoragePath(root_folder= full_path, save_log= self.config.save_log)
 
-
-    # def _check_max_time_is_reached(self):
-    #     if self.manage_training_time.is_max_time_reach(time_utils.time_now()):
-            # headers: dict = self._create_headers(message_type= MessageType.SERVER_STOP_TRAINING)
-            # require_to_stop: ServerRequestStop = ServerRequestStop()
-
-            # message = ExchangeMessage(headers= headers, content= require_to_stop.to_dict()).to_json()
-            # self._queue_producer.send_data(message)
-            # LOGGER.info("=" * 50)
-            # LOGGER.info("Stop condition met. Log out best model")
-            # LOGGER.info(self._best_model)
-            # LOGGER.info("=" * 50)
 
 
     def _handle_when_max_time_is_reached(self):
@@ -644,9 +637,6 @@ class Server(object):
                     LOGGER.info(f"Stop condition: version {v} >= {self.config.model_config.stop_conditions.max_version}")
                     is_done = True
                     # return True
-            # Log out time ran
-            # LOGGER.info(f"Running time: {self.start_at - time.time()}")
-
 
         if is_done:
             self.manage_training_time.calc_total_training_time(info["version"])
