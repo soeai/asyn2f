@@ -23,7 +23,7 @@
         
         "stop_conditions": {
             "max_version": 10000,
-            "max_performance": 0.96,
+            "max_performance": 0.9,
             "max_time": 180
         }
     },
@@ -51,7 +51,7 @@
 
     "cleaning_config": {
         "clean_storage_period": 120,
-        "global_keep_version_num": 10,
+        "global_keep_version_num": 20,
         "local_keep_version_num": 2
     },
 

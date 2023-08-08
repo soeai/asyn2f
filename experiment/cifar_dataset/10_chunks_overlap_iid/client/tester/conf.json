@@ -3,7 +3,7 @@
     "role": "tester",
     "save_log": true,
     "gpu_index": 0,
-    "download_attempt": 15,
+    "download_attempt": 2,
 
     "queue_consumer": {
         "queue_name": "",

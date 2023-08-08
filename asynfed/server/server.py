@@ -34,6 +34,7 @@ from .strategies import Strategy, Asyn2fStrategy, KAFLMStepStrategy, FedAvgStrat
 from .worker_manager import WorkerManager
 from .storage_connectors import ServerStorageBoto3, ServerStorageAWS, ServerStorageMinio
 
+from typing import Dict
 
 
 thread_pool_ref = concurrent.futures.ThreadPoolExecutor
@@ -49,6 +50,8 @@ class ManageTrainingTime(object):
         self.start_time = None
         self.max_time_is_reach = False
 
+        self.time_dict: Dict[int, str]= {}
+
     def begin_timing(self):
         self.start_time = time_utils.time_now()
 
@@ -57,6 +60,17 @@ class ManageTrainingTime(object):
         if t_diff >= self.max_time:
             return True
         return False
+
+    def add_timestampt(self, version):
+        self.time_dict[version] = time_utils.time_now()
+
+    def calc_total_training_time(self, version):
+        version_timestampt = self.time_dict[version]
+        total_training_time = time_utils.time_diff(version_timestampt, self.start_time)
+        LOGGER.info("=" * 50)
+        LOGGER.info(f"Stop condition is met. This is the total training time: {total_training_time}")
+        LOGGER.info("=" * 50)
+        return total_training_time
 
 
 # class Server(ABC):
@@ -81,7 +95,7 @@ class Server(object):
             self.wait_for_other_clients = True
             self.init_messages = {}
 
-        self.start_at = None
+        # self.start_at = None
 
 
         if self.config.model_config.stop_conditions.max_time:
@@ -247,8 +261,8 @@ class Server(object):
 
         if not self.wait_for_other_clients:
             self._queue_producer.send_data(message)
-            if self.start_at is None:
-                self.start_at = datetime.utcnow()
+            # if self.start_at is None:
+            #     self.start_at = datetime.utcnow()
         else:
             self.init_messages[client_id] = message
             connected_workers = self.worker_manager.list_connected_workers()
@@ -258,20 +272,27 @@ class Server(object):
                 num_workers = len(connected_workers)
             if num_workers == self.config.min_clients:
                 self.wait_for_other_clients = False
-                self.start_at = datetime.utcnow()
-                print("All clients have joined. About to send init message to all clients")
+                # self.start_at = datetime.utcnow()
+                LOGGER.info("*" * 50)
+                LOGGER.info("All clients have joined. About to send init message to all clients")
+                LOGGER.info("All clients joined. Set time to keep track of the total training time")
+                LOGGER.info("*" * 50)
+                self.manage_training_time.begin_timing()
+
                 print(connected_workers)
                 for worker_id in connected_workers:
                     self._queue_producer.send_data(self.init_messages[worker_id])
+            else:
+                LOGGER.info(f"The min number of client require to start training: {self.config.min_clients}. Up to now, only {num_workers} workers have joined the network.")
 
 
         # check whether it is first client to begin timing
-        if self._is_first_client:
-            LOGGER.info("*" * 50)
-            LOGGER.info("First client join. About to set first join time to keep track of ")
-            LOGGER.info("*" * 50)
-            self._is_first_client = False
-            self.manage_training_time.begin_timing()
+        # if self._is_first_client:
+        #     LOGGER.info("*" * 50)
+        #     LOGGER.info("First client join. About to set first join time to keep track of ")
+        #     LOGGER.info("*" * 50)
+        #     self._is_first_client = False
+        #     self.manage_training_time.begin_timing()
 
 
     def _handle_client_notify_evaluation(self, message):
@@ -293,15 +314,16 @@ class Server(object):
             self._queue_producer.send_data(message)
             LOGGER.info("=" * 50)
             LOGGER.info("Stop condition met. Log out best model")
-            end_at = datetime.utcnow()
-            train_time = time_utils.time_diff(end_at, self.start_at)
-            LOGGER.info(f"Start at: {self.start_at}")
-            LOGGER.info(f"End at: {end_at}")
-            LOGGER.info(f"Training time: {train_time}")
+            # end_at = datetime.utcnow()
+            # train_time = time_utils.time_diff(end_at, self.start_at)
+            # LOGGER.info(f"Start at: {self.start_at}")
+            # LOGGER.info(f"End at: {end_at}")
+            # LOGGER.info(f"Training time: {train_time}")
             LOGGER.info(self._best_model)
             LOGGER.info("=" * 50)
 
             self.stop_condition_is_met = True
+
 
         else:
             LOGGER.info(f"Up to testing global epoch {model_evaluation.version}. Best model is:")
@@ -421,6 +443,8 @@ class Server(object):
     def publish_new_global_model(self):
         # increment the current version to 1
         self._strategy.current_version += 1
+
+        self.manage_training_time.add_timestampt(self._strategy.current_version)
 
         # check whether max time is reach
         if self.manage_training_time:
@@ -603,24 +627,27 @@ class Server(object):
 
 
     def _check_stop_conditions(self, info: dict):
+        is_done = False
         for k, v in info.items():
             if k == "performance" and self.config.model_config.stop_conditions.max_performance is not None:
                 if v >= self.config.model_config.stop_conditions.max_performance:
                     LOGGER.info(f"Stop condition: performance {v} >= {self.config.model_config.stop_conditions.max_performance}")
-                    return True
+                    # return True
+                    is_done = True
                 
             if k == "version" and self.config.model_config.stop_conditions.max_version is not None:
                 if v >= self.config.model_config.stop_conditions.max_version:
                     LOGGER.info(f"Stop condition: version {v} >= {self.config.model_config.stop_conditions.max_version}")
-                    return True
+                    is_done = True
+                    # return True
             # Log out time ran
-            LOGGER.info(f"Running time: {self.start_at - time.time()}")
+            # LOGGER.info(f"Running time: {self.start_at - time.time()}")
 
-            # if k == "loss" and self.config.model_config.stop_conditions.min_loss is not None:
-            #     if v <= self.config.model_config.stop_conditions.min_loss:
-            #         LOGGER.info(f"Stop condition: loss {v} <= {self.config.model_config.stop_conditions.min_loss}")
-            #         return True
 
+        if is_done:
+            self.manage_training_time.calc_total_training_time(info["version"])
+            return True
+            
         return False
 
 

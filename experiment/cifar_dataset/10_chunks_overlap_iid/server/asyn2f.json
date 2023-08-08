@@ -2,7 +2,7 @@
     "server_id": "",
     "ping_period": 300,
     "save_log": true,
-    "min_clients": 2,
+    "min_clients": 4,
     
     
     "strategy": {
@@ -17,14 +17,14 @@
         "file_extension": "pkl",
 
         "model_exchange_at": {
-            "performance": 0.2,
+            "performance": 0.8,
             "epoch": 100
         },
         
         "stop_conditions": {
-            "max_version": 15,
-            "max_performance": 0.36,
-            "max_time": 15
+            "max_version": 300,
+            "max_performance": 0.9,
+            "max_time": 180
         }
     },
 
@@ -51,7 +51,7 @@
 
     "cleaning_config": {
         "clean_storage_period": 240,
-        "global_keep_version_num": 10,
+        "global_keep_version_num": 20,
         "local_keep_version_num": 2
     },
 
