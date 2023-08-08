@@ -74,8 +74,6 @@ class ManageTrainingTime(object):
         LOGGER.info("=" * 50)
         LOGGER.info(f"Stop condition is met at global version {version}. This is the total training time: {total_training_time}")
         LOGGER.info("=" * 50)
-        # Logout the worker manager info now
-        message_utils.print_message(self.worker_manager.to_dict())
 
         return total_training_time
 
@@ -640,6 +638,10 @@ class Server(object):
 
         if is_done:
             self.manage_training_time.calc_total_training_time(info["version"])
+            # Logout the worker manager info now
+            LOGGER.info("This is the final state of worker in the framework")
+            message_utils.print_message(self.worker_manager.to_dict())
+
             return True
             
         return False
