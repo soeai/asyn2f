@@ -17,14 +17,14 @@
         "file_extension": "pkl",
 
         "model_exchange_at": {
-            "performance": 0.8,
+            "performance": 0.2,
             "epoch": 100
         },
         
         "stop_conditions": {
-            "max_version": 10000,
-            "max_performance": 0.96,
-            "max_time": 180
+            "max_version": 15,
+            "max_performance": 0.36,
+            "max_time": 15
         }
     },
 

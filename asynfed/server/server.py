@@ -2,7 +2,7 @@
 # Standard library imports
 from datetime import datetime
 from threading import Thread, Lock
-from time import sleep
+from time import sleep, time
 import concurrent.futures
 import copy
 import json
@@ -80,6 +80,9 @@ class Server(object):
         if self.config.min_clients > 1:
             self.wait_for_other_clients = True
             self.init_messages = {}
+
+        self.start_at = None
+
 
         if self.config.model_config.stop_conditions.max_time:
             self._is_first_client = True
@@ -240,15 +243,22 @@ class Server(object):
         
 
         message_utils.print_message(response_to_init.to_dict())
-        message= ExchangeMessage(headers= headers, content= response_to_init.to_dict()).to_json()
+        message = ExchangeMessage(headers=headers, content=response_to_init.to_dict()).to_json()
 
         if not self.wait_for_other_clients:
             self._queue_producer.send_data(message)
+            if self.start_at is None:
+                self.start_at = datetime.utcnow()
         else:
             self.init_messages[client_id] = message
             connected_workers = self.worker_manager.list_connected_workers()
-            if len(connected_workers) == self.config.min_clients:
+            if "tester" in connected_workers:
+                num_workers = len(connected_workers) - 1
+            else:
+                num_workers = len(connected_workers)
+            if num_workers == self.config.min_clients:
                 self.wait_for_other_clients = False
+                self.start_at = datetime.utcnow()
                 print("All clients have joined. About to send init message to all clients")
                 print(connected_workers)
                 for worker_id in connected_workers:
@@ -283,6 +293,11 @@ class Server(object):
             self._queue_producer.send_data(message)
             LOGGER.info("=" * 50)
             LOGGER.info("Stop condition met. Log out best model")
+            end_at = datetime.utcnow()
+            train_time = time_utils.time_diff(end_at, self.start_at)
+            LOGGER.info(f"Start at: {self.start_at}")
+            LOGGER.info(f"End at: {end_at}")
+            LOGGER.info(f"Training time: {train_time}")
             LOGGER.info(self._best_model)
             LOGGER.info("=" * 50)
 
@@ -598,6 +613,8 @@ class Server(object):
                 if v >= self.config.model_config.stop_conditions.max_version:
                     LOGGER.info(f"Stop condition: version {v} >= {self.config.model_config.stop_conditions.max_version}")
                     return True
+            # Log out time ran
+            LOGGER.info(f"Running time: {self.start_at - time.time()}")
 
             # if k == "loss" and self.config.model_config.stop_conditions.min_loss is not None:
             #     if v <= self.config.model_config.stop_conditions.min_loss:
