@@ -18,15 +18,16 @@ LOGGER = logging.getLogger(__name__)
 # from asynfed.server import Server
 
 class CosineLRScheduler:
-    def __init__(self, total_update_times: int, initial_learning_rate: float = 0.1):
+    def __init__(self, total_update_times: int, initial_learning_rate: float = 0.1, min_learning_rate: float = 0.001):
         self.initial_lr = initial_learning_rate
         self.total_update_times = total_update_times
+        self.min_lr = min_learning_rate
 
     def get_learning_rate(self, current_version: int) -> float:
         if current_version > self.total_update_times:
-            return 0.001
+            return self.min_lr
         lr = 0.5 * self.initial_lr * (1 + math.cos(math.pi * current_version / self.total_update_times))
-        return max(lr, 0.001)  # Ensure lr doesn't go below 0.001 even during updates within the total update times
+        return max(lr, self.min_lr)  # Ensure lr doesn't go below 0.001 even during updates within the total update times
 
 
 class Strategy(ABC):
