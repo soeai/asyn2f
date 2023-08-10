@@ -45,16 +45,19 @@ class FedAvgStrategy(Strategy):
         
         self.m = m
 
-        self.first_aggregating_time = True
+        # self.first_aggregating_time = True
+        self.first_aggregating_time = False
         self.m = m
 
         self.use_loss = use_loss
-        self.beta = beta
+        self.beta = beta or 0.5
+        
         LOGGER.info("=" * 50)
 
         print(f"inside strategy: {self.use_loss}")
         if self.use_loss:
             LOGGER.info("For FedAvg, Server choose to use both loss and data size to compute weighted for aggregating process")
+            LOGGER.info(f"This is the beta used: {self.beta}")
         else:
             LOGGER.info("For FedAvg, Server choose to use only data size to compute weighted for aggregating process")
         LOGGER.info("=" * 50)
@@ -87,7 +90,7 @@ class FedAvgStrategy(Strategy):
 
 
                 if connected_workers_complete or self.first_aggregating_time:
-                    print(f"This is the number of worker expected to join this round: {num_completed_workers}")
+                    LOGGER.info(f"This is the number of worker expected to join this round {self.current_version}: {num_completed_workers}")
                     self.first_aggregating_time = False
                     try:
                         completed_workers: Dict [str, Worker] = self._server.worker_manager.get_completed_workers()
@@ -160,12 +163,11 @@ class FedAvgStrategy(Strategy):
         return all_clients
     
     def _compute_alpha(self, worker: Worker) -> float:
+        data_depend  = worker.data_size / self.global_model_update_data_size 
+
         if self.use_loss:
             # avoid division by zero
-            data_depend  = worker.data_size / self.global_model_update_data_size 
             loss_depend = worker.loss / self.total_loss
-
-
             alpha = data_depend * (1 - self.beta) + loss_depend * self.beta
         else:
             alpha = data_depend

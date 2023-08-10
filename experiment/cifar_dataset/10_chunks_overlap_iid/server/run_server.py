@@ -54,7 +54,8 @@ if config['strategy']['name'] == "fedavg":
     print(args.use_loss)
     use_loss = config['strategy']['use_loss'] or args.use_loss
     config['strategy']['use_loss'] = use_loss
-
+    config['strategy']['beta'] = 0.5
+    
 server = Server(config= config)
 
 server.start()

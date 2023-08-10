@@ -107,7 +107,7 @@ class ServerConfig(MessageObject):
                  ):
 
         # these property provide default values
-        self.min_clients = min_clients
+        self.min_clients = min_clients or 1
         self.ping_period = ping_period
         self.save_log = save_log
 

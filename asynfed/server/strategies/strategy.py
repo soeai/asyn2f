@@ -9,10 +9,25 @@ from typing import Dict
 from asynfed.server.objects import Worker
 from asynfed.server.storage_connectors.boto3 import ServerStorageBoto3
 
+import math
+import sys
+
 import logging
 LOGGER = logging.getLogger(__name__)
 
 # from asynfed.server import Server
+
+class CosineLRScheduler:
+    def __init__(self, total_update_times: int, initial_learning_rate: float = 0.1):
+        self.initial_lr = initial_learning_rate
+        self.total_update_times = total_update_times
+
+    def get_learning_rate(self, current_version: int) -> float:
+        if current_version > self.total_update_times:
+            return 0.001
+        lr = 0.5 * self.initial_lr * (1 + math.cos(math.pi * current_version / self.total_update_times))
+        return max(lr, 0.001)  # Ensure lr doesn't go below 0.001 even during updates within the total update times
+
 
 class Strategy(ABC):
     """
@@ -71,15 +86,13 @@ class Strategy(ABC):
         pass
 
     def get_cosine_lr_scheduler(self, total_update_times: int, initial_learning_rate: float = 0.1):
-        import tensorflow as tf
-        lr_scheduler = tf.keras.experimental.CosineDecay(initial_learning_rate= initial_learning_rate, 
-                                                        decay_steps= total_update_times)
+        lr_scheduler = CosineLRScheduler(total_update_times= total_update_times, initial_learning_rate = initial_learning_rate)
         return lr_scheduler
+    
     
     def get_learning_rate(self) -> float:
         if self.lr_scheduler is not None:
-            lr = self.lr_scheduler(self.current_version - 1)
-            lr = float(lr)
+            lr = self.lr_scheduler.get_learning_rate(self.current_version - 1)
         else: 
             lr = None
         return lr

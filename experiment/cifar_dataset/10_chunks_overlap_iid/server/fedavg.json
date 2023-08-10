@@ -2,6 +2,7 @@
     "server_id": "",
     "ping_period": 60,
     "save_log": true,
+    "min_clients": 10,
     
     
     "strategy": {
@@ -18,8 +19,8 @@
         "file_extension": "pkl",
 
         "model_exchange_at": {
-            "performance": 0.8,
-            "epoch": 100
+            "performance": 0.1,
+            "epoch": 1
             
         },
         

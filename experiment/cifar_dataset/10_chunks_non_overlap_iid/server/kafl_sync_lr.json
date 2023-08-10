@@ -2,6 +2,7 @@
     "server_id": "",
     "ping_period": 300,
     "save_log": true,
+    "min_clients": 10,
     
     
     "strategy": {
@@ -16,7 +17,7 @@
         "file_extension": "pkl",
         "synchronous_learning_rate":
             {
-                "total_update_times": 540,
+                "total_update_times": 600,
                 "initial_learning_rate": 0.1
             },
 
