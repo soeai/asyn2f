@@ -29,13 +29,11 @@ scheduler = BackgroundScheduler()
 parser = argparse.ArgumentParser()
 # Add arguments
 parser.add_argument('--config_file', dest='config_file', type=str, help='specify the config file for running')
-parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-non-overlap-gpu", help='specify the queue exchange')
-parser.add_argument('--fix_lr', dest='fix_lr', type=bool, default=True, help='specify the type of learning rate used')
+parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-overlap-gpu", help='specify the queue exchange')
+parser.add_argument('--is_fix_lr', dest='is_fix_lr', type=int, default=1, help='specify the type of learning rate used ', choices=[0, 1])
 parser.add_argument('--lr', dest='lr', type=float, default=0.01, help='specify the learning rate')
-parser.add_argument('--decay_steps', dest='decay_steps', type=int, default=None, help='specify the decay step for decay learning rate')
-# parser.add_argument('--strategy', dest='strategy', type=str, default="asyn2f",
-#                     choices=['kafl', 'asyn2f'],
-#                     help='specify the strategy')
+
+
 # Parse the arguments
 args = parser.parse_args()
 
@@ -73,8 +71,6 @@ chunk_folder = os.path.join("10_chunks", "iid")
 chunk_filename = f"chunk_{config['dataset']['chunk_index']}.pickle"
 training_dataset_path = os.path.join(data_folder_path, chunk_folder, chunk_filename)
 
-# default_testing_dataset_path = "../../../data/cifar_data/test_set.pickle"
-# training_dataset_path = f"../../../data/cifar_data/5_chunks_1/iid/chunk_{config['dataset']['chunk_index']}.pickle"
 
 train_ds, data_size = preprocess_dataset(training_dataset_path, batch_size = config['training_params']['batch_size'], training = True)
 test_ds, _ = preprocess_dataset(default_testing_dataset_path, batch_size= config['training_params']['batch_size'], training = False)
@@ -84,9 +80,12 @@ config['dataset']['data_size'] = data_size
 
 learning_rate_config = config.get('training_params').get('learning_rate_config', {}) 
 if learning_rate_config == {}:
-    learning_rate_config['fix_lr'] = args.fix_lr
     learning_rate_config['lr'] = args.lr
-    learning_rate_config['decay_steps'] = args.decay_steps
+    if args.is_fix_lr == 0:
+        learning_rate_config['fix_lr'] = False
+        learning_rate_config['decay_steps'] = 400 * data_size // config['training_params']['batch_size']
+    else:
+        learning_rate_config['fix_lr'] = True
 
 config['training_params']['learning_rate_config'] = learning_rate_config
 

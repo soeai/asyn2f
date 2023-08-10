@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--config_file', dest='config_file', type=str, default= "asyn2f_sync_lr.json",
                      help='specify the config file for running')
-parser.add_argument('--use_loss', dest='use_loss', type=bool, default= False,
+parser.add_argument('--use_loss', dest='use_loss', type=bool, default=True,
                      help='specify whether to use loss to compute weighted for fedavg')
 
 # Parse the arguments
@@ -52,6 +52,7 @@ config['queue_producer']['endpoint'] = os.getenv("queue_producer_endpoint")
 if config['strategy'] == "fedavg":
     use_loss = config['strategy']['use_loss'] or args.use_loss
     config['strategy']['use_loss'] = use_loss
+    config['strategy']['beta'] = 0.5
 
 server = Server(config= config)
 

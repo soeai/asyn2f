@@ -449,7 +449,7 @@ class Server(object):
                 # self.stop_condition_is_met = True
 
         LOGGER.info("*" * 20)
-        LOGGER.info(f"CURRENT GLOBAL MODEL VERSION TO BE PUBLISHED: {self._strategy.current_version} with lr: {self.strategy.get_learning_rate()}")
+        LOGGER.info(f"CURRENT GLOBAL MODEL VERSION TO BE PUBLISHED: {self._strategy.current_version} with lr: {self._strategy.get_learning_rate()}")
         LOGGER.info("*" * 20)
 
         current_global_model_filename = self._strategy.get_current_global_model_filename()
