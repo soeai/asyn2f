@@ -23,7 +23,7 @@ class CustomCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
         self.alpha = alpha or 0.01
 
     def __call__(self, step):
-        if step > self.decay_steps:
+        if step >= self.decay_steps:
             return self.alpha * self.initial_learning_rate
 
         cosine_decay = 0.5 * (1 + tf.math.cos(tf.constant(np.pi) * (tf.cast(step, tf.float32) % self.decay_steps) / self.decay_steps))
@@ -128,7 +128,8 @@ class Resnet18(TensorflowSequentialModel):
 
             optimizer = tf.keras.optimizers.SGD(learning_rate=lr_scheduler, momentum=0.9)
             print(f"Create optimizer with decay learning rate: {optimizer.lr.numpy()}")
-            print(f"This is the min lr of the lr schedule: {float(lr_scheduler(10000000))}")
+            print(f"This is the lr of the lr schedule when current step = decay steps: {float(lr_scheduler(self.lr_config.decay_steps))}")
+            print(f"This is the min lr of the lr schedule: {float(lr_scheduler(self.lr_config.decay_steps + 1))}")
 
         return optimizer
 
