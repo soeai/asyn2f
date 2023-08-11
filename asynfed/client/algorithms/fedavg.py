@@ -44,6 +44,8 @@ class FedAvg(object):
 
             while True:
                 self._training()
+                if self._client.state.new_model_flag:
+                    break
                 min_acc = self._client.server_training_config.exchange_at.performance
                 min_epoch = self._client.server_training_config.exchange_at.epoch
                 if (min_acc <= self._client.training_process_info.train_acc) or (min_epoch <= self._client.training_process_info.local_epoch):
@@ -138,7 +140,7 @@ class FedAvg(object):
                 # break when receive new model from server 
                 # (the exhange at conditions of some worker is met)
                 if self._client.state.new_model_flag:
-                    break
+                    return None
 
         if self._client.model.test_ds:
             for test_images, test_labels in self._client.model.test_ds:
