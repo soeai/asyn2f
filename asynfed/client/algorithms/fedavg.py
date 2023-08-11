@@ -26,7 +26,7 @@ class FedAvg(object):
 
     def train(self):
         LOGGER.info("=" * 40)
-        LOGGER.info("ClientModel Start Training")
+        LOGGER.info("Client Start Training")
         LOGGER.info("=" * 40)
 
         # first epoch, training until meet the exchange at condition
@@ -79,10 +79,6 @@ class FedAvg(object):
     def _load_new_model_weight(self) -> bool:
         # for notifying global version used to server purpose
         self._client.training_process_info.global_version_used = self._client.global_model_info.version
-        # for tensorflow model, there is some conflict in the dimension of 
-        # an initialized model and al already trained one
-        # fixed this problem
-        # by training the model before loading the global weights
         current_global_model_file_name = self._client.global_model_info.get_file_name()
         file_exist, current_global_weights = self._client.load_weights_from_file(self._client.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
                                                                         file_name= current_global_model_file_name)
@@ -91,6 +87,10 @@ class FedAvg(object):
             LOGGER.info("Receive new global model --> Set to be the weight of the local model")
             LOGGER.info(f"Model file name: {current_global_model_file_name}")
             LOGGER.info("*" * 20)
+            # for tensorflow model, there is some conflict in the dimension of 
+            # an initialized model and al already trained one
+            # fixed this problem
+            # by training the model before loading the global weights
             try:
                 self._client.model.set_weights(current_global_weights)
             except Exception as e:
@@ -112,7 +112,6 @@ class FedAvg(object):
             # training per several epoch
             # LOGGER.info(f"Enter epoch {self._client.training_process_info.local_epoch}")
             LOGGER.info(f"Enter epoch {self._client.training_process_info.local_epoch}, learning rate = {self._client.model.get_learning_rate()}")
-
 
             # reset loss and per after each epoch
             self._client.model.reset_train_loss()
@@ -154,6 +153,3 @@ class FedAvg(object):
             f'\tLast Batch Test Loss: {test_loss:.4f}'
         )
         LOGGER.info("*" * 20)
-
-        # self._client.update_new_local_model_info()
-

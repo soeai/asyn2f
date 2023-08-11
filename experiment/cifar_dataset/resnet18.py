@@ -13,31 +13,6 @@ from asynfed.client.frameworks.tensorflow import TensorflowSequentialModel
 from asynfed.client.config_structure import LearningRateConfig
 
 
-
-# class CustomCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
-#     def __init__(self, initial_learning_rate, decay_steps, alpha=0.01):
-#         self.initial_learning_rate = initial_learning_rate
-#         self.decay_steps = decay_steps
-
-#         # min lr = alpha * initial_lr
-#         self.alpha = alpha or 0.01
-
-#     def __call__(self, step):
-#         if step >= self.decay_steps:
-#             return self.alpha * self.initial_learning_rate
-
-#         cosine_decay = 0.5 * (1 + tf.math.cos(tf.constant(np.pi) * (tf.cast(step, tf.float32) % self.decay_steps) / self.decay_steps))
-#         decayed = (1 - self.alpha) * cosine_decay + self.alpha
-#         return self.initial_learning_rate * decayed
-
-#     def get_config(self):
-#         return {
-#             "initial_learning_rate": self.initial_learning_rate,
-#             "decay_steps": self.decay_steps,
-#             "alpha": self.alpha
-#         }
-
-
 class CustomCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
     def __init__(self, initial_learning_rate, decay_steps, min_learning_rate=0.001):
         # super(CustomCosineDecay, self).__init__()
@@ -51,7 +26,7 @@ class CustomCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
             return self.min_learning_rate
         
         def false_fn():
-            cosine_decay = 0.5 * (1 + tf.math.cos(tf.constant(np.pi) * step / self.decay_steps))
+            cosine_decay = 0.5 * (1 + tf.math.cos(tf.constant(np.pi) * tf.cast(step, tf.float32) / tf.cast(self.decay_steps, tf.float32)))
             decayed = (1 - self.min_learning_rate) * cosine_decay + self.min_learning_rate
             return self.initial_learning_rate * decayed
         
@@ -64,7 +39,6 @@ class CustomCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
             "decay_steps": self.decay_steps,
             "min_learning_rate": self.min_learning_rate,
         }
-
 
 
 
@@ -98,11 +72,11 @@ class Resnet18(TensorflowSequentialModel):
     def __init__(self, input_features = (32, 32, 3), output_features = 10, lr_config: dict = None):
         lr_config = lr_config or {}
         self.lr_config = LearningRateConfig(**lr_config)
-        print("Config in the resnet model")
+        print("lr config in the resnet model")
         print(self.lr_config.to_dict())
         super().__init__(input_features=input_features, output_features=output_features)
 
-        print(f"Learning rate right now is: {self.get_learning_rate()}")
+        print(f"Learning rate right now (step = 0) is: {self.get_learning_rate()}")
 
 
     def get_optimizer(self):
@@ -147,20 +121,18 @@ class Resnet18(TensorflowSequentialModel):
 
     def create_optimizer(self):
         if self.lr_config.fix_lr:
-            optimizer = tf.keras.optimizers.SGD(learning_rate= self.lr_config.lr, momentum= 0.9)
+            optimizer = tf.keras.optimizers.SGD(learning_rate= self.lr_config.initial_lr, momentum= 0.9)
             print(f"Create optimizer with fix learning rate: {optimizer.lr.numpy()}")
+
         else:
-            # alpha = 0.001 / self.lr_config.lr
-            # lr_scheduler = CustomCosineDecay(initial_learning_rate= self.lr_config.lr, 
-            #                                 decay_steps= self.lr_config.decay_steps,
-            #                                 alpha= alpha)
-            lr_scheduler = CustomCosineDecay(initial_learning_rate= self.lr_config.lr, 
-                                            decay_steps= self.lr_config.decay_steps)
+            lr_scheduler = CustomCosineDecay(initial_learning_rate= self.lr_config.initial_lr, 
+                                            decay_steps= self.lr_config.decay_steps,
+                                            min_learning_rate= self.lr_config.min_lr)
 
             optimizer = tf.keras.optimizers.SGD(learning_rate=lr_scheduler, momentum=0.9)
-            print(f"Create optimizer with decay learning rate: {optimizer.lr.numpy()}")
+            print(f"Create optimizer using lr with decay step. This is the initial learning rate: {optimizer.lr.numpy()}")
             print(f"This is the lr of the lr schedule when current step = decay steps: {float(lr_scheduler(self.lr_config.decay_steps))}")
-            print(f"This is the min lr of the lr schedule: {float(lr_scheduler(self.lr_config.decay_steps + 1))}")
+            print(f"This is the min lr of the lr scheduler: {float(lr_scheduler(self.lr_config.decay_steps + 1))}")
 
         return optimizer
 

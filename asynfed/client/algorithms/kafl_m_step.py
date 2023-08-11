@@ -28,15 +28,15 @@ class KaflMStep(object):
         # for notifying global version used to server purpose
         self._client.training_process_info.global_version_used = self._client.global_model_info.version
 
-        # for tensorflow model, there is some conflict in the dimension of 
-        # an initialized model and al already trained one
-        # fixed this problem
-        # by training the model before loading the global weights
         current_global_model_file_name = self._client.global_model_info.get_file_name()
         file_exist, current_global_weights = self._client.load_weights_from_file(self._client.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
                                                                           file_name= current_global_model_file_name)
 
         if file_exist:
+            # for tensorflow model, there is some conflict in the dimension of 
+            # an initialized model and al already trained one
+            # fixed this problem
+            # by training the model before loading the global weights
             try:
                 self._client.model.set_weights(current_global_weights)
             except Exception as e:
@@ -49,7 +49,7 @@ class KaflMStep(object):
             # officially start the training process
             # quit after a number of epoch
             LOGGER.info("=" * 40)
-            LOGGER.info("ClientModel Start Training")
+            LOGGER.info("Client Start Training")
             LOGGER.info("=" * 40)
 
             # set learning rate if there is any params from server
@@ -65,7 +65,6 @@ class KaflMStep(object):
                 self._client.training_process_info.local_epoch += 1
                 batch_num = 0
                 # training per several epoch
-                # LOGGER.info(f"Enter epoch {self._client.training_process_info.local_epoch}")
                 LOGGER.info(f"Enter epoch {self._client.training_process_info.local_epoch}, learning rate = {self._client.model.get_learning_rate()}")
 
                 # reset loss and per after each epoch
@@ -141,8 +140,6 @@ class KaflMStep(object):
                 # instead of notifying the server every epoch
                 # reduce the communication by notifying every n epoch
                 # n set by server as epoch_update_frequency param
-                # if self._client.training_process_info.local_epoch % self._client.server_training_config.epoch_update_frequency == 0:
-                #     self._client.update_new_local_model_info()
           
                 if self._client.training_process_info.local_epoch % self._client.server_training_config.epoch_update_frequency == 0:
                     min_acc = self._client.server_training_config.exchange_at.performance

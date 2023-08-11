@@ -10,8 +10,6 @@ import logging
 import os
 import sys
 import uuid
-# from abc import abstractmethod, ABC
-
 
 # Third party imports
 from asynfed.common.config import CloudStoragePath, LocalStoragePath, MessageType
@@ -94,13 +92,10 @@ class Server(object):
 
         # load config info 
         self.config: ServerConfig = self._load_config_info(config= config)
-        self.wait_for_other_clients = False
 
-        if self.config.min_clients > 1:
-            self.wait_for_other_clients = True
-            self.init_messages = {}
-
-        # self.start_at = None
+        # always check the number of client to send message
+        self.wait_for_other_clients = True
+        self.init_messages = {}
 
 
         if self.config.model_config.stop_conditions.max_time:
@@ -174,10 +169,8 @@ class Server(object):
 
 
     def start(self):
-        # self._strategy.start_server()
         self._start_threads()
         self._strategy.handle_aggregating_process()
-
 
 
     def on_message_received(self, ch, method, props, body):
@@ -190,7 +183,6 @@ class Server(object):
 
         # Format the datetime object as a string and return it
         msg_type = msg_received['headers']['message_type']
-
         if msg_type == MessageType.CLIENT_INIT_MESSAGE:
             self._respond_connection(msg_received)
         elif msg_type == MessageType.CLIENT_NOTIFY_MESSAGE:
@@ -264,10 +256,10 @@ class Server(object):
         message_utils.print_message(response_to_init.to_dict())
         message = ExchangeMessage(headers=headers, content=response_to_init.to_dict()).to_json()
 
+        # after receiving a sufficient number of clients
+        # send normally
         if not self.wait_for_other_clients:
             self._queue_producer.send_data(message)
-            # if self.start_at is None:
-            #     self.start_at = datetime.utcnow()
         else:
             self.init_messages[client_id] = message
             connected_workers = self.worker_manager.list_connected_workers()
@@ -275,12 +267,12 @@ class Server(object):
                 num_workers = len(connected_workers) - 1
             else:
                 num_workers = len(connected_workers)
+
             if num_workers == self.config.min_clients:
                 self.wait_for_other_clients = False
-                # self.start_at = datetime.utcnow()
                 LOGGER.info("*" * 50)
-                LOGGER.info("All clients have joined. About to send init message to all clients")
-                LOGGER.info("All clients joined. Set time to keep track of the total training time")
+                LOGGER.info("Minimum number of client have joined. About to send init message to all clients")
+                LOGGER.info("Set time to keep track of the total training time")
                 LOGGER.info("*" * 50)
                 self.manage_training_time.begin_timing()
 
@@ -290,15 +282,6 @@ class Server(object):
                     self._queue_producer.send_data(self.init_messages[worker_id])
             else:
                 LOGGER.info(f"The min number of client require to start training: {self.config.min_clients}. Up to now, only {num_workers} workers have joined the network.")
-
-
-        # check whether it is first client to begin timing
-        # if self._is_first_client:
-        #     LOGGER.info("*" * 50)
-        #     LOGGER.info("First client join. About to set first join time to keep track of ")
-        #     LOGGER.info("*" * 50)
-        #     self._is_first_client = False
-        #     self.manage_training_time.begin_timing()
 
 
     def _handle_client_notify_evaluation(self, message):
@@ -320,11 +303,6 @@ class Server(object):
             self._queue_producer.send_data(message)
             LOGGER.info("=" * 50)
             LOGGER.info("Stop condition met. Log out best model")
-            # end_at = datetime.utcnow()
-            # train_time = time_utils.time_diff(end_at, self.start_at)
-            # LOGGER.info(f"Start at: {self.start_at}")
-            # LOGGER.info(f"End at: {end_at}")
-            # LOGGER.info(f"Training time: {train_time}")
             LOGGER.info(self._best_model)
             LOGGER.info("=" * 50)
 

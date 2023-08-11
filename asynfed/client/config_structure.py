@@ -20,11 +20,13 @@ class CleaningConfig(MessageObject):
         self.local_keep_version_num = local_keep_version_num 
 
 class LearningRateConfig(MessageObject):
-    def __init__(self, fix_lr: bool = True, lr: float = 0.01, decay_steps: int = None):
+    def __init__(self, fix_lr: bool = True, initial_lr: float = 0.01, 
+                min_lr: float = 0.001, decay_steps: int = None):
         # fix lr
         # independent decays lr 
         self.fix_lr = fix_lr
-        self.lr = lr
+        self.initial_lr = initial_lr
+        self.min_lr = min_lr
         self.decay_steps = decay_steps
 
 

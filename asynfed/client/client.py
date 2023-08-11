@@ -187,23 +187,9 @@ class Client(object):
 
         elif message_type == MessageType.SERVER_STOP_TRAINING: 
             message_utils.print_message(msg_received)
-            # while not self.state.is_stop_condition:
-            #     # check the stop condition every 300 seconds
-            #     sleep(300)
-            # LOGGER.info("Received stop message from server. Shortly the program will be close...")
-            # sys.exit(0)
-            # if self.config.role == "tester":
-            #     self._tester_handle_stop_message_from_server()
+            # change the flag to True 
+            # so that the program will be closed in the main process
             self.state.is_stop_condition = True
-            # if self.config.role == "trainer":
-            #     LOGGER.info("Received stop message from server. Shortly the program will be close...")
-
-
-            
-
-    # process all message from the queue and send the final messagae to server
-    def _tester_handle_stop_message_from_server(self):
-        pass
 
 
     def _start_consumer(self):
@@ -289,6 +275,7 @@ class Client(object):
             #     message = ExchangeMessage(headers= headers, content= content).to_json()
             #     self._components.queue_producer.send_data(message)
         
+
     # cloud storage callback
     # report result on parent process
     def on_download(self, result):
@@ -338,9 +325,7 @@ class Client(object):
 
 
         # get the exchange condition from server
-
         remote_global_folder: str = f"{server_init_response.model_info.global_folder}/{server_init_response.model_info.name}"
-
         self._file_extension: str = server_init_response.model_info.file_extension
 
 
@@ -374,11 +359,7 @@ class Client(object):
             LOGGER.info(f"{remote_path} exists in the cloud. Let's begin training!")
             LOGGER.info("*" * 20)
 
-            
-            # download_success = False
 
-            # if self.global_model_info.version < server_init_response.model_info.version:
-            # LOGGER.info("Detect new global version.")
             local_path = os.path.join(self.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, file_name)
 
             # to make sure the other process related to the new global model version start
@@ -466,7 +447,7 @@ class Client(object):
                     self._test()
 
                 elif self.config.role == "trainer":
-                    LOGGER.info(f"{self.config.client_id} is chosen to train for global model version {self.global_model_info.version}")
+                    LOGGER.info(f"When receiving global model version {self.global_model_info.version}, {self.config.client_id} is chosen to train for the next global model version")
 
                     # if the training thread does not start yet 
                     # (fail to download the global model in the response to init message from server)

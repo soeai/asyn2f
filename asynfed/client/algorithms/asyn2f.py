@@ -29,15 +29,15 @@ class Asyn2f(object):
         # for notifying global version used to server purpose
         self._client.training_process_info.global_version_used = self._client.global_model_info.version
 
-        # for tensorflow model, there is some conflict in the dimension of 
-        # an initialized model and al already trained one
-        # fixed this problem
-        # by training the model before loading the global weights
         current_global_model_file_name = self._client.global_model_info.get_file_name()
         file_exist, current_global_weights = self._client.load_weights_from_file(self._client.local_storage_path.GLOBAL_MODEL_ROOT_FOLDER, 
                                                                           file_name= current_global_model_file_name)
 
         if file_exist:
+            # for tensorflow model, there is some conflict in the dimension of 
+            # an initialized model and al already trained one
+            # fixed this problem
+            # by training the model before loading the global weights
             try:
                 self._client.model.set_weights(current_global_weights)
             except Exception as e:
@@ -50,7 +50,7 @@ class Asyn2f(object):
             # officially start the training process
             # quit after a number of epoch
             LOGGER.info("=" * 40)
-            LOGGER.info("ClientModel Start Training")
+            LOGGER.info("Client Start Training")
             LOGGER.info("=" * 40)
 
             # set learning rate if there is any params from server

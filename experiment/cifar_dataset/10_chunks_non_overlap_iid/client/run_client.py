@@ -29,9 +29,10 @@ scheduler = BackgroundScheduler()
 parser = argparse.ArgumentParser()
 # Add arguments
 parser.add_argument('--config_file', dest='config_file', type=str, help='specify the config file for running')
-parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-overlap-gpu", help='specify the queue exchange')
+parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-non-overlap-gpu", help='specify the queue exchange')
 parser.add_argument('--is_fix_lr', dest='is_fix_lr', type=int, default=1, help='specify the type of learning rate used ', choices=[0, 1])
-parser.add_argument('--lr', dest='lr', type=float, default=0.01, help='specify the learning rate')
+parser.add_argument('--initial_lr', dest='initial_lr', type=float, default=0.01, help='specify the learning rate')
+parser.add_argument('--min_lr', dest='min_lr', type=float, default=0.001, help='specify the min learning rate')
 parser.add_argument('--local_epochs', dest='local_epochs', type=int, default=600, help='specify the total local epochs')
 
 
@@ -81,18 +82,20 @@ config['dataset']['data_size'] = data_size
 
 learning_rate_config = config.get('training_params').get('learning_rate_config', {}) 
 if learning_rate_config == {}:
-    learning_rate_config['lr'] = args.lr
+    learning_rate_config['initial_lr'] = args.initial_lr
     if args.is_fix_lr == 0:
         print(f"This is total local epoch: {args.local_epochs}")
         learning_rate_config['fix_lr'] = False
         learning_rate_config['decay_steps'] = args.local_epochs * data_size // config['training_params']['batch_size']
+        learning_rate_config['min_lr'] = args.min_lr
     else:
         learning_rate_config['fix_lr'] = True
 
 config['training_params']['learning_rate_config'] = learning_rate_config
 
-print("Config in the run file")
+print("lr config in the run file")
 print(config['training_params']['learning_rate_config'])
+
 
 print("-" * 20)
 print("-" * 20)
