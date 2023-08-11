@@ -38,10 +38,9 @@ from asynfed.client.config_structure import LearningRateConfig
 #         }
 
 
-class CustomCosineDecayWithMin(tf.keras.optimizers.schedules.LearningRateSchedule):
+class CustomCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
     def __init__(self, initial_learning_rate, decay_steps, min_learning_rate=0.001):
-        super(CustomCosineDecayWithMin, self).__init__()
-
+        # super(CustomCosineDecay, self).__init__()
         self.initial_learning_rate = initial_learning_rate
         self.decay_steps = decay_steps
         self.min_learning_rate = min_learning_rate
