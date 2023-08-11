@@ -123,9 +123,9 @@ class Client(object):
         self._clean_storage_thread = Thread(target= self._clean_storage, name= "client_clean_storage_thread")
         self._clean_storage_thread.daemon = True
 
+        # only start training thread when receiving response from server
         self._training_thread = Thread(target= self._train, name= "client_training_thread")
         self._training_thread.daemon = True
-        # only start training thread when receiving response from server
 
 
 
@@ -151,7 +151,8 @@ class Client(object):
         self._clean_storage_thread.start()
 
         while not self.state.is_stop_condition:
-            # check the stop condition every 600 seconds to ensure the tester will close
+            # check the stop condition every 60 seconds 
+            # close from main process
             sleep(60)
 
         if self.config.role == "trainer":
