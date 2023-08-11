@@ -45,8 +45,8 @@ class FedAvgStrategy(Strategy):
         
         self.m = m
 
-        # self.first_aggregating_time = True
-        self.first_aggregating_time = False
+        self.first_aggregating_time = True
+        # self.first_aggregating_time = False
         self.m = m
 
         self.use_loss = use_loss

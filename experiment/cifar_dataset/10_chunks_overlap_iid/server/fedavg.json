@@ -19,8 +19,8 @@
         "file_extension": "pkl",
 
         "model_exchange_at": {
-            "performance": 0.1,
-            "epoch": 1
+            "performance": 0.6,
+            "epoch": 100
             
         },
         

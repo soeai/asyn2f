@@ -49,11 +49,8 @@ class FedAvg(object):
                 if (min_acc <= self._client.training_process_info.train_acc) or (min_epoch <= self._client.training_process_info.local_epoch):
                     self._client.update_new_local_model_info()
                     break
-                # in the first training epoch
-                # break when receive new model from server 
-                # (the exhange at of some worker is met)
-                if self._client.state.new_model_flag:
-                    break
+
+
 
         # for the rest, just train normally and 
         # notify new local model to server every n epoch
@@ -74,7 +71,7 @@ class FedAvg(object):
 
                     self._training()
                     self._client.update_new_local_model_info()
-            sleep(5)
+            sleep(10)
 
     def _load_new_model_weight(self) -> bool:
         # for notifying global version used to server purpose
@@ -106,7 +103,7 @@ class FedAvg(object):
     
     def _training(self):
         for _ in range(self._client.server_training_config.epoch_update_frequency):
-                            # record some info of the training process
+            # record some info of the training process
             self._client.training_process_info.local_epoch += 1
             batch_num = 0
             # training per several epoch
@@ -136,6 +133,12 @@ class FedAvg(object):
                 # x define by user as trakcing_period
                 if self._client.tracking_period is not None:
                     self._client.tracking_training_process(batch_num)
+
+                # in the first training epoch
+                # break when receive new model from server 
+                # (the exhange at conditions of some worker is met)
+                if self._client.state.new_model_flag:
+                    break
 
         if self._client.model.test_ds:
             for test_images, test_labels in self._client.model.test_ds:
