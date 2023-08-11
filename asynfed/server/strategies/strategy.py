@@ -51,7 +51,7 @@ class Strategy(ABC):
 
         # now the lr scheduler is just support consine schedule
         if total_update_times:
-            LOGGER.info(f"Synchronous learning rate is turn on. Total update time to create a consine lr scheduler: {total_update_times}")
+            LOGGER.info(f"Synchronous learning rate is turn on. Total update time to create a cosine lr scheduler: {total_update_times}")
             self.lr_scheduler = self.get_cosine_lr_scheduler(total_update_times= total_update_times, 
                                                             initial_learning_rate= initial_learning_rate)
         else:

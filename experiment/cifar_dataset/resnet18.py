@@ -11,6 +11,33 @@ import tensorflow as tf
 from asynfed.client.frameworks.tensorflow import TensorflowSequentialModel
 from asynfed.client.config_structure import LearningRateConfig
 
+
+
+class CustomCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
+    def __init__(self, initial_learning_rate, decay_steps, alpha=0.01):
+        self.initial_learning_rate = initial_learning_rate
+        self.decay_steps = decay_steps
+
+        # min lr = alpha * initial_lr
+        self.alpha = alpha or 0.01
+
+    def __call__(self, step):
+        if step > self.decay_steps:
+            return self.alpha * self.initial_learning_rate
+
+        cosine_decay = 0.5 * (1 + tf.math.cos(tf.constant(np.pi) * (tf.cast(step, tf.float32) % self.decay_steps) / self.decay_steps))
+        decayed = (1 - self.alpha) * cosine_decay + self.alpha
+        return self.initial_learning_rate * decayed
+
+    def get_config(self):
+        return {
+            "initial_learning_rate": self.initial_learning_rate,
+            "decay_steps": self.decay_steps,
+            "alpha": self.alpha
+        }
+
+
+
 class BasicBlock(tf.keras.Model):
     expansion = 1
 
@@ -91,12 +118,18 @@ class Resnet18(TensorflowSequentialModel):
     def create_optimizer(self):
         if self.lr_config.fix_lr:
             optimizer = tf.keras.optimizers.SGD(learning_rate= self.lr_config.lr, momentum= 0.9)
-            print(f"Create optimizer with fix learning rate: {optimizer.lr.numpy()}")
+            LOGGER.info(f"Create optimizer with fix learning rate: {optimizer.lr.numpy()}")
         else:
-            lr_scheduler = tf.keras.experimental.CosineDecay(initial_learning_rate= self.lr_config.lr,
-                                                         decay_steps= self.lr_config.decay_steps)
+            # lr_scheduler = tf.keras.experimental.CosineDecay(initial_learning_rate= self.lr_config.lr,
+            #                                              decay_steps= self.lr_config.decay_steps)
+            alpha = 0.001 / self.lr_config.lr
+            lr_schedule = CustomCosineDecay(initial_learning_rate= self.lr_config.lr, 
+                                            decay_steps= self.lr_config.decay_steps,
+                                            alpha= alpha)
+
             optimizer = tf.keras.optimizers.SGD(learning_rate=lr_scheduler, momentum=0.9)
-            print(f"Create optimizer with decay learning rate: {optimizer.lr.numpy()}")
+            LOGGER.info(f"Create optimizer with decay learning rate: {optimizer.lr.numpy()}")
+            LOGGER.info(f"This is the min lr of the lr schedule: {float(lr_scheduler(10000000))}"
 
         return optimizer
 
