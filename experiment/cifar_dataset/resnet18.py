@@ -14,28 +14,58 @@ from asynfed.client.config_structure import LearningRateConfig
 
 
 
-class CustomCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
-    def __init__(self, initial_learning_rate, decay_steps, alpha=0.01):
+# class CustomCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
+#     def __init__(self, initial_learning_rate, decay_steps, alpha=0.01):
+#         self.initial_learning_rate = initial_learning_rate
+#         self.decay_steps = decay_steps
+
+#         # min lr = alpha * initial_lr
+#         self.alpha = alpha or 0.01
+
+#     def __call__(self, step):
+#         if step >= self.decay_steps:
+#             return self.alpha * self.initial_learning_rate
+
+#         cosine_decay = 0.5 * (1 + tf.math.cos(tf.constant(np.pi) * (tf.cast(step, tf.float32) % self.decay_steps) / self.decay_steps))
+#         decayed = (1 - self.alpha) * cosine_decay + self.alpha
+#         return self.initial_learning_rate * decayed
+
+#     def get_config(self):
+#         return {
+#             "initial_learning_rate": self.initial_learning_rate,
+#             "decay_steps": self.decay_steps,
+#             "alpha": self.alpha
+#         }
+
+
+class CustomCosineDecayWithMin(tf.keras.optimizers.schedules.LearningRateSchedule):
+    def __init__(self, initial_learning_rate, decay_steps, min_learning_rate=0.001):
+        super(CustomCosineDecayWithMin, self).__init__()
+
         self.initial_learning_rate = initial_learning_rate
         self.decay_steps = decay_steps
-
-        # min lr = alpha * initial_lr
-        self.alpha = alpha or 0.01
+        self.min_learning_rate = min_learning_rate
 
     def __call__(self, step):
-        if step >= self.decay_steps:
-            return self.alpha * self.initial_learning_rate
-
-        cosine_decay = 0.5 * (1 + tf.math.cos(tf.constant(np.pi) * (tf.cast(step, tf.float32) % self.decay_steps) / self.decay_steps))
-        decayed = (1 - self.alpha) * cosine_decay + self.alpha
-        return self.initial_learning_rate * decayed
+        
+        def true_fn():
+            return self.min_learning_rate
+        
+        def false_fn():
+            cosine_decay = 0.5 * (1 + tf.math.cos(tf.constant(np.pi) * step / self.decay_steps))
+            decayed = (1 - self.min_learning_rate) * cosine_decay + self.min_learning_rate
+            return self.initial_learning_rate * decayed
+        
+        condition = tf.greater_equal(step, self.decay_steps)
+        return tf.cond(condition, true_fn, false_fn)
 
     def get_config(self):
         return {
             "initial_learning_rate": self.initial_learning_rate,
             "decay_steps": self.decay_steps,
-            "alpha": self.alpha
+            "min_learning_rate": self.min_learning_rate,
         }
+
 
 
 
@@ -121,10 +151,12 @@ class Resnet18(TensorflowSequentialModel):
             optimizer = tf.keras.optimizers.SGD(learning_rate= self.lr_config.lr, momentum= 0.9)
             print(f"Create optimizer with fix learning rate: {optimizer.lr.numpy()}")
         else:
-            alpha = 0.001 / self.lr_config.lr
+            # alpha = 0.001 / self.lr_config.lr
+            # lr_scheduler = CustomCosineDecay(initial_learning_rate= self.lr_config.lr, 
+            #                                 decay_steps= self.lr_config.decay_steps,
+            #                                 alpha= alpha)
             lr_scheduler = CustomCosineDecay(initial_learning_rate= self.lr_config.lr, 
-                                            decay_steps= self.lr_config.decay_steps,
-                                            alpha= alpha)
+                                            decay_steps= self.lr_config.decay_steps)
 
             optimizer = tf.keras.optimizers.SGD(learning_rate=lr_scheduler, momentum=0.9)
             print(f"Create optimizer with decay learning rate: {optimizer.lr.numpy()}")
