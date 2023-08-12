@@ -24,6 +24,3 @@ def create_dataset(X, y, batch_size=128):
     ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return ds
 
-# # Example usage
-# train_ds = create_dataset(X_train, y_train)
-# test_ds = create_dataset(X_test, y_test)

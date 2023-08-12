@@ -1,19 +1,66 @@
-
 import tensorflow as tf
-
 from asynfed.client.frameworks.tensorflow import TensorflowSequentialModel
 from asynfed.client.config_structure import LearningRateConfig
 
 
+class CustomCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
+    def __init__(self, initial_learning_rate, decay_steps, min_learning_rate=0.001):
+        # super(CustomCosineDecay, self).__init__()
+        self.initial_learning_rate = initial_learning_rate
+        self.decay_steps = decay_steps
+        self.min_learning_rate = min_learning_rate
+
+    def __call__(self, step):
+        
+        def true_fn():
+            return self.min_learning_rate
+        
+        def false_fn():
+            cosine_decay = 0.5 * (1 + tf.math.cos(tf.constant(np.pi) * tf.cast(step, tf.float32) / tf.cast(self.decay_steps, tf.float32)))
+            decayed = (1 - self.min_learning_rate) * cosine_decay + self.min_learning_rate
+            return self.initial_learning_rate * decayed
+        
+        condition = tf.greater_equal(step, self.decay_steps)
+        return tf.cond(condition, true_fn, false_fn)
+
+    def get_config(self):
+        return {
+            "initial_learning_rate": self.initial_learning_rate,
+            "decay_steps": self.decay_steps,
+            "min_learning_rate": self.min_learning_rate,
+        }
+
+class F1Score(tf.keras.metrics.Metric):
+    def __init__(self, name="f1_score", **kwargs):
+        super(F1Score, self).__init__(name=name, **kwargs)
+        self.precision = tf.keras.metrics.Precision()
+        self.recall = tf.keras.metrics.Recall()
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        self.precision.update_state(y_true, y_pred, sample_weight)
+        self.recall.update_state(y_true, y_pred, sample_weight)
+
+    def result(self):
+        precision = self.precision.result()
+        recall = self.recall.result()
+        return 2 * ((precision * recall) / (precision + recall + 1e-6))
+
+    def reset_states(self):
+        self.precision.reset_states()
+        self.recall.reset_states()
+
+
+
 class EmberModel(TensorflowSequentialModel):
-    def __init__(self, input_features = (2**10), output_features = 1, lr_config: dict = None):
+    def __init__(self, input_features = 2381, output_features = 1, lr_config: dict = None):
         lr_config = lr_config or {}
         self.lr_config = LearningRateConfig(**lr_config)
-        print("Config in the resnet model")
+        print("lr config in the resnet model")
         print(self.lr_config.to_dict())
         super().__init__(input_features=input_features, output_features=output_features)
 
-        print(f"Learning rate right now is: {self.get_learning_rate()}")
+        print(f"Learning rate right now (step = 0) is: {self.get_learning_rate()}")
+
 
     def get_optimizer(self):
         return self.optimizer
@@ -26,17 +73,12 @@ class EmberModel(TensorflowSequentialModel):
 
     def create_model(self, input_features, output_features):
         input_dim= 257
-        maxlen= 2**20
         embedding_size=8
 
-        # self.input_dim = input_dim
-        # self.maxlen = maxlen
-        # self.embedding_size = embedding_size
-
-        inp = tf.keras.layers.Input(shape=(maxlen,))
+        inp = tf.keras.layers.Input(shape=(input_features,))
         emb = tf.keras.layers.Embedding(input_dim, embedding_size)(inp)
-        filt = tf.keras.layers.Conv1D(filters=128, kernel_size=500, strides=500, use_bias=True, activation='relu', padding='valid')(emb)
-        attn = tf.keras.layers.Conv1D(filters=128, kernel_size=500, strides=500, use_bias=True, activation='sigmoid', padding='valid')(emb)
+        filt = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='relu', padding='valid')(emb)
+        attn = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='sigmoid', padding='valid')(emb)
         gated = tf.keras.layers.Multiply()([filt, attn])
         feat = tf.keras.layers.GlobalMaxPooling1D()(gated)
         dense = tf.keras.layers.Dense(128, activation='relu')(feat)
@@ -53,32 +95,39 @@ class EmberModel(TensorflowSequentialModel):
 
     def create_optimizer(self):
         if self.lr_config.fix_lr:
-            optimizer = tf.keras.optimizers.SGD(learning_rate= self.lr_config.lr, momentum= 0.9)
+            optimizer = tf.keras.optimizers.SGD(learning_rate= self.lr_config.initial_lr, momentum= 0.9)
             print(f"Create optimizer with fix learning rate: {optimizer.lr.numpy()}")
+
         else:
-            lr_scheduler = tf.keras.experimental.CosineDecay(initial_learning_rate= self.lr_config.lr,
-                                                         decay_steps= self.lr_config.decay_steps)
+            lr_scheduler = CustomCosineDecay(initial_learning_rate= self.lr_config.initial_lr, 
+                                            decay_steps= self.lr_config.decay_steps,
+                                            min_learning_rate= self.lr_config.min_lr)
+
             optimizer = tf.keras.optimizers.SGD(learning_rate=lr_scheduler, momentum=0.9)
-            print(f"Create optimizer with decay learning rate: {optimizer.lr.numpy()}")
+            print(f"Create optimizer using lr with decay step. This is the initial learning rate: {optimizer.lr.numpy()}")
+            print(f"This is the lr of the lr schedule when current step = decay steps: {float(lr_scheduler(self.lr_config.decay_steps))}")
+            print(f"This is the min lr of the lr scheduler: {float(lr_scheduler(self.lr_config.decay_steps + 1))}")
 
         return optimizer
 
+
     def create_train_metric(self):
-        return tf.keras.metrics.BinaryAccuracy(name='train_accuracy'), tf.keras.metrics.Mean(name='train_loss')
+        return F1Score(name='train_f1'), tf.keras.metrics.Mean(name='train_loss')
 
     def create_test_metric(self):
-        return tf.keras.metrics.BinaryAccuracy(name='test_accuracy'), tf.keras.metrics.Mean(name='test_loss')
+        return F1Score(name='test_f1'), tf.keras.metrics.Mean(name='test_loss')
+
 
     def get_train_performance(self):
-        return float(self.train_performance.result())
+        return float(self.train_f1.result())
+
+    def get_test_performance(self):
+        return float(self.test_f1.result())
+
 
     def get_train_loss(self):
         return float(self.train_loss.result())
 
-    def get_test_performance(self):
-        return float(self.test_performance.result())
 
     def get_test_loss(self):
         return float(self.test_loss.result())
-
-
