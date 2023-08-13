@@ -7,14 +7,12 @@ root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd
 sys.path.append(root)
 
 
-
-# from asynfed.client.algorithms import Asyn2fClient, KAFLMStepClient
 from asynfed.client import Client
 
 from asynfed.client.frameworks.tensorflow import TensorflowFramework
 
 from experiment.ember_dataset.ember_model import EmberModel
-from experiment.ember_dataset.data_preprocessing import DataLoader
+from experiment.ember_dataset.data_preprocessing import DataLoader, download_file_from_google_drive, get_file_id_in_csv
 
 
 import json
@@ -28,8 +26,9 @@ scheduler = BackgroundScheduler()
 # Create an argument parser
 parser = argparse.ArgumentParser()
 # Add arguments
+parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="ember-7-chunks-non-iid", help='specify the queue exchange')
 parser.add_argument('--config_file', dest='config_file', type=str, help='specify the config file for running')
-parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-non-overlap-gpu", help='specify the queue exchange')
+
 parser.add_argument('--is_fix_lr', dest='is_fix_lr', type=int, default=1, help='specify the type of learning rate used ', choices=[0, 1])
 parser.add_argument('--initial_lr', dest='initial_lr', type=float, default=0.01, help='specify the learning rate')
 parser.add_argument('--min_lr', dest='min_lr', type=float, default=0.001, help='specify the min learning rate')
@@ -62,17 +61,20 @@ print("*" * 20)
 
 # ------------oOo--------------------
 # Preprocessing data
-data_folder_path = os.path.join(root, "experiment", "data", "ember_data")
-train_data_loader = DataLoader(data_folder_path)
+csv_filename = os.path.join(root, "experiment", "data", "ember_data", "7_chunks", "non_iid", "ggdrive_chunk_download_info.csv")
+chunk_index = config['dataset']['chunk_index']
+save_path = f"chunk_{chunk_index}.pkl"
+data_loader = DataLoader(save_path)
 
-data_size = train_data_loader.get_dataset_size()
-class_weight = train_data_loader.get_class_weight()
-num_input_features = train_data_loader.get_num_input_features()
+data_size = data_loader.get_dataset_size()
+class_weight = data_loader.get_class_weight()
+num_input_features = data_loader.get_num_input_features()
+
 print(f"Data size: {data_size}, number of features: {num_input_features}, class weight: {class_weight}")
-train_ds = train_data_loader.create_tensorflow_dataset()
+dataset = data_loader.create_tensorflow_dataset()
 
 # ------------oOo--------------------
-# config['dataset']['data_size'] = data_size
+config['dataset']['data_size'] = data_size
 
 
 learning_rate_config = config.get('training_params').get('learning_rate_config', {}) 
@@ -105,7 +107,7 @@ model = EmberModel(input_features= num_input_features, output_features= 1,
 # Define framework
 tensorflow_framework = TensorflowFramework(model= model, 
                                            data_size= data_size, 
-                                           train_ds= train_ds, 
+                                           train_ds= dataset, 
                                            test_ds= None, 
                                            config= config)
 
