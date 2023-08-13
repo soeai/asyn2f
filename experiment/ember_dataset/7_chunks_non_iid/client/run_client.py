@@ -64,6 +64,10 @@ print("*" * 20)
 csv_filename = os.path.join(root, "experiment", "data", "ember_data", "7_chunks", "non_iid", "ggdrive_chunk_download_info.csv")
 chunk_index = config['dataset']['chunk_index']
 save_path = f"chunk_{chunk_index}.pkl"
+
+file_id = get_file_id_in_csv(csv_filename, chunk_index)
+download_file_from_google_drive(file_id= file_id, destination= save_path)
+
 data_loader = DataLoader(save_path)
 
 data_size = data_loader.get_dataset_size()

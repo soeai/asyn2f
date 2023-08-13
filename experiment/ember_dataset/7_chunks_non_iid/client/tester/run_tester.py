@@ -26,14 +26,13 @@ scheduler = BackgroundScheduler()
 # Create an argument parser
 parser = argparse.ArgumentParser()
 # Add arguments
-parser.add_argument('--config_file', dest='config_file', type=str, help='specify the config file for running')
 parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="ember-7-chunks-non-iid", help='specify the queue exchange')
 
 
 # Parse the arguments
 args = parser.parse_args()
 
-with open(args.config_file, 'r') as json_file:
+with open('conf.json', 'r') as json_file:
     config = json.load(json_file)
 
 # load queue config
@@ -57,8 +56,13 @@ print("*" * 20)
 # ------------oOo--------------------
 # Preprocessing data
 csv_filename = os.path.join(root, "experiment", "data", "ember_data", "7_chunks", "non_iid", "ggdrive_chunk_download_info.csv")
+
 chunk_index = config['dataset']['chunk_index']
 save_path = f"chunk_{chunk_index}.pkl"
+
+file_id = get_file_id_in_csv(csv_filename, chunk_index)
+download_file_from_google_drive(file_id= file_id, destination= save_path)
+
 data_loader = DataLoader(save_path)
 
 data_size = data_loader.get_dataset_size()
