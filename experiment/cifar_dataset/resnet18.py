@@ -147,11 +147,11 @@ class Resnet18(TensorflowSequentialModel):
     def get_train_performance(self):
         return float(self.train_performance.result())
 
-    def get_train_loss(self):
-        return float(self.train_loss.result())
-
     def get_test_performance(self):
         return float(self.test_performance.result())
+
+    def get_train_loss(self):
+        return float(self.train_loss.result())
 
     def get_test_loss(self):
         return float(self.test_loss.result())
