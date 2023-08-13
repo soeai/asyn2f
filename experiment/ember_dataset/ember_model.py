@@ -1,6 +1,7 @@
 import tensorflow as tf
 from asynfed.client.frameworks.tensorflow import TensorflowSequentialModel
 from asynfed.client.config_structure import LearningRateConfig
+import numpy as np
 
 class CustomCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
     def __init__(self, initial_learning_rate, decay_steps, min_learning_rate=0.001):
@@ -94,7 +95,8 @@ class EmberModel(TensorflowSequentialModel):
         inp = tf.keras.layers.Input(shape=(input_features,))
         emb = tf.keras.layers.Embedding(input_dim, embedding_size)(inp)
         filt = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='relu', padding='valid')(emb)
-        attn = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='sigmoid', padding='valid')(emb)
+        attn = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='relu', padding='valid')(emb)
+        # attn = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='sigmoid', padding='valid')(emb)
         gated = tf.keras.layers.Multiply()([filt, attn])
         feat = tf.keras.layers.GlobalMaxPooling1D()(gated)
         dense = tf.keras.layers.Dense(128, activation='relu')(feat)
