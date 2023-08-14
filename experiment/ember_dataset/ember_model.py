@@ -64,7 +64,8 @@ class WeightedBinaryCrossentropy(tf.keras.losses.Loss):
 
 
 class EmberModel(TensorflowSequentialModel):
-    def __init__(self, input_features = 2381, output_features = 1, lr_config: dict = None, class_weight: dict= None):
+    def __init__(self, input_features = 2381, output_features = 1, input_dim: int = 261,
+                    lr_config: dict = None, class_weight: dict= None):
         lr_config = lr_config or {}
         self.lr_config = LearningRateConfig(**lr_config)
         print("lr config in the resnet model")
@@ -73,6 +74,8 @@ class EmberModel(TensorflowSequentialModel):
           self.class_weight = class_weight
         else:
           self.class_weight = None
+        
+        self.input_dim = input_dim
 
         super().__init__(input_features=input_features, output_features=output_features)
 
@@ -89,11 +92,13 @@ class EmberModel(TensorflowSequentialModel):
         return self.optimizer.lr.numpy()
 
     def create_model(self, input_features, output_features):
-        input_dim= 257
+        # input_dim= 257
+        input_dim = self.input_dim or 261
         embedding_size=8
 
         inp = tf.keras.layers.Input(shape=(input_features,))
         emb = tf.keras.layers.Embedding(input_dim, embedding_size)(inp)
+        
         filt = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='relu', padding='valid')(emb)
         attn = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='sigmoid', padding='valid')(emb)
         

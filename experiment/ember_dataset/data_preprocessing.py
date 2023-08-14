@@ -9,19 +9,54 @@ from bs4 import BeautifulSoup
 
 import csv
 
+import numpy as np
+
+def custom_encoder(X):
+    # Empty array for the labels
+    labels = np.zeros_like(X)
+
+    # Handle the specific values 0 and 1
+    labels[X == 0] = 2
+    labels[X == 1] = 257
+
+    # Handle the range (-inf, -2**12]
+    labels[(X <= -2**12)] = 0
+
+    # Handle the range (-2048, 0)
+    labels[(X > -2**12) & (X < 0)] = 1
+
+    # Handle the range [0, 1] (excluding the values 0 and 1 themselves since they've been handled above)
+    mask_0_1 = (X > 0) & (X < 1)
+    labels[mask_0_1] = 2 + np.floor(X[mask_0_1] * 255).astype(int)
+
+    # Handle the range (1, 2**12]
+    labels[(X > 1) & (X <= 2**12)] = 258
+
+    # Handle the range (2**12, inf)
+    labels[X > 2**12] = 259
+
+    input_dim = 259 + 1 + 1
+
+    return labels, input_dim
+
 
 class DataLoader:
-    def __init__(self, path, batch_size=128):
+    def __init__(self, path, batch_size=128, encoded: bool = True):
         self.path = path
         self.batch_size = batch_size    # <-- Define batch_size here
         self.X, self.y = self.load_data()
         self.indices = np.arange(len(self.X))
+        self.encoded = encoded
+        self.input_dim: int = None
 
     def load_data(self):
         with open(self.path, "rb") as f:
             dataset = pickle.load(f)
         X = dataset[:, :-1]
         y = dataset[:, -1]
+        if self.encoded:
+            X, input_dim = custom_encoder(X)
+            self.input_dim = input_dim
         return X, y
 
     def data_generator(self):
@@ -58,6 +93,8 @@ class DataLoader:
     def get_num_input_features(self) -> int:
       return self.X.shape[1]
 
+    def get_input_dim(self) -> int:
+      return self.input_dim
 
     def create_tensorflow_dataset(self):
         # Convert the generator to TensorFlow dataset

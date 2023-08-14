@@ -87,6 +87,7 @@ data_loader = DataLoader(local_file_path)
 data_size = data_loader.get_dataset_size()
 class_weight = data_loader.get_class_weight()
 num_input_features = data_loader.get_num_input_features()
+input_dim = data_loader.get_input_dim()
 
 print(f"Data size: {data_size}, number of features: {num_input_features}, class weight: {class_weight}")
 dataset = data_loader.create_tensorflow_dataset()
@@ -119,6 +120,7 @@ print("-" * 20)
 print("-" * 20)
 
 model = EmberModel(input_features= num_input_features, output_features= 1, 
+                    input_dim= input_dim,
                     lr_config= config['training_params']['learning_rate_config'], 
                     class_weight= class_weight)
 

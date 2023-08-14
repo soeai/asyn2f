@@ -62,6 +62,10 @@ client_root_folder = os.path.dirname(os.getcwd())
 # check whether data is on device, 
 # if not, download from gg drive
 local_data_folder = os.path.join(client_root_folder, "data")
+# create data folder if it does not exist
+if not os.path.exists(local_data_folder):
+    os.makedirs(local_data_folder)
+
 chunk_file_name = f"chunk_{chunk_index}.pickle"
 local_file_path = os.path.join(local_data_folder, chunk_file_name)
 if not os.path.isfile(local_file_path):
@@ -77,6 +81,7 @@ data_loader = DataLoader(local_file_path)
 data_size = data_loader.get_dataset_size()
 class_weight = None
 num_input_features = data_loader.get_num_input_features()
+input_dim = data_loader.get_input_dim()
 
 print(f"Data size: {data_size}, number of features: {num_input_features}, class weight: {class_weight}")
 dataset = data_loader.create_tensorflow_dataset()
@@ -94,7 +99,7 @@ print("-" * 20)
 
 
 model = EmberModel(input_features= num_input_features, output_features= 1, 
-                    lr_config= {}, 
+                    lr_config= {}, input_dim= input_dim,
                     class_weight= class_weight)
 
 # Define framework
