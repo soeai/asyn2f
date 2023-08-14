@@ -95,8 +95,8 @@ class EmberModel(TensorflowSequentialModel):
         inp = tf.keras.layers.Input(shape=(input_features,))
         emb = tf.keras.layers.Embedding(input_dim, embedding_size)(inp)
         filt = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='relu', padding='valid')(emb)
-        attn = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='relu', padding='valid')(emb)
-        # attn = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='sigmoid', padding='valid')(emb)
+        attn = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='sigmoid', padding='valid')(emb)
+        
         gated = tf.keras.layers.Multiply()([filt, attn])
         feat = tf.keras.layers.GlobalMaxPooling1D()(gated)
         dense = tf.keras.layers.Dense(128, activation='relu')(feat)

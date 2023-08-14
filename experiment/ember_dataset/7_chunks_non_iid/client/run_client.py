@@ -62,13 +62,23 @@ print("*" * 20)
 # ------------oOo--------------------
 # Preprocessing data
 csv_filename = os.path.join(root, "experiment", "data", "ember_data", "7_chunks", "non_iid", "ggdrive_chunk_download_info.csv")
+
 chunk_index = config['dataset']['chunk_index']
-save_path = f"chunk_{chunk_index}.pkl"
+client_root_folder = os.getcwd()
+# check whether data is on device, 
+# if not, download from gg drive
+local_data_folder = os.path.join(client_root_folder, "data")
+chunk_file_name = f"chunk_{chunk_index}.pickle"
+local_file_path = os.path.join(local_data_folder, chunk_file_name)
+if not os.path.isfile(local_file_path):
+    print("Chunk data does not exist in local folder. Shortly begin to download")
+    file_id = get_file_id_in_csv(csv_filename, chunk_index)
+    download_file_from_google_drive(file_id= file_id, destination= local_file_path)
+    print("Succesfully download data from google drive folder")
+else:
+    print("Dataset already exists in local data folder.")
 
-file_id = get_file_id_in_csv(csv_filename, chunk_index)
-download_file_from_google_drive(file_id= file_id, destination= save_path)
-
-data_loader = DataLoader(save_path)
+data_loader = DataLoader(local_file_path)
 
 data_size = data_loader.get_dataset_size()
 class_weight = data_loader.get_class_weight()

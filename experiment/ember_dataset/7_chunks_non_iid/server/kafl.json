@@ -24,8 +24,8 @@
         
         "stop_conditions": {
             "max_version": 10000,
-            "max_performance": 0.96,
-            "max_time": 180
+            "max_performance": 0.99,
+            "max_time": 30
         }
     },
 

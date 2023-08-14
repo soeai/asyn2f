@@ -42,3 +42,5 @@ dist
 profile.json
 
 experiment/ember_dataset/ember_data
+
+experiment/ember_dataset/7_chunks_non_iid/client/data
