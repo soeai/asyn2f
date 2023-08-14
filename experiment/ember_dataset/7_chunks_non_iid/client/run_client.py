@@ -68,6 +68,10 @@ client_root_folder = os.getcwd()
 # check whether data is on device, 
 # if not, download from gg drive
 local_data_folder = os.path.join(client_root_folder, "data")
+# create data folder if it does not exist
+if not os.path.exists(local_data_folder):
+    os.makedirs(local_data_folder)
+
 chunk_file_name = f"chunk_{chunk_index}.pickle"
 local_file_path = os.path.join(local_data_folder, chunk_file_name)
 if not os.path.isfile(local_file_path):
