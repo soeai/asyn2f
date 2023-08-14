@@ -43,10 +43,10 @@ def custom_encoder(X):
 class DataLoader:
     def __init__(self, path, batch_size=128, encoded: bool = True):
         self.path = path
-        self.batch_size = batch_size    # <-- Define batch_size here
+        self.batch_size = batch_size
+        self.encoded = encoded
         self.X, self.y = self.load_data()
         self.indices = np.arange(len(self.X))
-        self.encoded = encoded
         self.input_dim: int = None
 
     def load_data(self):
@@ -55,8 +55,10 @@ class DataLoader:
         X = dataset[:, :-1]
         y = dataset[:, -1]
         if self.encoded:
+            print("Dataset is not encoded yet. The encoding process will shortly begin")
             X, input_dim = custom_encoder(X)
             self.input_dim = input_dim
+            print(f"Encoding process completed. This is the new input dim: {self.input_dim}")
         return X, y
 
     def data_generator(self):

@@ -36,7 +36,7 @@
 
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "cifar10-10-chunks-overlap-gpu",
+        "bucket_name": "ember-7-chunks-non-iid",
         "region_name": "ap-southeast-2",
 
         "global_model_root_folder": "global-models",

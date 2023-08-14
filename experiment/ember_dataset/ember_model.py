@@ -92,13 +92,13 @@ class EmberModel(TensorflowSequentialModel):
         return self.optimizer.lr.numpy()
 
     def create_model(self, input_features, output_features):
-        # input_dim= 257
         input_dim = self.input_dim or 261
-        embedding_size=8
+        embedding_size= 8
+        print(f"This is the input dim: {input_dim}")
 
         inp = tf.keras.layers.Input(shape=(input_features,))
         emb = tf.keras.layers.Embedding(input_dim, embedding_size)(inp)
-        
+
         filt = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='relu', padding='valid')(emb)
         attn = tf.keras.layers.Conv1D(filters=128, kernel_size=15, strides=15, use_bias=True, activation='sigmoid', padding='valid')(emb)
         
