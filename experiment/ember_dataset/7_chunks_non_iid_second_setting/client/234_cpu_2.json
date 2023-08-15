@@ -1,5 +1,5 @@
 {
-    "client_id": "ttu-234-gpu-2",
+    "client_id": "ttu-234-cpu-2",
     "role": "trainer",
     "gpu_index": 1,
     "save_log": true,
