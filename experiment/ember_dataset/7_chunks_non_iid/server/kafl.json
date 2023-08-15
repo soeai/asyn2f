@@ -2,7 +2,7 @@
     "server_id": "",
     "ping_period": 300,
     "save_log": true,
-    "min_clients": 10,
+    "min_clients": 7,
     
     
     "strategy": {
@@ -24,7 +24,7 @@
         
         "stop_conditions": {
             "max_version": 10000,
-            "max_performance": 0.99,
+            "max_performance": 0.999,
             "max_time": 30
         }
     },

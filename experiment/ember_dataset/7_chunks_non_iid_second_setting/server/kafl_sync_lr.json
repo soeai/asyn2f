@@ -6,7 +6,7 @@
     
     
     "strategy": {
-        "name": "asyn2f",
+        "name": "kafl",
         "m": 3,
         "n": 5
     },
@@ -17,9 +17,10 @@
         "file_extension": "pkl",
         "synchronous_learning_rate":
             {
-                "total_update_times": 45,
+                "total_update_times": 110,
                 "initial_learning_rate": 0.1
             },
+
         "model_exchange_at": {
             "performance": 0.8,
             "epoch": 100
@@ -29,13 +30,13 @@
         "stop_conditions": {
             "max_version": 10000,
             "max_performance": 0.999,
-            "max_time": 30
+            "max_time": 60
         }
     },
 
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "ember-7-chunks-non-iid",
+        "bucket_name": "ember-7-chunks-non-iid-second-setup",
         "region_name": "ap-southeast-2",
 
         "global_model_root_folder": "global-models",
@@ -55,7 +56,7 @@
     },
 
     "cleaning_config": {
-        "clean_storage_period": 240,
+        "clean_storage_period": 120,
         "global_keep_version_num": 20,
         "local_keep_version_num": 2
     },

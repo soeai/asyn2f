@@ -1,23 +1,26 @@
 {
     "server_id": "",
-    "ping_period": 300,
+    "ping_period": 60,
     "save_log": true,
     "min_clients": 7,
     
     
     "strategy": {
-        "name": "asyn2f",
+        "name": "fedavg",
         "m": 3,
-        "n": 5
+        "n": 5,
+        "use_loss": null,
+        "beta": null
     },
     
     "model_config": {
         "name": "",
         "initial_model_path": "initial_model.pkl",
         "file_extension": "pkl",
+
         "synchronous_learning_rate":
             {
-                "total_update_times": 45,
+                "total_update_times": 15,
                 "initial_learning_rate": 0.1
             },
         "model_exchange_at": {
@@ -27,15 +30,15 @@
         },
         
         "stop_conditions": {
-            "max_version": 10000,
+            "max_version": 2400,
             "max_performance": 0.999,
-            "max_time": 30
+            "max_time": 60
         }
     },
 
     "cloud_storage": {
         "type": "minio",
-        "bucket_name": "ember-7-chunks-non-iid",
+        "bucket_name": "ember-7-chunks-non-iid-second-setup",
         "region_name": "ap-southeast-2",
 
         "global_model_root_folder": "global-models",
@@ -55,8 +58,8 @@
     },
 
     "cleaning_config": {
-        "clean_storage_period": 240,
-        "global_keep_version_num": 20,
+        "clean_storage_period": 600,
+        "global_keep_version_num": 10,
         "local_keep_version_num": 2
     },
 

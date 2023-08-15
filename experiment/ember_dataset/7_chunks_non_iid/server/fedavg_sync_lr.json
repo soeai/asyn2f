@@ -2,7 +2,7 @@
     "server_id": "",
     "ping_period": 60,
     "save_log": true,
-    "min_clients": 10,
+    "min_clients": 7,
     
     
     "strategy": {
@@ -20,7 +20,7 @@
 
         "synchronous_learning_rate":
             {
-                "total_update_times": 27,
+                "total_update_times": 15,
                 "initial_learning_rate": 0.1
             },
         "model_exchange_at": {
@@ -31,7 +31,7 @@
         
         "stop_conditions": {
             "max_version": 2400,
-            "max_performance": 0.99,
+            "max_performance": 0.999,
             "max_time": 30
         }
     },
