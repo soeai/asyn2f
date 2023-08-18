@@ -18,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
 # from asynfed.server import Server
 
 class CosineLRScheduler:
-    def __init__(self, total_update_times: int, initial_learning_rate: float = 0.1, min_learning_rate: float = 0.001):
+    def __init__(self, total_update_times: int, initial_learning_rate: float = 0.1, min_learning_rate: float = 0.005):
         self.initial_lr = initial_learning_rate
         self.total_update_times = total_update_times
         self.min_lr = min_learning_rate
