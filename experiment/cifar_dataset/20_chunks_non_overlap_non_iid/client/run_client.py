@@ -32,7 +32,7 @@ parser.add_argument('--config_file', dest='config_file', type=str, help='specify
 parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-20-chunks-non-overlap-gpu-non-iid", help='specify the queue exchange')
 parser.add_argument('--is_fix_lr', dest='is_fix_lr', type=int, default=1, help='specify the type of learning rate use', choices=[0, 1])
 parser.add_argument('--initial_lr', dest='initial_lr', type=float, default=0.01, help='specify the learning rate')
-parser.add_argument('--min_lr', dest='min_lr', type=float, default=0.005, help='specify the min learning rate')
+parser.add_argument('--min_lr', dest='min_lr', type=float, default=0.001, help='specify the min learning rate')
 parser.add_argument('--local_epochs', dest='local_epochs', type=int, default=600, help='specify the total local epochs')
 
 
@@ -116,7 +116,7 @@ tensorflow_framework = TensorflowFramework(model=model,
 
 
 client = Client(model= tensorflow_framework, config= config)
-
-client.start()
-scheduler.start()
-pause.days(1) # or it can anything as per your need
+#
+# client.start()
+# scheduler.start()
+# pause.days(1) # or it can anything as per your need
