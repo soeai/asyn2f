@@ -117,6 +117,6 @@ tensorflow_framework = TensorflowFramework(model=model,
 
 client = Client(model= tensorflow_framework, config= config)
 #
-# client.start()
-# scheduler.start()
-# pause.days(1) # or it can anything as per your need
+client.start()
+scheduler.start()
+pause.days(1) # or it can anything as per your need
