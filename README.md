@@ -1,7 +1,7 @@
-# AsynFL
+# Asyn2F
 We develop an asynchronous federated learning framework ...
 
-Link to AsynFed Diagrams.
+Link to Asyn2F Diagrams.
 ```
 https://drive.google.com/file/d/1LjL_asVqIZiBMvmlhExUakEMqmKHsQMr/view?usp=sharing
 ```
@@ -9,6 +9,7 @@ https://drive.google.com/file/d/1LjL_asVqIZiBMvmlhExUakEMqmKHsQMr/view?usp=shari
 ## Prerequisites
 - Python 3.9
 - Docker
+- Tensorflow 2.x
 
 ## Setting up the development environment
 - Install dependencies
