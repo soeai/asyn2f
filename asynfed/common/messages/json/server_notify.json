@@ -1,0 +1,21 @@
+{
+  "headers": {
+    "message_type": "SERVER_NOTIFY",
+    "server_id": "test_cifar10_id01",
+    "timestamp": "2024-07-15 12:39:35"
+  },
+  "content": {
+    "worker_id": [
+      "id001"
+    ],
+    "global_model": {
+      "id": "cifar10_model_id01",
+      "version": 1,
+      "name": "cifar10_5w",
+      "total_data_size": 42432,
+      "avg_qod": 0.89,
+      "avg_loss": 1.232
+    },
+    "learning_rate": 0.01
+  }
+}

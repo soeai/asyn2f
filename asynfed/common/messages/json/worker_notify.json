@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "message_type": "WORKER_NOTIFY",
+    "worker_id": "id001",
+    "session_id": "d53f4850-3452-4224-b874-...",
+    "timestamp": "2023-07-15 12:39:35"
+  },
+  "content": {
+    "storage_path": "cifar10_5w/id001",
+    "file_name": "epoch_1.pkl",
+    "global_version_used": 2,
+    "performance": 0.8934,
+    "loss": 1.232
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "headers": {
+    "message_type":"WORKER_INIT",
+    "worker_id":"id001",
+    "session_id":"d53f4850-3452-4224-b874-...",
+    "timestamp":"2024-07-15 12:33:56"},
+  "content": {
+    "role":"trainer|tester",
+    "system_info":{
+        "cpu":"x86_64",
+        "gpu":"NVIDIA GeForce GTX 1080 Ti",
+        "ram":"16Gb",
+        "disk":"80GB"},
+    "data_description":{
+        "size":123,
+        "qod": 0.95}
+    }
+}

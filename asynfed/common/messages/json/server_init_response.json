@@ -1,0 +1,23 @@
+{
+  "headers": {
+    "message_type":"SERVER_INIT_RESP",
+    "server_id":"test_cifar10_id01",
+    "session_id":"session of worker",
+    "timestamp":"2023-04-15 12:34:05"},
+  "content": {
+    "model_info":{
+        "url":"global-models/cifar10_5w_v2.pkl",
+        "name":"cifar10_5w",
+        "version":2,
+        "exchange_at":{
+            "performance": 0.9,
+            "epoch": 100}
+        },
+    "storage_info":{
+        "access_key":"",
+        "secret_key": "",
+        "bucket_name":"cifar10_5w",
+        "region_name":"asia-southeast-2"},
+    "strategy": "asyn2f"
+    }
+}
