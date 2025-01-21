@@ -4,12 +4,13 @@ By bidirectional model aggregation, on one hand, allows the server to asynchrono
 On the other hand, it allows the training workers to aggregate the new version of the global model into the local model, which is being trained even in the middle of a training epoch. 
 We develop Asyn2F considering the practical implementation requirements such as using cloud services for model storage and message queuing protocols for communications.
 
+The general architecture of Asyn2F is described as follows.
+
 ![screenshot](images/asyn2f_architecture.png)
 
-Link to Asyn2F Diagrams.
-```
-https://drive.google.com/file/d/1LjL_asVqIZiBMvmlhExUakEMqmKHsQMr/view?usp=sharing
-```
+And here is the sequence diagram
+
+![screenshot](images/training_sequence_diagram.png)
 
 ## Prerequisites - Machine
 1. A public server for message queue (RabbitMQ) and storage service (i.e., minio) 
