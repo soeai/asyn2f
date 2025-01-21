@@ -4,19 +4,26 @@ By bidirectional model aggregation, on one hand, allows the server to asynchrono
 On the other hand, it allows the training workers to aggregate the new version of the global model into the local model, which is being trained even in the middle of a training epoch. 
 We develop Asyn2F considering the practical implementation requirements such as using cloud services for model storage and message queuing protocols for communications.
 
+<img src="asyn2f/images/asyn2f_architecture.pdf" width="128"/>
+
 Link to Asyn2F Diagrams.
 ```
 https://drive.google.com/file/d/1LjL_asVqIZiBMvmlhExUakEMqmKHsQMr/view?usp=sharing
 ```
 
-## Prerequisites
-- Python 3.9
-- Docker
-- Tensorflow 2.x
+## Prerequisites - Machine
+1. A public server for message queue (RabbitMQ) and storage service (i.e., minio) 
+2. A machine/server plays the role of federated server.
+3. Edges for federated workers
+4. InlfuxDB and Grafana account if you want to real-time monitor
 
 ## Setting up the development environment
-- Install dependencies
-```
-python3 setup.py install
-```
+NOTE: we test our platform on Ubuntu 22.04 and Python >=3.9
+1. On public server, we recommend to use Docker to run RabbitMQ and MinIO. You may install and run them on your server environment.
+2. On federated server and workers, please run "python3 setup.py install" to install all dependencies.
 
+## Run ember experiment
+1. start Docker of rabbitmq and minio on public server.
+2. create config for federated server and workers (see samples in experiment folder).
+3. start federated server "python experiment/ember_dataset/7_chunks_non_iid/server/run_server.py --config_file=???"
+4. start federated worker "python experiment/ember_dataset/7_chunks_non_iid/client/run_client.py --config_file=???"

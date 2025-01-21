@@ -1,15 +1,10 @@
 import numpy as np
 import pickle
 import tensorflow as tf
-
-
 import requests
 from bs4 import BeautifulSoup
-
-
 import csv
 
-import numpy as np
 
 def custom_encoder(X):
     # Empty array for the labels
