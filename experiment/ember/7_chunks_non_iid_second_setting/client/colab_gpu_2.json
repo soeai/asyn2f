@@ -1,0 +1,41 @@
+{
+    "client_id": "colab-gpu-2",
+    "role": "trainer",
+    "gpu_index": 0,
+    "save_log": false,
+    "tracking_point": 15000,
+    "download_attempt": 10,
+
+    "queue_consumer": {
+        "queue_name": "",
+        "queue_exchange": "",
+        "exchange_type": "topic",
+        "routing_key": "client.#"
+    },
+
+    "queue_producer": {
+        "queue_name": "",
+        "queue_exchange": "",
+        "exchange_type": "topic",
+        "routing_key": "server.#"
+    },
+
+    "dataset": {
+        "chunk_index": 5,
+        "qod": 0.85
+    },
+    
+    "training_params": {
+        "epoch": 10000,
+        "batch_size": 128,
+        "regularization": "l2",
+        "lambda_value": 0.0005,
+        "beta": 0.6
+    },
+
+    "cleaning_config": {
+        "clean_storage_period": 600,
+        "global_keep_version_num": 10,
+        "local_keep_version_num": 3
+    }
+}
