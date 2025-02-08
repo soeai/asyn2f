@@ -22,6 +22,7 @@ And here is the sequence diagram
 NOTE: we test our platform on Ubuntu 22.04 and Python >=3.9
 1. On public server, we recommend to use Docker to run RabbitMQ and MinIO. You may install and run them on your server environment.
 2. On federated server and workers, please run "python3 setup.py install" to install all dependencies.
+3. Create a .env from .env_template and at least setup the parameter of minio and rabbitmq.
 
 ## Run ember experiment
 1. start Docker of rabbitmq and minio on public server.
