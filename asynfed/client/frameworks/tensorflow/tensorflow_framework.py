@@ -70,16 +70,16 @@ class TensorflowFramework(ModelWrapper):
         return self.model.get_test_performance(), self.model.get_test_loss()
 
     def reset_train_loss(self):
-        self.model.train_loss.reset_states()
+        self.model.train_loss.reset_state()
     
     def reset_train_performance(self):
-        self.model.train_performance.reset_states()
+        self.model.train_performance.reset_state()
     
     def reset_test_loss(self):
-        self.model.test_loss.reset_states()
+        self.model.test_loss.reset_state()
     
     def reset_test_performance(self):
-        self.model.test_performance.reset_states()
+        self.model.test_performance.reset_state()
 
     def get_optimizer(self):
         return self.model.get_optimizer()

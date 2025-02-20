@@ -84,16 +84,17 @@ class Resnet34(TensorflowSequentialModel):
     
     
     def set_learning_rate(self, lr):
-        return self.optimizer.lr.assign(lr)
+        return self.optimizer.learning_rate.assign(lr)
 
     def get_learning_rate(self):
-        return self.optimizer.lr.numpy()
+        return self.optimizer.learning_rate.numpy()
 
 
     def create_model(self, input_features, output_features):
         self.in_channels = 64
         num_blocks = [3, 4, 6, 3]
 
+        # NOTE
         self.conv1 = tf.keras.layers.Conv2D(64, kernel_size=3, strides=1, padding='same', use_bias=False, input_shape= input_features)
         self.bn1 = tf.keras.layers.BatchNormalization()
         self.layer1 = self._make_layer(BasicBlock, 64, num_blocks[0], strides=1)
@@ -122,7 +123,7 @@ class Resnet34(TensorflowSequentialModel):
     def create_optimizer(self):
         if self.lr_config.fix_lr:
             optimizer = tf.keras.optimizers.SGD(learning_rate= self.lr_config.initial_lr, momentum= 0.9)
-            print(f"Create optimizer with fix learning rate: {optimizer.lr.numpy()}")
+            print(f"Create optimizer with fix learning rate: {optimizer.learning_rate.numpy()}")
 
         else:
             lr_scheduler = CustomCosineDecay(initial_learning_rate= self.lr_config.initial_lr, 
@@ -130,7 +131,7 @@ class Resnet34(TensorflowSequentialModel):
                                             min_learning_rate= self.lr_config.min_lr)
 
             optimizer = tf.keras.optimizers.SGD(learning_rate=lr_scheduler, momentum=0.9)
-            print(f"Create optimizer using lr with decay step. This is the initial learning rate: {optimizer.lr.numpy()}")
+            print(f"Create optimizer using lr with decay step. This is the initial learning rate: {optimizer.learning_rate.numpy()}")
             print(f"This is the lr of the lr schedule when current step = decay steps: {float(lr_scheduler(self.lr_config.decay_steps))}")
             print(f"This is the min lr of the lr scheduler: {float(lr_scheduler(self.lr_config.decay_steps + 1))}")
 
@@ -163,5 +164,3 @@ class Resnet34(TensorflowSequentialModel):
             layer += [block(self.in_channels, out_channels, s)]
             self.in_channels = out_channels * block.expansion
         return tf.keras.Sequential(layer)
-
-

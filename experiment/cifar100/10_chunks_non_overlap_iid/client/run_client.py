@@ -6,13 +6,12 @@ from apscheduler.schedulers.background import BackgroundScheduler
 root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
 sys.path.append(root)
 
+root = os.getcwd()
 
 
 # from asynfed.client.algorithms import Asyn2fClient, KAFLMStepClient
 from asynfed.client import Client
-
 from asynfed.client.frameworks.tensorflow import TensorflowFramework
-
 from experiment.cifar100.resnet34 import Resnet34
 from experiment.cifar100.data_preprocessing import preprocess_dataset
 
@@ -28,7 +27,9 @@ scheduler = BackgroundScheduler()
 # Create an argument parser
 parser = argparse.ArgumentParser()
 # Add arguments
-parser.add_argument('--config_file', dest='config_file', type=str, help='specify the config file for running')
+parser.add_argument('--config_file', dest='config_file', type=str, 
+                    default='/home/nguyen/personal/asyn2f/experiment/cifar100/10_chunks_non_overlap_iid/client/235_cpu.json',
+                    help='specify the config file for running')
 parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-non-overlap-gpu", help='specify the queue exchange')
 parser.add_argument('--is_fix_lr', dest='is_fix_lr', type=int, default=1, help='specify the type of learning rate used ', choices=[0, 1])
 parser.add_argument('--initial_lr', dest='initial_lr', type=float, default=0.01, help='specify the learning rate')
@@ -45,12 +46,9 @@ with open(args.config_file, 'r') as json_file:
 # load queue config
 config['queue_consumer']['endpoint'] = os.getenv("queue_consumer_endpoint")
 config['queue_producer']['endpoint'] = os.getenv("queue_producer_endpoint")
-
 config["queue_exchange"] = args.queue_exchange
 
-
 import tensorflow as tf
-
 # avoid conflict
 
 print("*" * 20)
@@ -64,7 +62,7 @@ print("*" * 20)
 
 # ------------oOo--------------------
 # Preprocessing data
-data_folder_path = os.path.join(root, "experiment", "data", "cifar_data")
+data_folder_path = os.path.join(root, "experiment", "data", "cifar100")
 
 testset_filename = "test_set.pickle"
 default_testing_dataset_path = os.path.join(data_folder_path, testset_filename)
@@ -75,7 +73,7 @@ training_dataset_path = os.path.join(data_folder_path, chunk_folder, chunk_filen
 
 
 train_ds, data_size = preprocess_dataset(training_dataset_path, batch_size = config['training_params']['batch_size'], training = True)
-test_ds, _ = preprocess_dataset(default_testing_dataset_path, batch_size= config['training_params']['batch_size'], training = False)
+# test_ds, _ = preprocess_dataset(default_testing_dataset_path, batch_size= config['training_params']['batch_size'], training = False)
 # ------------oOo--------------------
 
 config['dataset']['data_size'] = data_size
@@ -111,7 +109,7 @@ model = Resnet34(input_features= (32, 32, 3),
 tensorflow_framework = TensorflowFramework(model=model, 
                                            data_size= data_size, 
                                            train_ds= train_ds, 
-                                           test_ds= test_ds, 
+                                        #    test_ds= test_ds, 
                                            config=config)
 
 

@@ -3,14 +3,11 @@ We assume that the data for training is available that can be accessed through a
 note that other tasks have been done to prepare such a data for the training task
 '''
 import argparse
-# import logging
 import numpy as np
 import pandas as pd
 from cleanlab.filter import find_label_issues
 from imblearn.under_sampling import TomekLinks
 from sklearn.ensemble import RandomForestClassifier
-
-# logging.basicConfig(level=logging.INFO)
 
 
 def predict_prob(X, y):
@@ -162,19 +159,41 @@ if __name__ == '__main__':
 
     df = pd.read_csv(args.data)
 
-    X = df.drop(args.label)
-    y = df[args.label]
 
+    print(f'About to evaluate the quality of data for the task of {args.data} with label {args.label} | data shape: {df.shape}')
+
+    X = df.drop(columns=[args.label])
+    X = X.to_numpy()
+    y = df[args.label]
+    
     comp = completeness(X)
 
     # process null value for other tasks
     np.nan_to_num(X, copy=False)
+    
+    class_overlap_score = class_overlap(X, y)
+    class_parity_score = class_parity(y)
+    # label_purity_score = label_purity(X, y)
+    feature_correlation_score = feature_correlation(X)
+    feature_relevance_score = feature_relevance(X, y, 0.9)
+    comp_score = comp
 
-    qod_metrics = {"class_overlap": class_overlap(X, y),
-                   "class_parity": class_parity(y),
-                   "label_purity": label_purity(X, y),
-                   "feature_correlation": feature_correlation(X),
-                   "feature_relevance": feature_relevance(X, y, 0.9),
-                   "completeness": comp}
+
+    scores = [class_overlap_score,
+              class_parity_score,
+              # label_purity_score,
+              feature_correlation_score,
+              feature_relevance_score,
+              comp_score]
+    avg_score = np.mean(scores)
+
+    qod_metrics = {"class_overlap": class_overlap_score,
+                   "class_parity": class_parity_score,
+                #    "label_purity": label_purity_score,
+                   "feature_correlation": feature_correlation_score,
+                   "feature_relevance": feature_relevance_score,
+                   "completeness": comp_score,
+                   "average": avg_score}
+    
 
     print(qod_metrics)

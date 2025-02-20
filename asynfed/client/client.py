@@ -1,5 +1,4 @@
 import os, sys
-import json
 import logging
 from threading import Thread, Lock
 import uuid
@@ -8,6 +7,7 @@ from time import sleep
 import re
 import pickle
 from tqdm import tqdm
+from typing import List
 
 
 from asynfed.common.messages import ExchangeMessage
@@ -142,7 +142,7 @@ class Client(object):
         self._send_init_message()
 
     def _train(self):
-        self._algorithm.train()        
+        self._algorithm.train()
 
     # Run the client
     def start(self):
