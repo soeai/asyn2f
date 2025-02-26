@@ -44,3 +44,4 @@ profile.json
 experiment/ember/ember_data
 
 experiment/ember/7_chunks_non_iid/client/data
+*.ipynb

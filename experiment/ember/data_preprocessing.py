@@ -114,26 +114,34 @@ def download_file_from_google_drive(file_id: str, destination: str):
     - url: The shared link URL of the Google Drive file.
     - destination: Path to save the downloaded file.
     """
-
-    download_prefix = "https://drive.google.com/uc?export=download"
-    url = f"{download_prefix}&id={file_id}"
     session = requests.Session()
-    response = session.get(url, stream=True)
+    base_url = "https://drive.google.com/uc?export=download"
+
+    response = session.get(base_url, params={'id': file_id}, stream=True)
     soup = BeautifulSoup(response.text, 'html.parser')
-    
-    # Extract necessary parameters from the page
-    form_action = soup.find("form", {"id": "download-form"}).get("action")
-    confirm_token = form_action.split("confirm=")[1].split("&")[0]
+    form = soup.find("form", {"id": "download-form"})
+    if not form:
+        print("Error: Unable to find the download form. The file may not be public.")
+        return
 
-    # Perform POST request to download the file
-    response = session.post(form_action, data={'confirm': confirm_token}, stream=True)
+    form_action = form.get("action")
+    if not form_action.startswith("http"):
+        form_action = "https://drive.usercontent.google.com" + form_action
 
-    # Save the content to the destination file
+    payload = {}
+    for input_tag in form.find_all("input"):
+        name = input_tag.get("name")
+        value = input_tag.get("value", "")
+        if name:
+            payload[name] = value
+
+    response = session.get(form_action, params=payload, stream=True)
+    if 'text/html' in response.headers.get('Content-Type', ''):
+        return 
     with open(destination, "wb") as f:
         for chunk in response.iter_content(32768):
             if chunk:
                 f.write(chunk)
-
 
 def get_file_id_in_csv(file_name, row_num):
     with open(file_name, 'r') as csvfile:

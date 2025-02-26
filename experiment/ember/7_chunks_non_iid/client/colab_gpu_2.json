@@ -22,7 +22,7 @@
 
     "dataset": {
         "chunk_index": 6,
-        "qod": 0.85
+        "qod": 0.8667
     },
     
     "training_params": {

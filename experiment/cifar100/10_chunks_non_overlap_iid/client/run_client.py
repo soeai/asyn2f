@@ -9,10 +9,9 @@ sys.path.append(root)
 root = os.getcwd()
 
 
-# from asynfed.client.algorithms import Asyn2fClient, KAFLMStepClient
 from asynfed.client import Client
 from asynfed.client.frameworks.tensorflow import TensorflowFramework
-from experiment.cifar100.resnet34 import Resnet34
+from experiment.cifar100.resnet20 import Resnet20
 from experiment.cifar100.data_preprocessing import preprocess_dataset
 
 
@@ -28,9 +27,9 @@ scheduler = BackgroundScheduler()
 parser = argparse.ArgumentParser()
 # Add arguments
 parser.add_argument('--config_file', dest='config_file', type=str, 
-                    default='/home/nguyen/personal/asyn2f/experiment/cifar100/10_chunks_non_overlap_iid/client/235_cpu.json',
                     help='specify the config file for running')
-parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, default="cifar10-10-chunks-non-overlap-gpu", help='specify the queue exchange')
+parser.add_argument('--queue_exchange', dest='queue_exchange', type=str, 
+                    default="cifar100-10-chunks-non-overlap-gpu", help='specify the queue exchange')
 parser.add_argument('--is_fix_lr', dest='is_fix_lr', type=int, default=1, help='specify the type of learning rate used ', choices=[0, 1])
 parser.add_argument('--initial_lr', dest='initial_lr', type=float, default=0.01, help='specify the learning rate')
 parser.add_argument('--min_lr', dest='min_lr', type=float, default=0.001, help='specify the min learning rate')
@@ -102,7 +101,7 @@ print("-" * 20)
 print("-" * 20)
 
 # Define model
-model = Resnet34(input_features= (32, 32, 3),
+model = Resnet20(input_features= (32, 32, 3),
                  output_features= 100, lr_config= config['training_params']['learning_rate_config'])
 
 # Define framework

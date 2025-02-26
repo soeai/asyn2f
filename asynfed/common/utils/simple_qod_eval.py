@@ -173,7 +173,7 @@ if __name__ == '__main__':
     
     class_overlap_score = class_overlap(X, y)
     class_parity_score = class_parity(y)
-    # label_purity_score = label_purity(X, y)
+    label_purity_score = label_purity(X, y)
     feature_correlation_score = feature_correlation(X)
     feature_relevance_score = feature_relevance(X, y, 0.9)
     comp_score = comp
@@ -181,7 +181,7 @@ if __name__ == '__main__':
 
     scores = [class_overlap_score,
               class_parity_score,
-              # label_purity_score,
+              label_purity_score,
               feature_correlation_score,
               feature_relevance_score,
               comp_score]
@@ -189,7 +189,7 @@ if __name__ == '__main__':
 
     qod_metrics = {"class_overlap": class_overlap_score,
                    "class_parity": class_parity_score,
-                #    "label_purity": label_purity_score,
+                   "label_purity": label_purity_score,
                    "feature_correlation": feature_correlation_score,
                    "feature_relevance": feature_relevance_score,
                    "completeness": comp_score,

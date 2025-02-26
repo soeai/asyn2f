@@ -55,7 +55,7 @@ print("*" * 20)
 
 # ------------oOo--------------------
 # Preprocessing data
-csv_filename = os.path.join(root, "experiment", "data", "ember_data", "7_chunks", "non_iid", "ggdrive_chunk_download_info.csv")
+csv_filename = os.path.join(root, "experiment", "data", "ember", "7_chunks", "non_iid", "ggdrive_chunk_download_info.csv")
 
 chunk_index = config['dataset']['chunk_index']
 client_root_folder = os.path.dirname(os.getcwd())
