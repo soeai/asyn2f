@@ -22,7 +22,7 @@
                 "initial_learning_rate": 0.1
             },
         "model_exchange_at": {
-            "performance": 0.8,
+            "performance": 0.4,
             "epoch": 100
             
         },

@@ -5,6 +5,10 @@
     "gpu_index": 0,
     "download_attempt": 15,
 
+    "dataset": {
+        "chunk_index": 0
+    },
+
     "queue_consumer": {
         "queue_name": "",
         "queue_exchange": "",
@@ -25,7 +29,7 @@
     },
     
     "stop_conditions": {
-        "expected_performance": 0.95,
+        "expected_performance": 0.58,
         "expected_loss": 0.02
     }
 }

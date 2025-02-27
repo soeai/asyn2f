@@ -2,6 +2,9 @@
 import tensorflow as tf
 import numpy as np
 import pickle
+import requests
+from bs4 import BeautifulSoup
+import csv
 
 
 
@@ -83,3 +86,48 @@ def preprocess_dataset(dataset_path: str, height: int = 32, width: int = 32,
     return ds, data_size
 
 
+
+def download_file_from_google_drive(file_id: str, destination: str):
+    """
+    Download file from Google Drive using the shared link.
+    
+    Parameters:
+    - url: The shared link URL of the Google Drive file.
+    - destination: Path to save the downloaded file.
+    """
+    session = requests.Session()
+    base_url = "https://drive.google.com/uc?export=download"
+
+    response = session.get(base_url, params={'id': file_id}, stream=True)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    form = soup.find("form", {"id": "download-form"})
+    if not form:
+        print("Error: Unable to find the download form. The file may not be public.")
+        return
+
+    form_action = form.get("action")
+    if not form_action.startswith("http"):
+        form_action = "https://drive.usercontent.google.com" + form_action
+
+    payload = {}
+    for input_tag in form.find_all("input"):
+        name = input_tag.get("name")
+        value = input_tag.get("value", "")
+        if name:
+            payload[name] = value
+
+    response = session.get(form_action, params=payload, stream=True)
+    if 'text/html' in response.headers.get('Content-Type', ''):
+        return 
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(32768):
+            if chunk:
+                f.write(chunk)
+
+def get_file_id_in_csv(file_name, row_num):
+    with open(file_name, 'r') as csvfile:
+        csvreader = csv.reader(csvfile)
+        next(csvreader)  # Skip the header row
+        for i, row in enumerate(csvreader):
+            if i == row_num:
+                return row[1]
